@@ -5894,11 +5894,13 @@ c=============================================================================
 
       integer(ISZ):: ix,iy,iz
       integer(ISZ):: ii,itot
+      real(kind=8):: wxp,wyp,wzp
       real(kind=8):: xshift,yshift,zshift
       real(kind=8):: xscale,yscale,zscale
       real(kind=8):: xmin,ymin,zmin,xmax,ymax,zmax
       real(kind=8):: dxtemp,dytemp,dztemp
       real(kind=8):: rr,rsq1,rsq2,tt
+      real(kind=8):: er,et
       real(kind=8):: wranf
 
       xmin = 0.
@@ -5959,12 +5961,16 @@ c           if (iz == 0 .or. iz == nz) zscale = 0.5
                 tt = 2.*pi*wranf()
                 xx(itot) = rr*cos(tt)
                 yy(itot) = rr*sin(tt)
-                zz(itot) = dztemp*(iz - zshift + zscale*wranf())
+                wzp = wranf()
+                zz(itot) = dztemp*(iz - zshift + zscale*wzp)
                 if ((                       rr       < xmax) .and.
      &              (zmin <= zz(itot) .and. zz(itot) < zmax)) then
-                  ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
-                  ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
-                  ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
+                  wxp = rr/dx + xshift - ix
+                  er       = exgrid(ix,iy,iz)*(1. - wxp) + exgrid(ix+1,iy,iz)*wxp
+                  et       = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
+                  ex(itot) = er*cos(tt) - et*sin(tt)
+                  ey(itot) = er*sin(tt) + et*cos(tt)
+                  ez(itot) = ezgrid(ix,iy,iz)*(1. - wzp) + ezgrid(ix,iy,iz+1)*wzp
                   pp(itot) = condid(ix,iy,iz)
                   itot = itot + 1
                 endif
@@ -5973,15 +5979,18 @@ c           if (iz == 0 .or. iz == nz) zscale = 0.5
             else
 
               do ii=1,int(rnn(ix,iy,iz))
-                xx(itot) = dxtemp*(ix - xshift + xscale*wranf())
-                yy(itot) = dytemp*(iy - yshift + yscale*wranf())
-                zz(itot) = dztemp*(iz - zshift + zscale*wranf())
+                wxp = wranf()
+                wyp = wranf()
+                wzp = wranf()
+                xx(itot) = dxtemp*(ix - xshift + xscale*wxp)
+                yy(itot) = dytemp*(iy - yshift + yscale*wyp)
+                zz(itot) = dztemp*(iz - zshift + zscale*wzp)
                 if ((xmin <= xx(itot) .and. xx(itot) < xmax .or. nx == 0) .and.
      &              (ymin <= yy(itot) .and. yy(itot) < ymax .or. ny == 0) .and.
      &              (zmin <= zz(itot) .and. zz(itot) < zmax .or. nz == 0)) then
-                  ex(itot) = 0.5*(exgrid(ix,iy,iz) + exgrid(ix+1,iy,iz))
-                  ey(itot) = 0.5*(eygrid(ix,iy,iz) + eygrid(ix,iy+1,iz))
-                  ez(itot) = 0.5*(ezgrid(ix,iy,iz) + ezgrid(ix,iy,iz+1))
+                  ex(itot) = exgrid(ix,iy,iz)*(1. - wxp) + exgrid(ix+1,iy,iz)*wxp
+                  ey(itot) = eygrid(ix,iy,iz)*(1. - wyp) + eygrid(ix,iy+1,iz)*wyp
+                  ez(itot) = ezgrid(ix,iy,iz)*(1. - wzp) + ezgrid(ix,iy,iz+1)*wzp
                   pp(itot) = condid(ix,iy,iz)
                   itot = itot + 1
                 endif

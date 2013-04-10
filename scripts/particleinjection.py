@@ -21,11 +21,15 @@ extends from i-1/2 to i+1/2.
 
  - conductors: a conductor or list of conductors which act as particle scrapers
                Note that each conductor MUST have a unique id.
+ - inj_d: the location of the virtual surface away from the conductor surface. It is in units of
+          the geometric mean of the grid cell sizes. It defaults to top.inj_d[0].
  - rnnmax: if set, is an upper bound to number of particles to inject per timestep per cell.
               Note in cylindrical geometry, it is the number injected per timestep per cell divided
               by r (which for a constant flux density is constant, since the cell volume is proportional to r)
  - relax: if set, it is the relaxation paramter for the injected number,
               rnn =  relax*rnn + (1.-relax)*rnn_old
+ - includebadparticles=False: Sometimes, particles cannot be interpolated to the emitting surface.
+                              Set this to true to include those particles (not recommended).
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -33,12 +37,14 @@ conductors are an argument.
     """
     def __init__(self,js=None,conductors=None,vthermal=0.,
                  lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
-                 grid=None, rnnmax=None,relax=None):
+                 grid=None,inj_d=None,rnnmax=None,relax=None,includebadparticles=False):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
         self.lsmooth121 = lsmooth121
+        self.inj_d = inj_d
         self.relax = relax
+        self.includebadparticles = includebadparticles
         self.inj_np = 0.   # initial "old" value of number of particles to inject
 
         #if js is None: js = range(top.ns)
@@ -64,20 +70,31 @@ conductors are an argument.
 
         self.rnnmax = rnnmax
 
+        self.injectedparticlesid = nextpid() - 1
+
         self.enable()
 
     def enable(self):
         installuserinjection(self.doinjection)
+        installuserinjection2(self.finishinjection)
 
     def disable(self):
         if installeduserinjection(self.doinjection):
             uninstalluserinjection(self.doinjection)
+        if installeduserinjection2(self.finishinjection):
+            uninstalluserinjection2(self.finishinjection)
 
     def getlcorrectede(self):
         if self.lcorrectede is not None:
             return self.lcorrectede
         else:
             return f3d.lcorrectede
+
+    def getinj_d(self):
+        if self.inj_d is not None:
+            return self.inj_d
+        else:
+            return top.inj_d[0]
 
     def getEfields(self,solver):
         """Get the E fields from the active field solver.
@@ -150,7 +167,7 @@ The sizes of the E arrays will be:
             # --- The shape includes a guard cell in the axis parallel
             # --- to the E field. The calculation of s assumes that there
             # --- is one guard cell on each boundary.
-            ng = array([w3d.nxguardphi,w3d.nyguardphi,w3d.nzguardphi])
+            ng = array([solver.nxguardphi,solver.nyguardphi,solver.nzguardphi])
             s = array(phip.shape) - 2*ng
             Ex = zeros((s[0]+1,s[1],s[2]),'d')
             Ey = zeros((s[0],s[1]+1,s[2]),'d')
@@ -212,7 +229,7 @@ the area of the dual cell.
         dy = solver.dy
         dz = solver.dz
         if solver is w3d: rhop = solver.rhop
-        else:             rhop = solver.getrhop()
+        else:             rhop = solver.sourcep
         Irho = rhop*dx*dy*dz
 
         return Irho
@@ -227,6 +244,7 @@ the area of the dual cell.
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
+        dxyz = sqrt(dx**2 + dy**2 + dz**2)
 
         # --- Get the E fields on the face centers of the dual cell
         Ex,Ey,Ez = self.getEfields(solver)
@@ -235,30 +253,13 @@ the area of the dual cell.
         Qold = self.getintegratedcharge(solver)
 
         # --- Do the integrals of E normal over the sides of the dual cell
-        if not self.lcylindrical:
-          Enorm  = Ex[1:,:,:]*dy*dz
-          Enorm -= Ex[:-1,:,:]*dy*dz
-          if not self.l_2d:
-            Enorm += Ey[:,1:,:]*dx*dz
-            Enorm -= Ey[:,:-1,:]*dx*dz
-          Enorm += Ez[:,:,1:]*dx*dy
-          Enorm -= Ez[:,:,:-1]*dx*dy
-        else:    # cylindrical; 2D RZ only
-          # define dual space x array
-          xgrid = solver.xmesh[1:,newaxis,newaxis]
-          xdual = zeros([len(xgrid)+1,1,1],"d")
-          xdual[0] = .5*xgrid[0]
-          xdual[1:-1] = .5*(xgrid[1:]+xgrid[:-1])
-          xdual[-1] = xgrid[-1]+dx/2.
-          Enorm = zeros([len(Ez[:,0,0]),1,len(Ex[0,0,:])],"d")
-          Enorm[0,:,:] = Ex[1,:,:]*xdual[0]**2*pi*dz
-          # note Ex[0,:,:] is in a guard cell, not used
-          Enorm[1:,:,:] = Ex[2:,:,:]*xdual[1:]*2.*pi*dz
-          Enorm[1:,:,:] -= Ex[1:-1,:,:]*xdual[:-1]*2.*pi*dz
-          Enorm[0,:,:] += Ez[0,:,1:]*xgrid[0]**2*.25*pi
-          Enorm[0,:,:] -= Ez[0,:,:-1]*xgrid[0]**2*.25*pi
-          Enorm[1:,:,:] += Ez[1:,:,1:]*xgrid*2.*pi*dx
-          Enorm[1:,:,:] -= Ez[1:,:,:-1]*xgrid*2.*pi*dx
+        Enorm  = Ex[1:,:,:]*dy*dz
+        Enorm -= Ex[:-1,:,:]*dy*dz
+        if not self.l_2d:
+          Enorm += Ey[:,1:,:]*dx*dz
+          Enorm -= Ey[:,:-1,:]*dx*dz
+        Enorm += Ez[:,:,1:]*dx*dy
+        Enorm -= Ez[:,:,:-1]*dx*dy
         Enorm *= eps0
 
         Qnew = Enorm - Qold
@@ -294,13 +295,6 @@ the area of the dual cell.
             rnn[0,...] *= 2.0*pi*solver.xmmin/solver.dy
           rnn[1:,...] *= 2.0*pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
 
-        if (self.relax):
-          # self.inj_np holds the previous timestep's rnn data
-          rnn = self.relax*rnn + (1.-self.relax)*self.inj_np
-
-        # --- Save the number for diagnostics
-        self.inj_np = rnn.copy()
-
         # --- Add a random number to the number of particles injected
         # --- so that the average number of particles injected is
         # --- correct.  For example, if rnn < 1., without the
@@ -309,6 +303,13 @@ the area of the dual cell.
         # --- injected but the average number will be less than 1.
         #rnn += where(rnn > 0.,random.random(rnn.shape),0.)
         rnn += random.random(rnn.shape)
+
+        if (self.relax):
+          # self.inj_np holds the previous timestep's rnn data
+          rnn = self.relax*rnn + (1.-self.relax)*self.inj_np
+
+        # --- Save the number for diagnostics
+        self.inj_np = rnn.copy()
 
         # --- Now create the particles. This is easiest to do in fortran.
         # --- For each dual cell, the particles injected in that cell are
@@ -320,6 +321,7 @@ the area of the dual cell.
         xx,yy,zz = zeros((3,nn),'d')
         ex,ey,ez = zeros((3,nn),'d')
         pp = zeros(nn,'d')
+        good = ones(nn,bool)
         nxp = rnn.shape[0] - 1
         nyp = rnn.shape[1] - 1
         nzp = rnn.shape[2] - 1
@@ -334,16 +336,17 @@ the area of the dual cell.
         # --- Give particles a thermal velocity.
         # --- This now ignores the fact the roughly half the particles will be
         # --- headed back into the conductor.
-        vx = random.normal(0.,self.vthermal,nn)
-        vy = random.normal(0.,self.vthermal,nn)
-        vz = random.normal(0.,self.vthermal,nn)
+        if self.vthermal > 0.:
+          vx = random.normal(0.,self.vthermal,nn)
+          vy = random.normal(0.,self.vthermal,nn)
+          vz = random.normal(0.,self.vthermal,nn)
+        else:
+          vx = zeros(nn)
+          vy = zeros(nn)
+          vz = zeros(nn)
 
-        # --- Note on the above - a nicer way to get the E field would be to
-        # --- get it at each particles position, so that the projection below
-        # --- might give smoother results. But, this could be a major problem
-        # --- since for many of the particles, the positions chosen above
-        # --- would be inside of the conductor so calculating the E field
-        # --- would be problematic.
+        # --- The location of the virtual surface, for each particle
+        xv,yv,zv = zeros((3,nn),'d')
 
         # --- The E field at the cell centers is used to provide a direction
         # --- for the projection onto the surfaces of the conductors.
@@ -355,12 +358,12 @@ the area of the dual cell.
             # --- Get the particles near the conductor c
             ii = compress(pp == c.condid,arange(nn))
             if len(ii) == 0: continue
-            xc = take(xx,ii)
-            yc = take(yy,ii)
-            zc = take(zz,ii)
-            exc = take(ex,ii)
-            eyc = take(ey,ii)
-            ezc = take(ez,ii)
+            xc = xx[ii]
+            yc = yy[ii]
+            zc = zz[ii]
+            exc = ex[ii]
+            eyc = ey[ii]
+            ezc = ez[ii]
 
             # --- Get a velocity from the E fields. Based on the way intercept
             # --- works, the velocity needs to be pointing away from the
@@ -387,22 +390,51 @@ the area of the dual cell.
             itheta = intercept.itheta
             iphi = intercept.iphi
 
-            # --- For now, as a kludge, in case there are particles that could
-            # --- not be projected to the surface, replace the position with the
-            # --- original.
-            lbadparticle = ((xi-xc)**2+(yi-yc)**2+(zi-zc)**2 > 
-                            dx**2+dy**2+dz**2)
-            itheta = where(lbadparticle,0.,itheta)
-            iphi = where(lbadparticle,0.,iphi)
-            xi = where(lbadparticle,xc,xi)
-            yi = where(lbadparticle,yc,yi)
-            zi = where(lbadparticle,zc,zi)
-            #print "BAD ",top.my_index,sum(lbadparticle),len(lbadparticle)
+            # --- There are particles that could not be projected to the surface.
+            # --- Reject them or replace their position with the original.
+            lbadparticles = ((xi-xc)**2+(yi-yc)**2+(zi-zc)**2 > dx**2+dy**2+dz**2)
+            itheta = where(lbadparticles,0.,itheta)
+            iphi = where(lbadparticles,0.,iphi)
+            xi = where(lbadparticles,xc,xi)
+            yi = where(lbadparticles,yc,yi)
+            zi = where(lbadparticles,zc,zi)
+
+            if self.includebadparticles:
+                # --- Reject only particles inside of the conductor
+                iibad = ii[lbadparticles]
+                ddbad = c.distance(xi[lbadparticles],yi[lbadparticles],zi[lbadparticles]).distance
+                good[iibad] = (ddbad >= 0.)
+
+            else:
+                # --- Reject all bad particles
+                # --- They are only removed from the list after the loop over conductors.
+                good[lbadparticles] = False
+
+            # --- Get the virtual locations, one grid cell away from the surface.
+            # --- The direction of the surface is along the E field lines.
+            qsign = sign(top.pgroup.sq[self.js])
+            emag = sqrt(exc**2 + eyc**2 + ezc**2)
+            de = qsign*self.getinj_d()*dxyz/emag
+            xvc = xi + de*exc
+            yvc = yi + de*eyc
+            zvc = zi + de*ezc
+
+            # --- This alternative uses the intercept surface normal angle. This doesn't give
+            # --- nice results near corners.
+            #dv = self.getinj_d()*dxyz
+            #ct,st = cos(itheta),sin(itheta)
+            #cp,sp = cos(iphi),sin(iphi)
+            #xvc = xi - cp*st*dv
+            #yvc = yi + sp*st*dv
+            #zvc = zi + ct*dv
 
             # --- Now replace the positions with the projected positions
-            put(xx,ii,xi)
-            put(yy,ii,yi)
-            put(zz,ii,zi)
+            xx[ii] = xi
+            yy[ii] = yi
+            zz[ii] = zi
+            xv[ii] = xvc
+            yv[ii] = yvc
+            zv[ii] = zvc
 
             # --- Set the velocity so that it is only moving away from the
             # --- surface. Use w3d.l_inj_addtempz_abs by default if the
@@ -412,21 +444,21 @@ the area of the dual cell.
             else:
                 addtempz_abs = self.l_inj_addtempz_abs
             if addtempz_abs:
-                # --- The velocity is treated as if it is in the frame relative
+                # --- The velocity is treated as if it is in the frame with z parallel
                 # --- to the surface normal. First, set vz to be positive, and
                 # -- then transform the velocity to the lab frame.
-                vxc = take(vx,ii)
-                vyc = take(vy,ii)
-                vzc = take(vz,ii)
+                vxc = vx[ii]
+                vyc = vy[ii]
+                vzc = vz[ii]
                 vzc = abs(vzc)
                 ct,st = cos(itheta),sin(itheta)
                 cp,sp = cos(iphi),sin(iphi)
-                vxclab =  ct*cp*vxc + st*vyc - ct*sp*vzc
-                vyclab = -st*cp*vxc + ct*vyc + st*sp*vzc
-                vzclab =     sp*vxc +             cp*vzc
-                put(vx,ii,vxclab)
-                put(vy,ii,vyclab)
-                put(vz,ii,vzclab)
+                vxclab = cp*ct*vxc - sp*vyc + cp*st*vzc
+                vyclab = sp*ct*vxc + cp*vyc + sp*st*vzc
+                vzclab =   -st*vxc +             ct*vzc
+                vx[ii] = vxclab
+                vy[ii] = vyclab
+                vz[ii] = vzclab
 
         if top.lrelativ:
             gaminv = sqrt(1. - (vx**2 + vy**2 + vz**2)/clight**2)
@@ -440,12 +472,32 @@ the area of the dual cell.
             uy = vy
             uz = vz
 
-        # --- Get the applied fields.
-        exap,eyap,ezap,bx,by,bz = getappliedfields(xx,yy,zz,
-                                                   time=top.time,js=self.js)
+        # --- Remove the bad particles
+        xx = xx[good]
+        yy = yy[good]
+        zz = zz[good]
+        ux = ux[good]
+        uy = uy[good]
+        uz = uz[good]
+        gaminv = gaminv[good]
+        xv = xv[good]
+        yv = yv[good]
+        zv = zv[good]
+        nn = len(xx)
+
+        # --- Get the self and applied fields.
+        # --- The self fields are gathered at the virtual surface.
+        ex,ey,ez = zeros((3,nn),'d')
+        bx,by,bz = zeros((3,nn),'d')
+        fetche3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xv,yv,zv,ex,ey,ez,bx,by,bz)
+        fetchb3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xv,yv,zv,bx,by,bz)
+        exap,eyap,ezap,bxap,byap,bzap = getappliedfields(xx,yy,zz,time=top.time,js=self.js)
         ex += exap
         ey += eyap
         ez += ezap
+        bx += bxap
+        by += byap
+        bz += bzap
 
         # --- Give the particles a time step size uniformly distributed
         # --- between 0 and top.dt.
@@ -456,15 +508,64 @@ the area of the dual cell.
         # --- input arrays.
         q = top.pgroup.sq[self.js]
         m = top.pgroup.sm[self.js]
-        bpusht3d(nn,ux,uy,uz,gaminv,bx,by,bz,q,m,dt,0.5,top.ibpush)
         epusht3d(nn,ux,uy,uz,ex,ey,ez,q,m,dt,0.5)
         gammaadv(nn,gaminv,ux,uy,uz,top.gamadv,top.lrelativ)
+        bpusht3d(nn,ux,uy,uz,gaminv,bx,by,bz,q,m,dt,0.5,top.ibpush)
         xpusht3d(nn,xx,yy,zz,ux,uy,uz,gaminv,dt)
 
         # --- Now add the new particles to the simulation.
         addparticles(xx,yy,zz,ux,uy,uz,gi=gaminv,
                      ex=ex,ey=ey,ez=ez,bx=bx,by=by,bz=bz,
-                     js=self.js,lmomentum=true)
+                     js=self.js,lmomentum=true,
+                     pidpairs=[[self.injectedparticlesid+1,dt]])
+
+    def finishinjection(self):
+        """Complete the advance of the velocity, so that the time is at the same level as existing particles."""
+        q = top.pgroup.sq[self.js]
+        m = top.pgroup.sm[self.js]
+
+        i1 = top.pgroup.ins[self.js] - 1
+        i2 = i1 + top.pgroup.nps[self.js]
+        ii = (top.pgroup.pid[i1:i2,self.injectedparticlesid] > 0.)
+        dt = top.pgroup.pid[i1:i2,self.injectedparticlesid][ii]
+        top.pgroup.pid[i1:i2,self.injectedparticlesid][ii] = 0.
+
+        xx = top.pgroup.xp[i1:i2][ii]
+        yy = top.pgroup.yp[i1:i2][ii]
+        zz = top.pgroup.zp[i1:i2][ii]
+        ux = top.pgroup.uxp[i1:i2][ii]
+        uy = top.pgroup.uyp[i1:i2][ii]
+        uz = top.pgroup.uzp[i1:i2][ii]
+        gaminv = top.pgroup.gaminv[i1:i2][ii]
+        nn = len(xx)
+
+        ex,ey,ez = zeros((3,nn),'d')
+        bx,by,bz = zeros((3,nn),'d')
+        fetche3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xx,yy,zz,ex,ey,ez,bx,by,bz)
+        fetchb3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xx,yy,zz,bx,by,bz)
+        exap,eyap,ezap,bxap,byap,bzap = getappliedfields(xx,yy,zz,time=top.time,js=self.js)
+        ex += exap
+        ey += eyap
+        ez += ezap
+        bx += bxap
+        by += byap
+        bz += bzap
+
+        # --- Synch the velocities with the positions.
+        bpusht3d(nn,ux,uy,uz,gaminv,bx,by,bz,q,m,dt,0.5,top.ibpush)
+        epusht3d(nn,ux,uy,uz,ex,ey,ez,q,m,dt,0.5)
+        gammaadv(nn,gaminv,ux,uy,uz,top.gamadv,top.lrelativ)
+
+        # --- Go back one half step to match the existing particles.
+        fulldt_s = top.dt*top.pgroup.ndts[self.js]
+        bpush3d(nn,ux,uy,uz,gaminv,bx,by,bz,q,m,-0.5*fulldt_s,top.ibpush)
+        epush3d(nn,ux,uy,uz,ex,ey,ez,q,m,-0.5*fulldt_s)
+        gammaadv(nn,gaminv,ux,uy,uz,top.gamadv,top.lrelativ)
+
+        top.pgroup.uxp[i1:i2][ii] = ux
+        top.pgroup.uyp[i1:i2][ii] = uy
+        top.pgroup.uzp[i1:i2][ii] = uz
+        top.pgroup.gaminv[i1:i2][ii] = gaminv
 
     def registerconductors(self,newconductors):
         if not isinstance(newconductors,ListType):
