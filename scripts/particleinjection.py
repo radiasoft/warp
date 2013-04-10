@@ -190,7 +190,8 @@ The sizes of the E arrays will be:
                                       solver.dx,solver.dy,solver.dz,
                                       solver.nxp,solver.nyp,solver.nzp,
                                       Ex,Ey,Ez,
-                                      1,1,1,solverf3d.bounds)
+                                      solver.nxguardphi,solver.nyguardphi,solver.nzguardphi,
+                                      solverf3d.bounds)
 
         else:
 
