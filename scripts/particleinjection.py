@@ -242,6 +242,9 @@ the area of the dual cell.
         return Irho
 
     def doinjection(self):
+        # --- This is true when the egun model is being used
+        if top.inject == 100: return
+
         self.updategrid()
         solver = getregisteredsolver()
         if solver is None: solver = w3d
@@ -284,13 +287,7 @@ the area of the dual cell.
 
         # --- If the user has specified a non-zero upper bound to the number of particles, impose it here
         if self.rnnmax:
-          if self.lcylindrical:
-            rnnmaxuse = zeros([len(xgrid)+1,1,1])
-            rnnmaxuse[0] = self.rnnmax*xgrid[0]**2/32.
-            rnnmaxuse[1:] = self.rnnmax*xgrid[:]
-            rnn = minimum(rnn,rnnmaxuse)
-          else:
-            rnn = minimum(rnn,self.rnnmax)
+          rnn = minimum(rnn,self.rnnmax)
 
         # --- Scale appropriately for cylindrical coordinates
         # --- This accounts the difference in area of a grid cell in
@@ -529,6 +526,9 @@ the area of the dual cell.
 
     def finishinjection(self):
         """Complete the advance of the velocity, so that the time is at the same level as existing particles."""
+        # --- This is true when the egun model is being used
+        if top.inject == 100: return
+
         if top.pgroup.npmax == 0: return
         q = top.pgroup.sq[self.js]
         m = top.pgroup.sm[self.js]
