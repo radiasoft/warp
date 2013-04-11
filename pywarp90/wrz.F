@@ -51,6 +51,7 @@ c=============================================================================
       use FFTDiagrz
       use Sortrz
       use LinearBeam
+      use GridBoundary3d,Only:bound0
 
 c  Invoked by the GENERATE command, it sets up the problem
 
@@ -176,10 +177,11 @@ c     call zeroarry(curr,nz+1)
             i2 = ipmin + ip - 1
             call setrhorz (rho,ip,pgroup%xp(i1:i2),pgroup%zp(i1:i2),zbeam,
      &                     pgroup%uzp(i1:i2),pgroup%sq(is),pgroup%sw(is),depos)
-            call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
-     &                   pgroup%sq(is),pgroup%sw(is),zbeam,dz,zmmin)
          enddo
       enddo
+      call setcurr(pgroup,zbeam,ismax,wpid,lspeciesmoments,
+     &             .not. laccumulate_rho,lfinalize_rho,bound0)
+
       time1 = wtimeoff()
       if (periinz) call perrhorz(rho,nr,nz)
       call fixrhorz
@@ -1023,6 +1025,8 @@ c=============================================================================
       subroutine padvncrz(center)
       use GlobalVars
       use Beam_acc
+      use InDiag,Only: lspeciesmoments
+      use InDiag3d:Only: lsetcurr
       use InGen
       use InPart
       use InGenrz
@@ -1035,6 +1039,7 @@ c=============================================================================
       use Z_arrays
       use Z_Moments
       use LinearBeam
+      use GridBoundary3d,Only:bound0
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
@@ -1134,8 +1139,6 @@ c    &                       pgroup%gaminv(i1:i2),pgroup%sm(is),pgroup%sw(is),2,
      &                         uxpo,uypo,uzpo,is,isid,ismax,
      &                         tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
                endif
-               call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
-     &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             endif
          enddo
          if (center .eq. "fullv" .or. center .eq. "halfv") then
@@ -1159,37 +1162,43 @@ c    &                       pgroup%gaminv(i1:i2),pgroup%sm(is),pgroup%sw(is),2,
                call setrhorz (rho, ip, pgroup%xp(i1:i2), pgroup%zp(i1:i2), zgrid,
      &                        pgroup%uzp(i1:i2), pgroup%sq(is), pgroup%sw(is), depos)
               if (ifgap)
-     &         call setcurr(curr,ip,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),pgroup%gaminv(i1:i2),
-     &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             enddo
          endif
 
-         if (vecrho) then
-c          call zeroarry(rhov,nrz)
-           rhov = 0.
-           call psort(pgroup%nps(is),zgrid,dz)
-           call vstrhorz(rhov,zgrid,pgroup%sq(is),pgroup%sw(is),rmesh)
-           call perrhorz(rhov,nr,nz)
-         endif
-
-c        ---  Do final stuff for moments calculation
-         if (center .eq. "synchv") then
-c         call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(is),pgroup%sw(is),3,nplive)
-         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                 0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
-     &                 1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-         endif
-
-c        --- Make rho periodic if periodic in z
-         if ((center.eq."fullv" .or. center.eq."halfv") .and. periinz)
-     &         call perrhorz(rho,nr,nz)
-
-c        --- Set center of beam, if particles were advanced
-         if (center.eq."fullv" .or. center.eq."halfv") zbeam = zgrid
-
       enddo
-c        --- calculate rho diagnostics
-         if (center .eq. "synchv") call rhodiarz
+
+       if (vecrho) then
+c        call zeroarry(rhov,nrz)
+         rhov = 0.
+         call psort(pgroup%nps(is),zgrid,dz)
+         call vstrhorz(rhov,zgrid,pgroup%sq(is),pgroup%sw(is),rmesh)
+         call perrhorz(rhov,nr,nz)
+       endif
+
+
+c      ---  Do final stuff for moments calculation
+       if (center .eq. "synchv") then
+c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(is),pgroup%sw(is),3,nplive)
+       call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &               0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &               1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+       endif
+
+c      --- Make rho periodic if periodic in z
+       if ((center.eq."fullv" .or. center.eq."halfv") .and. periinz)
+     &       call perrhorz(rho,nr,nz)
+
+c      --- Set center of beam, if particles were advanced
+       if (center.eq."fullv" .or. center.eq."halfv") zbeam = zgrid
+
+      if (lsetcurr .and. (center == "synchv" .or. center == "gen" .or. ifgap)) then
+c       --- Calculate current
+        call setcurr(pgroup,zbeam,ismax,wpid,lspeciesmoments,
+     &               .not. laccumulate_rho,lfinalize_rho,bound0)
+      endif
+
+c     --- calculate rho diagnostics
+      if (center .eq. "synchv") call rhodiarz
 
       return
       end

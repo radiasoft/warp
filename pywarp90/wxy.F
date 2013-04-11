@@ -4459,17 +4459,19 @@ c  slice version, makes a call to the 3d version of setcurr.
 
       if (lthick) then
 c       --- Call 3d version.
-!$OMP PARALLEL PRIVATE(ip)
-!$OMP DO
-        do ipmin = 1,np,nparpgrp
-          ip = min(nparpgrp, np+1-ipmin)
-          i1 = ipmin
-          i2 = ipmin + ip - 1
-          call setcurr(nzzarr,nszarr,curr,ip,zp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
-     &                 q,wght,is,zbeam,dzz,zzmin,ns,lspeciesmoments)
-        enddo
-!$OMP END DO
-!$OMP END PARALLEL
+        call kaboom("wxy: the lthick version is not supported")
+c!$OMP PARALLEL PRIVATE(ip)
+c!$OMP DO
+c        do ipmin = 1,np,nparpgrp
+c          ip = min(nparpgrp, np+1-ipmin)
+c          i1 = ipmin
+c          i2 = ipmin + ip - 1
+c          --- This call to setcurr is way out of date!
+c          call setcurr(nzzarr,nszarr,curr,ip,zp(i1:i2),uzp(i1:i2),gaminv(i1:i2),
+c     &                 q,wght,is,zbeam,dzz,zzmin,ns,lspeciesmoments)
+c        enddo
+c!$OMP END DO
+c!$OMP END PARALLEL
 
       else
 
