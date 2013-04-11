@@ -1026,7 +1026,7 @@ c=============================================================================
       use GlobalVars
       use Beam_acc
       use InDiag,Only: lspeciesmoments
-      use InDiag3d:Only: lsetcurr
+      use InDiag3d,Only: lsetcurr
       use InGen
       use InPart
       use InGenrz
