@@ -378,10 +378,10 @@ set when a current is specified"""
     top.lfinalize_rho = true
 #    top.it = _it
     tmp_gun_steps = 1
-    print "Number of particles injected for each species = ",top.npinje_s
+    print "Number of particles injected for each species = ",parallelsum(top.pgroup.nps)
 
     # --- check if any particles were injected
-    npssum = sum(parallelsum(top.pgroup.nps))
+    npssum = globalsum(top.pgroup.nps)
     if (npssum == 0): raise Exception('No particles injected')
 #   if (npssum == 0): break
 
