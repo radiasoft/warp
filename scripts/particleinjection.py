@@ -96,6 +96,12 @@ conductors are an argument.
         else:
             return top.inj_d[0]
 
+    def getrelax(self):
+        if self.relax is not None:
+            return self.relax
+        else:
+            return top.inj_param
+
     def getEfields(self,solver):
         """Get the E fields from the active field solver.
 This gets the E fields at the face centers of the dual cells. With the
@@ -305,9 +311,10 @@ the area of the dual cell.
         #rnn += where(rnn > 0.,random.random(rnn.shape),0.)
         rnn += random.random(rnn.shape)
 
-        if (self.relax):
+        relax = self.getrelax()
+        if relax != 1.:
           # self.inj_np holds the previous timestep's rnn data
-          rnn = self.relax*rnn + (1.-self.relax)*self.inj_np
+          rnn = relax*rnn + (1. - relax)*self.inj_np
 
         # --- Save the number for diagnostics
         self.inj_np = rnn.copy()
