@@ -1161,7 +1161,6 @@ c    &                       pgroup%gaminv(i1:i2),pgroup%sm(is),pgroup%sw(is),2,
                i2 = ipmin + ip - 1
                call setrhorz (rho, ip, pgroup%xp(i1:i2), pgroup%zp(i1:i2), zgrid,
      &                        pgroup%uzp(i1:i2), pgroup%sq(is), pgroup%sw(is), depos)
-              if (ifgap)
             enddo
          endif
 
