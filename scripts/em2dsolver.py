@@ -399,10 +399,10 @@ class EM2D(object):
   def fetchphifrompositions(self,x,z,phi):
     pass
 
-  def loadrho(self,lzero=0):
+  def loadrho(self,lzero=0,lfinalize_rho=true):
     pass
 
-  def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):
     if self.l_onegrid:
       fields = [self.field]
     else:

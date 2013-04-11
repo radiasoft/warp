@@ -8,9 +8,9 @@ import gc
 fieldsolver_version = "$Id: fieldsolver.py,v 1.103 2011/12/19 18:51:17 grote Exp $"
 
 #=============================================================================
-def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):
   """
-loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=1,lfinalize_rho=1)
 This routine provides a simple call from the interpreter to load the
 rho array.  All of the arguments are optional.
 If the species is not specified, all species are loaded, except
@@ -40,10 +40,10 @@ The default is to zero out rho.
   # --- current package
   currpkg = package()[0]
   if (currpkg == "wxy"):
-    loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+    loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
   else:
     # --- Note that this works for all other packages, not just 3d.
-    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
+    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
 
 #=============================================================================
 def fieldsolve(iwhich=0,lbeforefs=false,lafterfs=false):
@@ -105,9 +105,9 @@ def fetche(pgroup=None,ipmin=None,ip=None,js=None):
     fetche3d(pgroup,ipmin,ip,js+1)
 
 #=============================================================================
-def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):
   """
-loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1,lfinalize_rho=true)
 This routine provides a simple call from the interpreter to load the
 current density.  All of the arguments are optional.
 If the species is not specified, all species are loaded, except
@@ -137,10 +137,10 @@ The default is to zero out rho.
   # --- current package
   currpkg = package()[0]
   if (currpkg == "wxy"):
-    #loadrhoxy(ins_i,nps_i,is_i,lzero)
+    #loadrhoxy(ins_i,nps_i,is_i,lzero,lfinalize_rho)
     print "loadj not support in wxy yet"
   else:
-    loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
+    loadj3d(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
 
 #=============================================================================
 # --- These routines are used to handle registered field solvers.
@@ -813,7 +813,7 @@ the diagnostic is of interest and is meaningfull.
 
   # ---------------------------------------------------------------------
   # --- These routines must at least be defined.
-  def loadrho(self,pgroup=None,lzero=true,**kw):
+  def loadrho(self,pgroup=None,lzero=true,lfinalize_rho=true,**kw):
     'Charge deposition, uses particles from top directly'
     if pgroup is None: pgroup = top.pgroup
     self.advancezgrid()
@@ -826,7 +826,7 @@ the diagnostic is of interest and is meaningfull.
                      pgroup.zp[i:i+n],pgroup.uzp[i:i+n],
                      q,w*pgroup.dtscale[js])
 
-  def loadj(self,lzero=true,**kw):
+  def loadj(self,lzero=true,lfinalize_rho=true,**kw):
     'Charge deposition, uses particles from top directly'
     if lzero: self.zeroj()
     for js in range(top.pgroup.ns):
@@ -844,8 +844,9 @@ the diagnostic is of interest and is meaningfull.
       if top.wpid > 0: wght = top.pgroup[i:i+n,top.wpid-1]
       else:            wght = None
       self.setj(x,y,z,ux,uy,uz,gaminv,wght,q,w)
-    self.makejperiodic()
-    self.getjforfieldsolve()
+    if lfinalize_rho:
+      self.makejperiodic()
+      self.getjforfieldsolve()
 
   def fetche(self,**kw):
     'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
@@ -1263,7 +1264,7 @@ class SubcycledPoissonSolver(FieldSolver):
     self.setupzgridndts()
 
   # ---------------------------------------------------------------------
-  def loadsource(self,lzero=None,pgroups=None,**kw):
+  def loadsource(self,lzero=None,lfinalize_rho=None,pgroups=None,**kw):
     '''Charge deposition, uses particles from top directly
       - jslist: option list of species to load'''
     # --- Note that the grid location is advanced even if no field solve
@@ -1274,6 +1275,7 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- be gathering the source (for example during an EGUN iteration).
     if not self.ldosolve and lzero: return
     if lzero is None: lzero = w3d.lzerorhofsapi
+    if lfinalize_rho is None: lfinalize_rho = w3d.lfinalizerhofsapi
 
     self.setparticledomains()
     self.allocatedataarrays()
@@ -1330,7 +1332,7 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- Only finalize the source if lzero is true, which means the this
     # --- call to loadsource should be a complete operation.
     self.sourcepfinalized = 0
-    if lzero: self.finalizesourcep()
+    if lzero and lfinalize_rho: self.finalizesourcep()
 
   def finalizesourcep(self):
     if self.sourcepfinalized: return
@@ -1357,10 +1359,10 @@ class SubcycledPoissonSolver(FieldSolver):
     "Anything that needs to be done to sourcep after the deposition"
     pass
 
-  def loadrho(self,lzero=true,**kw):
+  def loadrho(self,lzero=true,lfinalize_rho=true,**kw):
     pass
 
-  def loadj(self,lzero=true,**kw):
+  def loadj(self,lzero=true,lfinalize_rho=true,**kw):
     pass
 
   def fetchfield(self,*args,**kw):

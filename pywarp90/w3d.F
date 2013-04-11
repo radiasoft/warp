@@ -437,8 +437,8 @@ c  Load the particles, calculate the charge density
       call injctint(pgroup)
       call particleboundaries3d(pgroup,-1,.true.)
       call remark(" ---  Setting charge density")
-      call loadrho3d(pgroup,-1,-1,-1,.true.)
-      call loadj3d(pgroup,-1,-1,-1,.true.)
+      call loadrho3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
+      call loadj3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
       if (chdtspid>0) then
         lsaveoldpos = .true.
         allspecl    = .true.
@@ -854,8 +854,8 @@ c           --- Treat particles at boundaries
             call particleboundaries3d(pgroup,-1,.true.)
 
 c           --- Collect charge density and current
-            call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-            call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+            call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho,lfinalize_rho)
+            call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho,lfinalize_rho)
 
 c           --- This is done here in case padvnc3d is called for multiple
 c           --- pgroups
@@ -2461,7 +2461,7 @@ c     ---  Do final stuff for moments calculation
 
 c       --- Calculate current
         call setcurr(pgroup,zbeam,ismax,wpid,lspeciesmoments,
-     &               .not. laccumulate_rho,bound0)
+     &               .not. laccumulate_rho,lfinalize_rho,bound0)
 
       endif
 c----------------------------------------------------------------------------
@@ -2477,8 +2477,8 @@ c         --- fullv or halfv step.
           it = it + 1
           call setuppadvncsubcyclingaveraging(it,'halfv',pgroup)
           it = it - 1
-          call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-          call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+          call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho,lfinalize_rho)
+          call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho,lfinalize_rho)
           call setuppadvncsubcyclingaveraging(it,center,pgroup)
 
         endif
@@ -10341,13 +10341,13 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
+      subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
       use w3d_interfaces
       use ParticleGroupmodule
       use w3d_interfaces
       use GlobalVars
       use Subtimersw3d
-      use InGen
+      use InGen,Only: depos,fstype
       use InGen3d
       use InPart
       use InMesh3d
@@ -10358,11 +10358,11 @@ c=============================================================================
       use Subcycling
       use Fields3dParticles
       use GridBoundary3d
-      use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
+      use FieldSolveAPI, Only: lzerorhofsapi,lfinalizerhofsapi,js1fsapi,js2fsapi
       use Timers, Only: lrtime
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
-      logical(ISZ):: lzero
+      logical(ISZ):: lzero,lfinalize_rho
 
 c --- This routine provides a simple call from the interpreter to load the
 c --- rhop array.  The value '-1' is used as a flag in the input to use
@@ -10402,6 +10402,7 @@ c     --- set limits on loop over species
       if (fstype == 12) then
 c       --- Use user registered solver to load rho
         lzerorhofsapi = lzero
+        lfinalizerhofsapi = lfinalize_rho
         js1fsapi = is1 - 1
         js2fsapi = is2 - 1
         call callpythonfunc("loadrhoregistered","fieldsolver")
@@ -10562,7 +10563,7 @@ c       --- processing.
 c       --- If lzero is requested, then it is assumed that loadrho should
 c       --- be a complete operation and that any final processing on rho
 c       --- should be done.
-        if (lzero) call finalizerho()
+        if (lzero .and. lfinalize_rho) call finalizerho()
 
       endif
 

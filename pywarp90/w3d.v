@@ -441,6 +441,7 @@ ndtsfsapi   integer
 npfsapi     integer
 ipminfsapi  integer
 lzerorhofsapi logical /.true./
+lfinalizerhofsapi logical
 pgroupfsapi _ParticleGroup +fassign
 api_xlf2    logical /.false./
 exfsapi(:) _real
@@ -1000,7 +1001,7 @@ createparticlesincells(nx:integer,ny:integer,nz:integer,
                        ex(nn):real,ey(nn):real,ez(nn):real,pp(nn):real)
              subroutine # Creates particles at each grid cell
 loadrho3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
-          lzero:logical) 
+          lzero:logical)
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
 finalizerho() subroutine # Finish the rho accumulation, taking care of parallel

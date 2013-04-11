@@ -3303,14 +3303,15 @@ c       --- If only one species, then don't have separate species data.
       return
       end
 c=============================================================================
-      subroutine setcurr(pgroup,zbeam,ns,wpid,lspeciesmoments,lzero,bound0)
+      subroutine setcurr(pgroup,zbeam,ns,wpid,lspeciesmoments,
+     &                   lzero,lfinalize_rho,bound0)
       use Subtimerstop
       use ParticleGroupmodule
       use Z_arrays
       type(ParticleGroup):: pgroup
       integer(ISZ):: ns,wpid,bound0
       real(kind=8):: zbeam
-      logical(ISZ):: lspeciesmoments,lzero
+      logical(ISZ):: lspeciesmoments,lzero,lfinalize_rho
 
 c  Sets 1d beam current as a function of z, directly from particle data
 
@@ -3353,7 +3354,7 @@ c  Sets 1d beam current as a function of z, directly from particle data
       enddo
 !$OMP END PARALLEL
 
-      if (lzero) call percurr(curr,nzzarr,nszarr,bound0)
+      if (lzero .and. lfinalize_rho) call percurr(curr,nzzarr,nszarr,bound0)
 
 !$OMP MASTER
       if (ltoptimesubs) timesetcurr = timesetcurr + wtime() - substarttime

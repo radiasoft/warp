@@ -1150,6 +1150,9 @@ depos                     character*8 /"direct1"/
 laccumulate_rho           logical /.false./
    # When true, rho is accumulated over multiple time steps. (i.e. it is not
    # zeroed each time step before the deposition.)
+lfinalize_rho             logical /.true./
+   # When true, after each step the boundary conditions and parallel
+   # communication of rho is done
 gamadv                    character*8 /"stndrd"/
    # Specifies type of gamma advance, "stndrd", "fast 1", or "fast 2"
 idadt                     integer /0/

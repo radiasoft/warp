@@ -176,22 +176,22 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
+      subroutine loadj3d(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
       use ParticleGroupmodule
       use GlobalVars
       use Subtimersf3d
-      use InGen
+      use InGen, Only: depos,fstype,bfstype
       use InGen3d
       use Picglb
       use Picglb3d
       use Particles,Only: wpid
       use BFieldGrid
       use GridBoundary3d
-      use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
+      use FieldSolveAPI, Only: lzerorhofsapi,lfinalizerhofsapi,js1fsapi,js2fsapi
       use f3d_bfield_interfaces
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
-      logical(ISZ):: lzero
+      logical(ISZ):: lzero,lfinalize_rho
 
 c --- This routine provides a simple call from the interpreter to load the
 c --- jp array.  The value '-1' is used as a flag in the input to use
@@ -221,6 +221,7 @@ c       --- set limits on loop over species
 
       if (bfstype == 12) then
         lzerorhofsapi = lzero
+        lfinalizerhofsapi = lfinalize_rho
         js1fsapi = is1 - 1
         js2fsapi = is2 - 1
         call callpythonfunc("bloadjregistered","fieldsolver")
@@ -228,6 +229,7 @@ c       --- set limits on loop over species
         js2fsapi = -1
       elseif (fstype == 12 .and. bfstype < 0) then
         lzerorhofsapi = lzero
+        lfinalizerhofsapi = lfinalize_rho
         js1fsapi = is1 - 1
         js2fsapi = is2 - 1
         call callpythonfunc("loadjregistered","fieldsolver")
@@ -341,7 +343,7 @@ c       --- processing.
 c       --- If lzero is requested, then it is assumed that loadj should
 c       --- be a complete operation and that any final processing on j
 c       --- should be done.
-        if (lzero) call finalizej()
+        if (lzero .and. lfinalize_rho) call finalizej()
 
       endif
 

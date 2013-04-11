@@ -697,12 +697,12 @@ Initially, conductors are not implemented.
   rhop = property(**_setuprhopproperty())
   del _setuprhopproperty
 
-  def loadrho(self,lzero=None,**kw):
+  def loadrho(self,lzero=None,lfinalize_rho=None,**kw):
     # --- top.laccumulate_rho is used as a flag by the implicit stepper.
     # --- When true, the load rho is skipped - it is not needed at some
     # --- points during a step.
     if top.laccumulate_rho: return
-    MultiGrid3D.loadsource(self,lzero,**kw)
+    MultiGrid3D.loadsource(self,lzero,lfinalize_rho,**kw)
 
   def fetche(self,*args,**kw):
     # --- lresetparticlee is used as a flag in the implicit stepper.

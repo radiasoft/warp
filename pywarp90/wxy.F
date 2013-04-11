@@ -318,7 +318,7 @@ c  Load the particles, calculate the charge density
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
-      call loadrhoxy(pgroup,-1,-1,-1,.true.)
+      call loadrhoxy(pgroup,-1,-1,-1,.true.,lfinalize_rho)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -2303,7 +2303,7 @@ c       --- Apply particle boundary conditions.
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
-        call loadrhoxy(pgroup,-1,-1,-1,.true.)
+        call loadrhoxy(pgroup,-1,-1,-1,.true.,lfinalize_rho)
 
         if (ifgap) then
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -4261,11 +4261,11 @@ c      --- Point rho to the block for the currently active ndts group.
        return
        end
 c=============================================================================
-      subroutine loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+      subroutine loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero,lfinalize_rho)
       use ParticleGroupmodule
       use Subtimerswxy
       use GlobalVars
-      use InGen
+      use InGen, Only: depos,vbeamfrm
       use InGenxy
       use InGen3d
       use InPart,Only: depos_order
@@ -4280,7 +4280,7 @@ c=============================================================================
       use wxy_interfaces
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
-      logical(ISZ):: lzero
+      logical(ISZ):: lzero,lfinalize_rho
 
 c --- This routine provides a simple call from the interpreter to load the
 c --- rho array.  The value '-1' is used as a flag in the input to use
@@ -4393,7 +4393,7 @@ c  Copy charge density from frz.basegrid to w3d.rho
         call get_rho_rz(rho,nx,ny,1,0)
       else
 
-        if (lzero) then
+        if (lzero .and. lfinalize_rho) then
 
 c         --- Set the bounds array.
           call setboundsfromflags(bounds,boundxy,bound0,boundnz,l2symtry,l4symtry)

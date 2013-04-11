@@ -92,7 +92,7 @@ class AMRTree(VisualizableClass):
     # --------------------------------------------------------------------
     # --- Field solver API routines.
     # --- Currently, these only support the 3d version.
-    def loadrho(self,lzero=true):
+    def loadrho(self,lzero=true,lfinalize_rho=true):
       # --- If the mesh refinement is going to be recalculated this step,
       # --- then rho is only needed on the root block. Skip loading rho
       # --- on the mesh refined blocks to save time.
@@ -102,7 +102,7 @@ class AMRTree(VisualizableClass):
       if (ifcond or not lzero): lrootonly = 0
       else:                     lrootonly = 1
       if self.solvergeom == w3d.XYZgeom:
-        self.blocks.loadrho(lzero=lzero,lrootonly=lrootonly)
+        self.blocks.loadrho(lzero=lzero,lfinalize_rho=lfinalize_rho,lrootonly=lrootonly)
       else:
         raise Exception("Only 3d supported as registered solver.")
 
@@ -960,7 +960,7 @@ class AMRTree(VisualizableClass):
       if self.solvergeom == w3d.XYZgeom:
         # --- Call the solvers loadrho routine directly since AMR instance
         # --- is already the registered solver.
-        self.blocks.loadrho(lzero=true,lrootonly=0)
+        self.blocks.loadrho(lzero=true,lfinalize_rho=true,lrootonly=0)
       else:
         loadrho()
       if l_timing:

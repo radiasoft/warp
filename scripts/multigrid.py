@@ -404,8 +404,8 @@ most of which get there default values from one of the fortran packages.
   selfep = property(**_setupselfepproperty())
   del _setupselfepproperty
 
-  def loadrho(self,lzero=None,pgroups=None,**kw):
-    SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)
+  def loadrho(self,lzero=None,lfinalize_rho=None,pgroups=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,lfinalize_rho,pgroups,**kw)
 
   def fetche(self,*args,**kw):
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
@@ -1096,12 +1096,12 @@ tensor that appears from the direct implicit scheme.
     'Returns the phip array without the guard cells'
     return MultiGrid3D.getphip(self)[:,:,:]
 
-  def loadrho(self,lzero=None,**kw):
+  def loadrho(self,lzero=None,lfinalize_rho=None,**kw):
     # --- top.laccumulate_rho is used as a flag by the implicit stepper.
     # --- When true, the load rho is skipped - it is not needed at some
     # --- points during a step.
     if top.laccumulate_rho: return
-    MultiGrid3D.loadsource(self,lzero,**kw)
+    MultiGrid3D.loadsource(self,lzero,lfinalize_rho,**kw)
 
   def fetche(self,*args,**kw):
     # --- lresetparticlee is used as a flag in the implicit stepper.

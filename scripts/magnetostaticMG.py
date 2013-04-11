@@ -140,8 +140,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                             self.nyguardphi:-self.nyguardphi or None,
                             self.nzguardphi:-self.nzguardphi or None]
 
-  def loadj(self,lzero=None,**kw):
-    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
+  def loadj(self,lzero=None,lfinalize_rho=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,lfinalize_rho,**kw)
 
   def fetchb(self,*args):
     SubcycledPoissonSolver.fetchfield(self,*args)

@@ -265,14 +265,15 @@ class FieldSolver3dBase(object):
             self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmminlocal,self.zmmaxlocal,
             self.l2symtry,self.l4symtry)
 
-  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):
     if lzero: self.rho[...] = 0.
     for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
                        top.pgroup.sq,top.pgroup.sw):
       self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
                   top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w)
-    self.makerhoperiodic()
-    self.getrhoforfieldsolve()
+    if lfinalize_rho:
+      self.makerhoperiodic()
+      self.getrhoforfieldsolve()
 
   def makerhoperiodic(self):
     trho = transpose(self.rho)
@@ -522,7 +523,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       w3d.rhop = self.beamsolver.rho
       w3d.phip = self.beamsolver.phi
 
-  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):
     if lzero:
       self.beamsolver.rho[...] = 0.
       if len(self.backgroundspecies) > 0:
@@ -537,8 +538,9 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       self.beamsolver.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
                              top.pgroup.zp[i:i+n],
                              top.pgroup.uzp[i:i+n],q,w)
-    self.beamsolver.makerhoperiodic()
-    self.beamsolver.getrhoforfieldsolve()
+    if lfinalize_rho:
+      self.beamsolver.makerhoperiodic()
+      self.beamsolver.getrhoforfieldsolve()
 
     if len(self.backgroundspecies) > 0:
       for js in self.backgroundspecies:
