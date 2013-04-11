@@ -346,18 +346,6 @@ set when a current is specified"""
       else:
         solver.saveprevioussource()
 
-    # --- Zero the charge density array
-    # --- A call to loadrho is made since it will zero the charge density
-    # --- for whatever field solver is being used. The top.laccumulate_rho
-    # --- is turned off otherwise rho won't be zeroed. Note that there are
-    # --- no particles now (top.nps=0).
-    top.laccumulate_rho = false
-    loadrho()
-    top.laccumulate_rho = true
-    #w3d.rhop = 0.
-    #if w3d.solvergeom==w3d.RZgeom: reset_rzmgrid_rho()
-    top.curr = 0.
-
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
     if ((i == iter-1 or (gun_iter%nhist) == 0) and _ifzmmnt > 0):
@@ -377,9 +365,17 @@ set when a current is specified"""
     gun_time = top.time
 
     # --- Make one time step to inject the batch of particles.
+    # --- The charge density is zeroed during this first step,
+    # --- as controlled by laccumulate_rho and lfinalize_rho.
+    # --- This method allows the use of the particleinjection
+    # --- module (which relies on the previous charge density).
 #    _it = top.it+0
 #    top.it = -1
+    top.laccumulate_rho = false
+    top.lfinalize_rho = false
     step(1)
+    top.laccumulate_rho = true
+    top.lfinalize_rho = true
 #    top.it = _it
     tmp_gun_steps = 1
     print "Number of particles injected for each species = ",top.npinje_s
