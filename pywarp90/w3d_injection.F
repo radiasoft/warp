@@ -109,7 +109,7 @@ c Print warning if vbeamfrm is not zero
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
 
-      if (.not. l_inj_user_particles) then
+      if (.not. l_inj_user_particles .and. inject .ne. 100) then
 c       --- Unless the user is creating the particles to be injected,
 c       --- make sure that the source radius is nonzero.
         if (minval(ainject) <= 0. .or. minval(binject) <= 0.) then
@@ -3980,6 +3980,7 @@ c=============================================================================
       if (lw3dtimesubs) substarttime = wtime()
 
       if (inject <= 0 .and. tinject <= 0) return
+      if (injpid == 0) return
 
       i1 = ipmin
       i2 = ipmin + np - 1
@@ -4029,6 +4030,7 @@ c any conductor surface.
 c     --- The user can force the code to skip the special calculation of the
 c     --- E fields for particles behind the virtual surface.
       if (linj_efromgrid) return
+      if (injpid == 0) return
 
       allocate(xx(npart),yy(npart),zz(npart))
       allocate(tex(npart),tey(npart),tez(npart))
@@ -4263,6 +4265,7 @@ c     real(kind=8):: wrandomgauss
 
       if (inject <= 0) return
       if (.not. l_inj_delay_temp) return
+      if (injpid == 0) return
 
       allocate(xx(npart),yy(npart),zz(npart))
       allocate(vx(npart),vy(npart),vz(npart))
