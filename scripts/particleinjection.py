@@ -519,10 +519,13 @@ the area of the dual cell.
         xpusht3d(nn,xx,yy,zz,ux,uy,uz,gaminv,dt)
 
         # --- Now add the new particles to the simulation.
+        nbefore = top.pgroup.nps[self.js]
         addparticles(xx,yy,zz,ux,uy,uz,gi=gaminv,
                      ex=ex,ey=ey,ez=ez,bx=bx,by=by,bz=bz,
                      js=self.js,lmomentum=true,
                      pidpairs=[[self.injectedparticlesid+1,dt]])
+        nafter = top.pgroup.nps[self.js]
+        top.npinje_s[self.js] = nafter - nbefore
 
     def finishinjection(self):
         """Complete the advance of the velocity, so that the time is at the same level as existing particles."""
