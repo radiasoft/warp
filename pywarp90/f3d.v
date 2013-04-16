@@ -711,7 +711,8 @@ ljfinalized logical /.true./
 
 init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
 bfieldsol3d(iwhich) subroutine # Self B-field solver
-loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
+loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical,
+        lfinalize_rho:logical)
              subroutine # Provides a simple interface to the current density
                         # loading routine setj3d
 applyjboundaryconditions(bfield:BFieldGridType,

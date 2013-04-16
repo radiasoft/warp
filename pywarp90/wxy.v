@@ -80,7 +80,7 @@ fieldsolxy(iwhich:integer)
 vpxy(iwhich:integer)
              subroutine # Call field solver
 loadrhoxy(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
-          lzero:logical)
+          lzero:logical,lfinalize_rho:logical)
              subroutine # Simple interface to setrhoxy
 fetchexy(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer,
          ex:real,ey:real,ez:real)
