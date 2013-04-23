@@ -79,9 +79,9 @@ conductors are an argument.
         installuserinjection2(self.finishinjection)
 
     def disable(self):
-        if installeduserinjection(self.doinjection):
+        if isinstalleduserinjection(self.doinjection):
             uninstalluserinjection(self.doinjection)
-        if installeduserinjection2(self.finishinjection):
+        if isinstalleduserinjection2(self.finishinjection):
             uninstalluserinjection2(self.finishinjection)
 
     def getlcorrectede(self):
