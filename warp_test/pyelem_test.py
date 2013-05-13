@@ -1,12 +1,13 @@
 from warp import *
-from nose.tools import assert_almost_equal
+import unittest
 
 # --- This is needed to turn off graphical output
 top.lprntpara = false
 top.lpsplots = false
 def setup():
-    """This dummy function replaces the setup from warp. Nose calls setup
-    before running the test functions (and there is no way of preventing it)."""
+    """This dummy function replaces the setup from warp and is only needed
+    when sing Nose. Nose calls setup before running the test functions
+    (and there is no way of preventing it)."""
     pass
 
 # --- Create the beam species
@@ -47,27 +48,30 @@ beam.addparticles(x=[0.,0.,0.,0.],
 
 beam.getappliedfields()
 
-def test_p0bx():
-    assert_almost_equal(beam.bx[0],0.)
+class TestSequenceFunctions(unittest.TestCase):
+    def test_p0bx(self):
+        self.assertAlmostEqual(beam.bx[0],0.)
 
-def test_p0by():
-    assert_almost_equal(beam.by[0],1.)
+    def test_p0by(self):
+        self.assertAlmostEqual(beam.by[0],1.)
 
-def test_p1bx():
-    assert_almost_equal(beam.bx[1],1.)
+    def test_p1bx(self):
+        self.assertAlmostEqual(beam.bx[1],1.)
 
-def test_p1by():
-    assert_almost_equal(beam.by[1],1.)
+    def test_p1by(self):
+        self.assertAlmostEqual(beam.by[1],1.)
 
-def test_p2bx():
-    assert_almost_equal(beam.bx[2],1.)
+    def test_p2bx(self):
+        self.assertAlmostEqual(beam.bx[2],1.)
 
-def test_p2by():
-    assert_almost_equal(beam.by[2],0.)
+    def test_p2by(self):
+        self.assertAlmostEqual(beam.by[2],0.)
 
-def test_p3bx():
-    assert_almost_equal(beam.bx[3],0.)
+    def test_p3bx(self):
+        self.assertAlmostEqual(beam.bx[3],0.)
 
-def test_p3by():
-    assert_almost_equal(beam.by[3],0.)
+    def test_p3by(self):
+        self.assertAlmostEqual(beam.by[3],0.)
 
+if __name__ == '__main__':
+    unittest.main()

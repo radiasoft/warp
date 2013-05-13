@@ -1,12 +1,13 @@
 from warp import *
-from nose.tools import assert_almost_equal
+import unittest
 
 # --- This is needed to turn off graphical output
 top.lprntpara = false
 top.lpsplots = false
 def setup():
-    """This dummy function replaces the setup from warp. Nose calls setup
-    before running the test functions (and there is no way of preventing it)."""
+    """This dummy function replaces the setup from warp and is only needed
+    when sing Nose. Nose calls setup before running the test functions
+    (and there is no way of preventing it)."""
     pass
 
 # --- Set four-character run id, comment lines, user's name.
@@ -104,31 +105,35 @@ generate()
 
 step(steps_p_perd)
 
-def test_sigma0x():
-    assert_almost_equal(env.sig0x,72.)
-def test_sigma0y():
-    assert_almost_equal(env.sig0y,72.)
-def test_sigmax():
-    assert_almost_equal(env.sigx,20.)
-def test_sigmay():
-    assert_almost_equal(env.sigy,20.)
+class TestSequenceFunctions(unittest.TestCase):
+    def test_sigma0x(self):
+        self.assertAlmostEqual(env.sig0x,72.)
+    def test_sigma0y(self):
+        self.assertAlmostEqual(env.sig0y,72.)
+    def test_sigmax(self):
+        self.assertAlmostEqual(env.sigx,20.)
+    def test_sigmay(self):
+        self.assertAlmostEqual(env.sigy,20.)
 
-def test_deltaa():
-    assert_almost_equal(env.deltaa,0.)
-def test_deltaap():
-    assert_almost_equal(env.deltaap,0.)
-def test_deltab():
-    assert_almost_equal(env.deltab,0.)
-def test_deltabp():
-    assert_almost_equal(env.deltabp,0.)
+    def test_deltaa(self):
+        self.assertAlmostEqual(env.deltaa,0.)
+    def test_deltaap(self):
+        self.assertAlmostEqual(env.deltaap,0.)
+    def test_deltab(self):
+        self.assertAlmostEqual(env.deltab,0.)
+    def test_deltabp(self):
+        self.assertAlmostEqual(env.deltabp,0.)
 
-def test_initxenv():
-    assert_almost_equal(abs(2*top.hxrmsz[:,0,0] - env.aenv).max(),0.,delta=0.0005)
-def test_inityenv():
-    assert_almost_equal(abs(2*top.hyrmsz[:,0,0] - env.benv).max(),0.,delta=0.0005)
+    def test_initxenv(self):
+        self.assertAlmostEqual(abs(2*top.hxrmsz[:,0,0] - env.aenv).max(),0.,delta=0.0005)
+    def test_inityenv(self):
+        self.assertAlmostEqual(abs(2*top.hyrmsz[:,0,0] - env.benv).max(),0.,delta=0.0005)
 
-def test_xenvafteroneperiod():
-    assert_almost_equal(abs(2*top.xrmsz[:,0] - env.aenv).max(),0.,delta=0.001)
-def test_yenvafteroneperiod():
-    assert_almost_equal(abs(2*top.yrmsz[:,0] - env.benv).max(),0.,delta=0.001)
+    def test_xenvafteroneperiod(self):
+        self.assertAlmostEqual(abs(2*top.xrmsz[:,0] - env.aenv).max(),0.,delta=0.001)
+    def test_yenvafteroneperiod(self):
+        self.assertAlmostEqual(abs(2*top.yrmsz[:,0] - env.benv).max(),0.,delta=0.001)
+
+if __name__ == '__main__':
+    unittest.main()
 
