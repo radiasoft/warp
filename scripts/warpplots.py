@@ -79,7 +79,6 @@
 from warp import *
 
 import __main__
-__main__.__dict__['with_matplotlib'] = 0
 try:
   with_matplotlib = __main__.__dict__['with_matplotlib']
 except KeyError:
@@ -114,7 +113,6 @@ else:
     maxplotwindows = 8
 
 import controllers
-import re
 import os
 import sys
 warpplots_version = "$Id: warpplots.py,v 1.278 2012/01/26 23:31:29 grote Exp $"
@@ -129,10 +127,9 @@ always = top.always
 seldom = top.seldom
 never = top.never
 cgmlogfile = None
-numframeslist = ones(maxplotwindows,'l')
-_hcp_frame_number = zeros(maxplotwindows,'l')
 
 if with_gist:
+  _base_winnum = 0
   gist.pldefault(marks=0) # --- Set plot defaults, no line marks
   gist.pldefault(legends=0) # --- Turn off the legends in hardcopy output
   #gist.pldefault(width=4.) # --- Set plot defaults, width linewidth
@@ -153,12 +150,14 @@ if with_gist:
       gist.window(winnum)
 
 if with_matplotlib:
-  _matplotwindows = []
-  _matplotactivewindow = [0]
+  _base_winnum = 1
+  _matplotwindows = {}
+  _matplotactivewindow = [1]
   def active_window(winnum=None):
     if winnum is None:
       return _matplotactivewindow[0]
     else:
+      assert winnum in _matplotwindows,"There is no such window"
       _matplotactivewindow[0] = winnum
 
   def universeaxes():
@@ -180,6 +179,11 @@ a list of colormap names.
     if im is not None:
         im.set_cmap(getattr(cm,cmap))
     draw_if_interactive()
+
+numframeslist = {_base_winnum:1}
+_hcp_frame_number = {_base_winnum:1}
+_plotdatafilenames = {_base_winnum:None}
+_plotdatafileobjects = {_base_winnum:None}
 
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
@@ -255,7 +259,7 @@ Does the work needed to start writing plots to a file automatically
     gist.hcpon()
   else:
     # --- Open the file where the plots will be saved.
-    _matplotwindows.append(open(setup.pname,'w'))
+    _matplotwindows[_base_winnum] = open(setup.pname,'w')
 
   if writetodatafile:
     # --- Setup the data file name where plot data is written
@@ -283,7 +287,7 @@ Does the work needed to start writing plots to a file automatically
 # --- setup has been called, this just creates a window which is attached to
 # --- the already created device. Otherwise, open a window attached to a
 # --- new device.
-def winon(winnum=0,dpi=100,prefix=None,suffix=None,xon=1,style='work.gs'):
+def winon(winnum=None,dpi=100,prefix=None,suffix=None,xon=1,style='work.gs'):
   """
 Opens up an X window
   - winnum=0 is the window number
@@ -304,6 +308,8 @@ Opens up an X window
                      "axes.gs", "boxed.gs", "work2.gs", and "boxed2.gs", or
                      you can create your own version.
   """
+  if winnum is None:
+    winnum = _base_winnum
   if suffix is None and prefix is None:
     if with_gist:
       if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
@@ -318,6 +324,19 @@ Opens up an X window
       else:
         if xon: gist.window(winnum,dpi=dpi,style=style,display=os.environ['DISPLAY'])
         else:   gist.window(winnum,dpi=dpi,style=style,display='')
+    elif with_matplotlib:
+      if winnum in _matplotwindows:
+        _matplotactivewindow[0] = winnum
+      else:
+        _matplotwindows[winnum] = _matplotwindows[_matplotactivewindow[0]]
+      pylab.interactive(True)
+      pylab.figure(winnum,dpi=dpi)
+      pylab.show()
+    if winnum not in numframeslist:
+      numframeslist[winnum] = 1
+      _hcp_frame_number[winnum] = 0
+      _plotdatafilenames[winnum] = None
+      _plotdatafileobjects[winnum] = None
   else:
     # --- Get the next winnum if it wasn't passed in.
     if winnum == 0:
@@ -327,7 +346,7 @@ Opens up an X window
     # --- Check input errors
     try: setup.pname
     except AttributeError: raise RuntimeError,'setup has not yet been called'
-    assert winnum > 0,'winnum must not be 0'
+    assert winnum != 0,'winnum must not be 0'
     # --- Check file name and type from window 0
     pname = setup.pname.split('.')[0]
     filetype = setup.pname.split('.')[-1]
@@ -343,11 +362,23 @@ Opens up an X window
       else:
         gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname,style=style)
     if with_matplotlib:
+      assert winnum not in _matplotwindows,"Cannot redefine a window"
       # --- Open a new file for the plots and make it active.
-      _matplotwindows.append(open(pname,'w'))
-      _matplotactivewindow[0] = len(_matplotwindows) - 1
+      _matplotwindows[winnum] = open(pname,'w')
+      _matplotactivewindow[0] = winnum
+      # --- Turn on interactive mode for matplotlib
+      pylab.interactive(True)
+      # --- Create the new figure with winnum
+      pylab.figure(winnum,dpi=dpi)
+      # --- Turn show on (which turns on all windows)
+      pylab.show()
 
-    if _plotdatafilenames[0] is not None:
+    numframeslist[winnum] = 1
+    _hcp_frame_number[winnum] = 0
+    _plotdatafilenames[winnum] = None
+    _plotdatafileobjects[winnum] = None
+
+    if _plotdatafilenames[_base_winnum] is not None:
       # --- If plots for window 0 are bein written to a data file,
       # --- then do the same for this new window.
       setplotdatafilename(pname)
@@ -408,7 +439,7 @@ def plotruninfo():
             horizontalalignment='right',
             verticalalignment='top')
   if cgmlogfile:
-    cgmlogfile.write('%d %d Step %d %s %s %s %s\n' %
+    cgmlogfile.write('%s %d Step %d %s %s %s %s\n' %
                      (active_window(),numframeslist[active_window()],
                      top.it,framet,frameb,framel,framer))
   if with_matplotlib:
@@ -444,8 +475,6 @@ def makeplotsdirectly():
 
 # --- This allows writing out all plot data into a data file instead of
 # --- creating the plot with gist. Each window has its own filename and object.
-_plotdatafilenames = maxplotwindows*[None]
-_plotdatafileobjects = maxplotwindows*[None]
 def setplotdatafilename(filename=None,winnum=None):
   if winnum is None: winnum = active_window()
   _plotdatafilenames[winnum] = filename
@@ -968,6 +997,9 @@ def plsys(n=None,**kw):
   if with_gist:
     if n is None: return getattr(_plotpackage,"plsys")()
     callplotfunction("plsys",[n])
+  elif with_matplotlib:
+    # --- plot systems are not yet implemented with matplotlib
+    if n is None: return 1
 plsys.__doc__ = gist.plsys.__doc__
 
 ##########################################################################
@@ -4986,7 +5018,7 @@ def pltfld3d(fld='phi',freqflag=always):
   - fld='phi' quantity to plot, either 'phi' or 'rho'
   - freqflag=always frequency flag, either always, seldom, or never"""
   currentwindow = active_window()
-  active_window(0)
+  active_window(_base_winnum)
   nwindows = 9
   for i in xrange(nwindows):
     if (w3d.icrhoxy[i] == freqflag and fld == "rho"): pcrhoxy[i]
@@ -5009,7 +5041,7 @@ def onedplts(freqflag=always):
   """Makes 1-D plots which have been turned on
   - freqflag=always frequency flag, either always, seldom, or never"""
   currentwindow = active_window()
-  active_window(0)
+  active_window(_base_winnum)
   if freqflag == top.ipcurr: pzcurr()
   if freqflag == top.ipegap: pzegap()
   if freqflag == top.iplchg: pzlchg()
@@ -5041,7 +5073,7 @@ def psplots(freqflag=always,js=0):
   # --- ensures that plots created by this routine will be dumped to
   # --- the appropriate plot file.
   currentwindow = active_window()
-  active_window(0)
+  active_window(_base_winnum)
 
   nsubsets = 3
   nwindows = 9
