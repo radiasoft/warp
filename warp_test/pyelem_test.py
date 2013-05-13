@@ -1,6 +1,14 @@
 from warp import *
 from nose.tools import assert_almost_equal
 
+# --- This is needed to turn off graphical output
+top.lprntpara = false
+top.lpsplots = false
+def setup():
+    """This dummy function replaces the setup from warp. Nose calls setup
+    before running the test functions (and there is no way of preventing it)."""
+    pass
+
 # --- Create the beam species
 beam = Species(type=Potassium,charge_state=+1,name="Beam species")
 
@@ -28,8 +36,6 @@ w3d.ny = 4
 w3d.nz = 10
 
 top.fstype = -1
-top.lprntpara = false
-top.lpsplots = false
 
 package('w3d')
 generate()
