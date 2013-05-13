@@ -105,7 +105,7 @@ generate()
 
 step(steps_p_perd)
 
-class TestSequenceFunctions(unittest.TestCase):
+class TestEnvelopeFunctions(unittest.TestCase):
     def test_sigma0x(self):
         self.assertAlmostEqual(env.sig0x,72.)
     def test_sigma0y(self):

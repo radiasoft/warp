@@ -48,7 +48,7 @@ beam.addparticles(x=[0.,0.,0.,0.],
 
 beam.getappliedfields()
 
-class TestSequenceFunctions(unittest.TestCase):
+class TestPyElemFunctions(unittest.TestCase):
     def test_p0bx(self):
         self.assertAlmostEqual(beam.bx[0],0.)
 
