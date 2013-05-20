@@ -282,6 +282,46 @@ Does the work needed to start writing plots to a file automatically
         0.15,0.88,justify="LT",local=1)
     fma()
 
+# --- This wraps the lower level gist.window command. This allows setting
+# --- of various state quantities.
+def window(n=None,**kw):
+  if n is None:
+    return active_window()
+  if with_gist:
+    # --- Open window
+    gist.window(n,**kw)
+  if with_matplotlib:
+    dpi = kw.get('dpi',100)
+    hcp = kw.get('hcp',None)
+    display = kw.get('display','')
+    if n not in _matplotwindows:
+      if hcp is None:
+        _matplotwindows[n] = _matplotwindows[_matplotactivewindow[0]]
+      else:
+        _matplotwindows[n] = open(hcp,'w')
+    _matplotactivewindow[0] = n
+    if display != '':
+      # --- Turn on interactive mode for matplotlib
+      pylab.interactive(True)
+      # --- Create the new figure with n
+      pylab.figure(n,dpi=dpi)
+      # --- Turn show on (which turns on all windows)
+      pylab.show()
+
+  if n not in numframeslist:
+    # --- Setup the state quantities for a new window
+    numframeslist[n] = 1
+    _hcp_frame_number[n] = 0
+    _plotdatafilenames[n] = None
+    _plotdatafileobjects[n] = None
+
+    if _plotdatafilenames[_base_winnum] is not None:
+      # --- If plots for window 0 are bein written to a data file,
+      # --- then do the same for this new window.
+      setplotdatafilename(pname)
+
+  return n
+
 # --- Convenience function to open a window with default value specilized to
 # --- WARP. By default, this opens up a window on the current display. If
 # --- setup has been called, this just creates a window which is attached to
@@ -311,32 +351,18 @@ Opens up an X window
   if winnum is None:
     winnum = _base_winnum
   if suffix is None and prefix is None:
-    if with_gist:
-      if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
-        # --- If display isn't set, no X plot window will appear since window0
-        # --- is already attached to a device (the plot file).
-        # --- The try/except construct takes care of the case where
-        # --- the gist package was not compiled with X11.
-        try:
-          gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],style=style)
-        except:
-          gist.window(winnum,dpi=dpi,style=style)
-      else:
-        if xon: gist.window(winnum,dpi=dpi,style=style,display=os.environ['DISPLAY'])
-        else:   gist.window(winnum,dpi=dpi,style=style,display='')
-    elif with_matplotlib:
-      if winnum in _matplotwindows:
-        _matplotactivewindow[0] = winnum
-      else:
-        _matplotwindows[winnum] = _matplotwindows[_matplotactivewindow[0]]
-      pylab.interactive(True)
-      pylab.figure(winnum,dpi=dpi)
-      pylab.show()
-    if winnum not in numframeslist:
-      numframeslist[winnum] = 1
-      _hcp_frame_number[winnum] = 0
-      _plotdatafilenames[winnum] = None
-      _plotdatafileobjects[winnum] = None
+    if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
+      # --- If display isn't set, no X plot window will appear since window0
+      # --- is already attached to a device (the plot file).
+      # --- The try/except construct takes care of the case where
+      # --- the gist package was not compiled with X11.
+      try:
+        window(winnum,dpi=dpi,display=os.environ['DISPLAY'],style=style)
+      except:
+        window(winnum,dpi=dpi,style=style)
+    else:
+      if xon: window(winnum,dpi=dpi,style=style,display=os.environ['DISPLAY'])
+      else:   window(winnum,dpi=dpi,style=style,display='')
   else:
     # --- Get the next winnum if it wasn't passed in.
     if winnum == 0:
@@ -354,34 +380,15 @@ Opens up an X window
     if prefix is not None: pname = prefix + pname
     if suffix is not None: pname = pname + '_' + suffix
     pname = '%s.%s.%s'%(pname,setup.pnumb,filetype)
-    if with_gist:
-      # --- Open window
-      if xon:
-        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],
-                    dump=1,hcp=pname,style=style)
-      else:
-        gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname,style=style)
     if with_matplotlib:
       assert winnum not in _matplotwindows,"Cannot redefine a window"
-      # --- Open a new file for the plots and make it active.
-      _matplotwindows[winnum] = open(pname,'w')
-      _matplotactivewindow[0] = winnum
-      # --- Turn on interactive mode for matplotlib
-      pylab.interactive(True)
-      # --- Create the new figure with winnum
-      pylab.figure(winnum,dpi=dpi)
-      # --- Turn show on (which turns on all windows)
-      pylab.show()
-
-    numframeslist[winnum] = 1
-    _hcp_frame_number[winnum] = 0
-    _plotdatafilenames[winnum] = None
-    _plotdatafileobjects[winnum] = None
-
-    if _plotdatafilenames[_base_winnum] is not None:
-      # --- If plots for window 0 are bein written to a data file,
-      # --- then do the same for this new window.
-      setplotdatafilename(pname)
+    # --- Open window
+    if xon:
+      window(winnum,dpi=dpi,display=os.environ['DISPLAY'],
+             dump=1,hcp=pname,style=style)
+    else:
+      window(winnum,dpi=dpi,display='',
+             dump=1,hcp=pname,style=style)
 
     return winnum
 
