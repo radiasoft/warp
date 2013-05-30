@@ -145,7 +145,9 @@ if with_gist:
 
   def active_window(winnum=None):
     if winnum is None:
-      return gist.current_window()
+      result = gist.current_window()
+      if result == -1: result = 0
+      return result
     else:
       gist.window(winnum)
 
