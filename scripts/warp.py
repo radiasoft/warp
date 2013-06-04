@@ -365,7 +365,7 @@ derivqty()
 #=============================================================================
 # --- Convenience function for random numbers.
 def setseed(x=0,y=0):
-  random.seed(x,y)
+  random.seed((x,y))
     
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
