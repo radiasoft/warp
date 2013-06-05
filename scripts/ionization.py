@@ -438,6 +438,34 @@ velocity of the incident particle.
       print title
       print textblock
 
+
+  def cleanuppgroups(self):
+    """Resets all of the pgroups to top.pgroup"""
+    for inter in self.inter.values():
+      inter['incident_pgroup']= top.pgroup
+      inter['target_pgroup']  = top.pgroup
+      inter['emitted_pgroup'] = top.pgroup
+
+    def _cleanit(x):
+      #if len(x) > 1: return
+      # --- This assumes that there is only one key
+      kk = x.keys()
+      for pg in kk:
+        x[top.pgroup] = x[pg]
+        del x[pg]
+
+    _cleanit(self.nps)
+    _cleanit(self.x)
+    _cleanit(self.y)
+    _cleanit(self.z)
+    _cleanit(self.ux)
+    _cleanit(self.uy)
+    _cleanit(self.uz)
+    _cleanit(self.gi)
+    _cleanit(self.w)
+    _cleanit(self.pidtag)
+    _cleanit(self.injpid)
+
 #printall(io,l_cgm=1)
 
   def generate(self,dt=None):
