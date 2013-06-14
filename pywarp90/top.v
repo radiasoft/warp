@@ -405,6 +405,8 @@ emltgl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole gap
 emltgp(0:nemlt)   _real [ ]   # Gap position of ESQ, only sign is used
 emltpw(0:nemlt)   _real [m]   # End plate width of electrostatic quadrupole
 emltpa(0:nemlt)   _real [m]   # End plate aperture of electrostatic quadrupole
+emltlb(0:nemlt)   _logical /1/ # Flags whether the emlt data is in the lab frame
+                               # (the default) or warped frame
 emltol(0:nemlt)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
 emltfs(0:nemlt)   _real [m]   # Full Z starts of the multiple data,
@@ -433,6 +435,8 @@ mmltoy(0:nmerr)   _real [m]   # Offset in y of magnetic multipole centers
 mmltot(0:nmmlt) _real [rad] /0./ # Offset angle theta relative to the z-axis.
 mmltop(0:nmmlt) _real [rad] /0./ # Offset angle phi, rotation in the
                                  # transverse plane.
+mmltlb(0:nmmlt)   _logical /1/ # Flags whether the mmlt data is in the lab frame
+                               # (the default) or warped frame
 mmltol(0:nmmlt)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
 mmltfs(0:nmmlt)   _real [m]   # Full Z starts of the multiple data,
@@ -490,6 +494,8 @@ egrdfe(0:negrd)   _real [m]   # Full Z ends of 3-D grid of E field data
 egrdhe(0:negrd)   _logical /0/ # Flags whether the egrd element should be
                                # treated as hard edged. When true, residence
                                # corrections are done.
+egrdlb(0:negrd)   _logical /0/ # Flags whether the egrd data is in the lab frame
+                               # or warped frame (the default)
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
@@ -520,6 +526,8 @@ bgrdfe(0:nbgrd)   _real [m]   # Full Z ends of 3-D grid of B field data
 bgrdhe(0:nbgrd)   _logical /0/ # Flags whether the bgrd element should be
                                # treated as hard edged. When true, residence
                                # corrections are done.
+bgrdlb(0:nbgrd)   _logical /0/ # Flags whether the bgrd data is in the lab frame
+                               # or warped frame (the default)
 pgrdzs(0:npgrd)   _real [m]   # Z starts of 3-D grid of potential data(PGRDdata)
 pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)
@@ -3545,6 +3553,11 @@ impact_ion(is1:integer,is2:integer,nbp:real,w:real,
                       # ypemit = ypabsorb + shifty + (wranf()-0.5)*deltay 
                       # zpemit = zpabsorb + shiftz + (wranf()-0.5)*deltaz 
 chgparticlesdts(pgroup:ParticleGroup) subroutine 
+grdlocat(np:integer,xp:real,yp:real,npz:integer,zp:real,nzl:integer,nzlmax:integer,
+                         nelemol:integer,io:integer,celemzs:real,celemze:real,celemid:integer,nelem:integer,elemlb:logical,
+                         xxx:real,yyy:real,zzz:real,ttt:real,
+                         zlmin:real,zlframe:real,dzli:real,bends:logical,linbend:logical,
+                         cbendzs:real,cbendze:real,cbendrc:real,lslice:logical) subroutine
 
 ******** Subtimerstop:
 ltoptimesubs logical /.false./

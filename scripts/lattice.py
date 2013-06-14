@@ -2346,7 +2346,7 @@ The following may also be supplied.
   return top.nemltsets
 
 def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
-               ox=0.,oy=0.,ot=0.,op=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               ox=0.,oy=0.,ot=0.,op=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,lb=true,
                es=None,esp=None,phz=None,phpz=None,nn=None,vv=None,
                time=None,data=None,func=None):
   """
@@ -2372,7 +2372,7 @@ If 'es' is supplied, the following may also be supplied.
     shape as es.
 The following are all optional and have the same meaning and default as the
 emlt arrays with the same suffices:
-  - ap,ph,sf,sc,ox,oy,ot,op,rr,rl,gl,gp,pw,pa
+  - ap,ph,sf,sc,ox,oy,ot,op,rr,rl,gl,gp,pw,pa,lb
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
   - time,data: two 1-D arrays holding the tabulated scale factor (data) as
@@ -2428,6 +2428,7 @@ scale factor. One of the following can be supplied:
            'ph':top.emltph,
            'sf':top.emltsf,'sc':top.emltsc,
            'ox':top.emltox,'oy':top.emltoy,'ot':top.emltot,'op':top.emltop,
+           'lb':top.mmltlb,
            'rr':top.emltrr,'rl':top.emltrl,
            'gl':top.emltgl,'gp':top.emltgp,'pw':top.emltpw,'pa':top.emltpa}
 
@@ -2563,7 +2564,7 @@ The following may also be supplied.
   return top.nmmltsets
 
 def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
-               ox=0.,oy=0.,ot=0.,op=0.,aps=0.,ape=0.,ol=0,
+               ox=0.,oy=0.,ot=0.,op=0.,aps=0.,ape=0.,ol=0,lb=true,
                ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None,
                time=None,data=None,func=None):
   """
@@ -2589,7 +2590,7 @@ If 'ms' is supplied, the following may also be supplied.
     shape as ms.
 The following are all optional and have the same meaning and default as the
 mmlt arrays with the same suffices:
-  - ap,ph,sf,sc,ox,oy,ot,op
+  - ap,ph,sf,sc,ox,oy,ot,op,lb
   - aps,ape refer to mmltas and mmltae
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
@@ -2637,7 +2638,7 @@ scale factor. One of the following can be supplied:
            'ph':top.mmltph,
            'sf':top.mmltsf,'sc':top.mmltsc,
            'ox':top.mmltox,'oy':top.mmltoy,'ot':top.mmltot,'op':top.mmltop,
-           'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol}
+           'aps':top.mmltas,'ape':top.mmltae,'ol':top.mmltol,'lb':top.mmltlb}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
@@ -2816,7 +2817,7 @@ Some extra data may be saved,
 def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
                rz=false,nx=None,ny=None,nz=None,pp=None,
-               he=false,
+               he=false,lb=false,
                time=None,data=None,func=None):
   """
 Adds a new egrd element to the lattice. The element will be placed at the
@@ -2833,7 +2834,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 egrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,sf,sc,sy,he
+  - xs,ys,ap,ox,oy,ph,sf,sc,sy,he,lb
 Some extra data may be saved,
   - pp: the electrostatic potential associated with the E field data
 The applied field can be made time dependent by supplying a time varying
@@ -2884,7 +2885,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
            'ap':top.egrdap,'ax':top.egrdax,'ay':top.egrday,
            'ox':top.egrdox,'oy':top.egrdoy,'ph':top.egrdph,
            'sf':top.egrdsf,'sc':top.egrdsc,'sy':top.egrdsy,
-           'he':top.egrdhe}
+           'he':top.egrdhe,'lb':top.egrdlb}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
@@ -2967,7 +2968,7 @@ def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,ot=0.,op=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
                rz=false,nx=None,ny=None,nz=None,
-               he=false,
+               he=false,lb=false,
                time=None,data=None,func=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
@@ -2984,7 +2985,7 @@ Or, one or more 3-D field arrays may be specified
   - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
-  - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy,he
+  - xs,ys,ap,ox,oy,ph,ot,op,sf,sc,sy,he,lb
 The applied field can be made time dependent by supplying a time varying
 scale factor. One of the following can be supplied:
   - time,data: two 1-D arrays holding the tabulated scale factor (data) as
@@ -3034,7 +3035,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
            'ox':top.bgrdox,'oy':top.bgrdoy,
            'ph':top.bgrdph,'ot':top.bgrdot,'op':top.bgrdop,
            'sf':top.bgrdsf,'sc':top.bgrdsc,'sy':top.bgrdsy,
-           'he':top.bgrdhe}
+           'he':top.bgrdhe,'lb':top.bgrdlb}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element. The element id must be handled seperately.
@@ -3794,6 +3795,8 @@ such as contours, and cellarray.
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
 
+    # --- Note that this still needs to account for the egrdlb flag
+
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
       tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
@@ -3903,6 +3906,8 @@ such as contours, and cellarray.
   elif len(ax) == 2:
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+
+    # --- Note that this still needs to account for the bgrdlb flag
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
@@ -4106,10 +4111,11 @@ elements don't have the same offsetse, the routine aborts.
   # --- ielist argument is ignored, and is set to include all of them.
   ielist = range(top.nemlt+1)
 
-  assert (min(top.emltox) == max(top.emltox) and
-          min(top.emltoy) == max(top.emltoy) and 
-          min(top.emltot) == max(top.emltot) and 
-          min(top.emltop) == max(top.emltop)),\
+  assert (top.emltox.min() == top.emltox.max() and
+          top.emltoy.min() == top.emltoy.max() and
+          top.emltot.min() == top.emltot.max() and
+          top.emltop.min() == top.emltop.max() and
+          top.emltlb.min() == top.emltlb.max()),\
          "The offsets of all of the elements must be the same"
 
   # --- Get the full range needed for the new element
@@ -4167,6 +4173,7 @@ elements don't have the same offsetse, the routine aborts.
   oy = top.emltoy[ielist[0]]
   ot = top.emltot[ielist[0]]
   op = top.emltop[ielist[0]]
+  lb = top.emltlb[imlist[0]]
 
   # --- For now, just clear out all of the data, assuming that all emlts are
   # --- being combined.
@@ -4179,7 +4186,7 @@ elements don't have the same offsetse, the routine aborts.
 
   # --- Add the new, combined element
   addnewemlt(zs,ze,ap=ap,ax=ax,ay=ay,ph=ph,aps=aps,ape=ape,
-             ox=ox,oy=oy,ot=ot,op=op,
+             ox=ox,oy=oy,ot=ot,op=op,lb=lb,
              es=es,phz=phz,nn=emlt_n,vv=emlt_v)
 
 # ----------------------------------------------------------------------------
@@ -4195,10 +4202,11 @@ elements don't have the same offsetse, the routine aborts.
   # --- imlist argument is ignored, and is set to include all of them.
   imlist = range(top.nmmlt+1)
 
-  assert (min(top.mmltox) == max(top.mmltox) and
-          min(top.mmltoy) == max(top.mmltoy) and 
-          min(top.mmltot) == max(top.mmltot) and 
-          min(top.mmltop) == max(top.mmltop)),\
+  assert (top.mmltox.min() == top.mmltox.max() and
+          top.mmltoy.min() == top.mmltoy.max() and
+          top.mmltot.min() == top.mmltot.max() and
+          top.mmltop.min() == top.mmltop.max() and
+          top.mmltlb.min() == top.mmltlb.max()),\
          "The offsets of all of the elements must be the same"
 
   # --- Get the full range needed for the new element
@@ -4256,6 +4264,7 @@ elements don't have the same offsetse, the routine aborts.
   oy = top.mmltoy[imlist[0]]
   ot = top.mmltot[imlist[0]]
   op = top.mmltop[imlist[0]]
+  lb = top.mmltlb[imlist[0]]
 
   # --- For now, just clear out all of the data, assuming that all mmlts are
   # --- being combined.
@@ -4268,7 +4277,7 @@ elements don't have the same offsetse, the routine aborts.
 
   # --- Add the new, combined element
   addnewmmlt(zs,ze,ap=ap,ax=ax,ay=ay,ph=ph,aps=aps,ape=ape,
-             ox=ox,oy=oy,ot=ot,op=op,
+             ox=ox,oy=oy,ot=ot,op=op,lb=lb,
              ms=ms,phz=phz,nn=mmlt_n,vv=mmlt_v)
 
 # ----------------------------------------------------------------------------

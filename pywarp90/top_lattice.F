@@ -472,17 +472,22 @@ c       --- specified.
           if (emltid(0) == 0) then
              emltzs(0) = emltzs(nemlt) - zlatperi
              emltze(0) = emltze(nemlt) - zlatperi
+             emltap(0) = emltap(nemlt)
+             emltax(0) = emltax(nemlt)
+             emltay(0) = emltay(nemlt)
              emltph(0) = emltph(nemlt)
              emltsf(0) = emltsf(nemlt)
              emltsc(0) = emltsc(nemlt)
              emltid(0) = emltid(nemlt)
-             emltap(0) = emltap(nemlt)
+             emltot(0) = emltot(nemlt)
+             emltop(0) = emltop(nemlt)
              emltrr(0) = emltrr(nemlt)
              emltrl(0) = emltrl(nemlt)
              emltgl(0) = emltgl(nemlt)
              emltgp(0) = emltgp(nemlt)
              emltpw(0) = emltpw(nemlt)
              emltpa(0) = emltpa(nemlt)
+             emltlb(0) = emltlb(nemlt)
           endif
         endif
       endif
@@ -574,11 +579,18 @@ c============================================================================
           if (mmltid(0) == 0) then
              mmltzs(0) = mmltzs(nmmlt) - zlatperi
              mmltze(0) = mmltze(nmmlt) - zlatperi
+             mmltap(0) = mmltap(nmmlt)
+             mmltax(0) = mmltax(nmmlt)
+             mmltay(0) = mmltay(nmmlt)
+             mmltas(0) = mmltas(nmmlt)
+             mmltae(0) = mmltae(nmmlt)
              mmltph(0) = mmltph(nmmlt)
              mmltsf(0) = mmltsf(nmmlt)
              mmltsc(0) = mmltsc(nmmlt)
              mmltid(0) = mmltid(nmmlt)
-             mmltap(0) = mmltap(nmmlt)
+             mmltot(0) = mmltot(nmmlt)
+             mmltop(0) = mmltop(nmmlt)
+             mmltlb(0) = mmltlb(nmmlt)
           endif
         endif
       endif
@@ -681,6 +693,8 @@ c============================================================================
              egrdot(0) = egrdot(negrd)
              egrdop(0) = egrdop(negrd)
              egrdap(0) = egrdap(negrd)
+             egrdhe(0) = egrdhe(negrd)
+             egrdlb(0) = egrdlb(negrd)
           endif
         endif
       endif
@@ -746,6 +760,8 @@ c============================================================================
              bgrdot(0) = bgrdot(nbgrd)
              bgrdop(0) = bgrdop(nbgrd)
              bgrdap(0) = bgrdap(nbgrd)
+             bgrdhe(0) = bgrdhe(nbgrd)
+             bgrdlb(0) = bgrdlb(nbgrd)
           endif
         endif
       endif
@@ -3698,7 +3714,7 @@ c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,sf,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ), allocatable:: izm(:),imm(:),izl(:)
+      integer(ISZ), allocatable:: izm(:),izl(:),imm(:)
       real(kind=8), allocatable, dimension(:):: xxx,yyy,zzz,ttt,wzm,rr,tt,
      &                                          tex,tey,tez
       real(kind=8):: ex1,ey1,ez1
@@ -3708,7 +3724,7 @@ c  and not once per particle per multipole component.
 
       if (.not. emlts .or. .not. linemlt(0)) return
 
-      allocate(izm(np),imm(np),izl(np),xxx(np),yyy(np),zzz(np),ttt(np),wzm(np),
+      allocate(izm(np),izl(np),imm(np),xxx(np),yyy(np),zzz(np),ttt(np),wzm(np),
      &         rr(np),tt(np),tex(np),tey(np),tez(np),
      &         stat=allocerror)
       if (allocerror /= 0) then
@@ -3723,9 +3739,10 @@ c  and not once per particle per multipole component.
 
 c       --- Get location of particle relative to moment data.
         call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,nzl,nzlmax,
-     &                nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
+     &                nemltol,io,cemltzs,cemltze,
      &                cemltim,cemltox,cemltoy,cemltot,cemltop,
      &                cemltct,cemltst,cemltcp,cemltsp,
+     &                cemltid,nemlt,emltlb,
      &                imm,izm,wzm,xxx,yyy,zzz,ttt,
      &                rr,tt,izl,zlmin,zlframe,dzli,
      &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
@@ -3755,7 +3772,7 @@ c           --- Apply accelerating field and it's pseudomultipoles.
                 tez(ip) = tez(ip) + coeff*rpow
               endif
             enddo
-          else if (n==1 .and. v == 0) then
+          else if (n == 1 .and. v == 0) then
 c           --- The pure dipole term needs special treatment since it
 c           --- breaks down at r = 0.
             do ip=1,np
@@ -3832,7 +3849,7 @@ c         --- the sign of the angle reversed.
         enddo
 
 c       --- do coordinate transform on fields back to warped coordinates
-        if (bends .and. linbend) then
+        if (bends .and. linbend .and. any(emltlb)) then
           do ip=1,np
             if (imm(ip) == 0) cycle
             ex(ip) = ex(ip) + tex(ip)*cos(ttt(ip)) - tez(ip)*sin(ttt(ip))
@@ -3932,9 +3949,10 @@ c  and not once per particle per multipole component.
 
 c       --- Get location of particle relative to moment data.
         call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,nzl,nzlmax,
-     &                nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
+     &                nmmltol,io,cmmltzs,cmmltze,
      &                cmmltim,cmmltox,cmmltoy,cmmltot,cmmltop,
      &                cmmltct,cmmltst,cmmltcp,cmmltsp,
+     &                cmmltid,nmmlt,mmltlb,
      &                imm,izm,wzm,xxx,yyy,zzz,ttt,
      &                rr,tt,izl,zlmin,zlframe,dzli,
      &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
@@ -4041,7 +4059,7 @@ c         --- the sign of the angle reversed.
         enddo
 
 c       --- do coordinate transform on fields back to warped coordinates
-        if (bends .and. linbend) then
+        if (bends .and. linbend .and. any(mmltlb)) then
           do ip=1,np
             if (imm(ip) == 0) cycle
             bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
@@ -4118,24 +4136,25 @@ c       --- Convert the corners into the lab frame
       end
 c=============================================================================
       subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,nzl,nzlmax,
-     &                    nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
+     &                    nol,io,cmltzs,cmltze,
      &                    cmltim,cmltox,cmltoy,cmltot,cmltop,
      &                    cmltct,cmltst,cmltcp,cmltsp,
+     &                    cmltid,nmlt,mltlb,
      &                    imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,izl,
      &                    zlmin,zlframe,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc,lslice)
-      integer(ISZ):: np,npz,nmltsets,nzl,nzlmax,nol,io
+      integer(ISZ):: np,npz,nmltsets,nzl,nzlmax,nol,io,nmlt
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dzmlt(nmltsets)
       integer(ISZ):: nzmlt(nmltsets)
       real(kind=8):: cmltzs(0:nzlmax,nol),cmltze(0:nzlmax,nol)
-      real(kind=8):: cmltph(0:nzlmax,nol)
-      real(kind=8):: cmltsf(0:nzlmax,nol),cmltsc(0:nzlmax,nol)
       integer(ISZ):: cmltim(0:nzlmax,nol)
       real(kind=8):: cmltox(0:nzlmax,nol),cmltoy(0:nzlmax,nol)
       real(kind=8):: cmltot(0:nzlmax,nol),cmltop(0:nzlmax,nol)
       real(kind=8):: cmltct(0:nzlmax,nol),cmltst(0:nzlmax,nol)
       real(kind=8):: cmltcp(0:nzlmax,nol),cmltsp(0:nzlmax,nol)
+      integer(ISZ):: cmltid(0:nzlmax,nol)
+      logical(ISZ):: mltlb(0:nmlt)
       integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
       real(kind=8):: ttt(np),rr(np),tt(np)
@@ -4151,7 +4170,7 @@ c     --- warped coordinates (when a bend is between the
 c     --- particle and the nearest mult).
 c  Assumes that at most one bend will be between particle and the mult center.
 
-      integer(ISZ):: iz,ip
+      integer(ISZ):: iz,ip,id
       real(kind=8):: zptemp,xx,yy,zz,x1,y1,z1
       real(kind=8):: zcent,zlen,dzi,rrr,bzs,bze,bendrci
 
@@ -4160,93 +4179,31 @@ c  Assumes that at most one bend will be between particle and the mult center.
         iz = 0
       endif
 
-      if (.not. bends .or. .not. linbend) then
-        do ip=1,np
+      do ip=1,np
 
-          if (.not. lslice) then
-            zptemp = zp(ip)
-c           --- find z-cell in which particle lies
-            iz = max(0., (zptemp - zlmin - zlframe)*dzli + 0.5)
-            iz = min(nzl, iz)
-          endif
+        if (.not. lslice) then
+          zptemp = zp(ip)
+c         --- find z-cell in which particle lies
+          iz = max(0., (zptemp - zlmin - zlframe)*dzli + 0.5)
+          iz = min(nzl, iz)
+        endif
 
-          izl(ip) = iz
-          imm(ip) = cmltim(iz,io)
-          if (imm(ip) <= 0) cycle
+        izl(ip) = iz
+        imm(ip) = cmltim(iz,io)
+        if (imm(ip) <= 0) cycle
 
-          dzi = 1./dzmlt(imm(ip))
-          zcent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
-          zlen = nzmlt(imm(ip))*dzmlt(imm(ip))
+        dzi = 1./dzmlt(imm(ip))
+        zcent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
+        zlen = nzmlt(imm(ip))*dzmlt(imm(ip))
 
-c         --- Rotate the positions into the frame of the multipole data
-          xx = xp(ip) - cmltox(iz,io)
-          yy = yp(ip) - cmltoy(iz,io)
-          zz = zptemp - zcent
+        xx = xp(ip)
+        yy = yp(ip)
+        zz = zptemp
 
-c         --- transverse rotation to take into account an active rotation
-c         --- of the field element. Rotation is relative to the z center.
-c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back.
-c         --- First, rotate by cmltop about the z axis.
-          if (cmltop(iz,io) .ne. 0.) then
-            x1 = xx
-            y1 = yy
-            xx = +x1*cmltcp(iz,io) + y1*cmltsp(iz,io)
-            yy = -x1*cmltsp(iz,io) + y1*cmltcp(iz,io)
-          endif
+        ttt(ip) = 0.
 
-c         --- then by cmltot about the new y axis
-          if (cmltot(iz,io) .ne. 0.) then
-            x1 = xx
-            z1 = zz
-            xx = x1*cmltct(iz,io) - z1*cmltst(iz,io)
-            zz = x1*cmltst(iz,io) + z1*cmltct(iz,io)
-          endif
-
-c         --- find z location relative to multipole data
-          izm(ip) = int((zz+zlen/2.)*dzi)
-          wzm(ip) =     (zz+zlen/2.)*dzi - izm(ip)
-          if (zz < -zlen/2.) then
-            izm(ip) = 0
-            wzm(ip) = 0
-            imm(ip) = 0
-          elseif (zz > +zlen/2.) then
-            izm(ip) = nzmlt(imm(ip))
-            wzm(ip) = 0
-            imm(ip) = 0
-          endif
-
-c         --- Saved the coordinates relative to the multiple data.
-          xxx(ip) = xx
-          yyy(ip) = yy
-          zzz(ip) = zz + zcent
-          rr(ip) = sqrt(xx**2 + yy**2)
-          tt(ip) = atan2(yy,dvnz(xx))
-
-        enddo
-
-      else
-c       --- With bends
-        do ip=1,np
-
-          if (.not. lslice) then
-            zptemp = zp(ip)
-c           --- find z-cell in which particle lies
-            iz = max(0., (zptemp - zlmin - zlframe)*dzli)
-            iz = min(nzl, iz)
-          endif
-
-c         --- set temporaries
-          izl(ip) = iz
-          imm(ip) = cmltim(iz,io)
-          if (imm(ip) <= 0) cycle
-
-          dzi = 1./dzmlt(imm(ip))
-          zcent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
-          zlen = nzmlt(imm(ip))*dzmlt(imm(ip))
-
-          xx = xp(ip)
-          zz = zptemp
+        id = cmltid(iz,io)
+        if (bends .and. linbend .and. mltlb(id)) then
 
           if (cmltzs(iz,io) <= zptemp .and. zptemp <= cmltze(iz,io)) then
 c           --- apply coordinate change left of mult, using index of (iz)
@@ -4309,56 +4266,186 @@ c             --- if particle is in bend
               ttt(ip) = 0.
             endif
           endif
+        endif
+c       --- end of coordinate transformation out of the bends
+
+c       --- Rotate the positions into the frame of the multipole data
+c       --- xx and zz have been converted to the lab frame, out of any bends
+        xx = xx - cmltox(iz,io)
+        yy = yy - cmltoy(iz,io)
+        zz = zz - zcent
+
+c       --- transverse rotation to take into account an active rotation
+c       --- of the field element. Rotation is relative to the z center.
+c       --- Particles are rotated to the frame of the element.
+c       --- Later, the field components accumulated are rotated back.
+c       --- First, rotate by cmltop about the z axis.
+        if (cmltop(iz,io) .ne. 0.) then
+          x1 = xx
+          y1 = yy
+          xx = +x1*cmltcp(iz,io) + y1*cmltsp(iz,io)
+          yy = -x1*cmltsp(iz,io) + y1*cmltcp(iz,io)
+        endif
+
+c       --- then by cmltot about the new y axis
+        if (cmltot(iz,io) .ne. 0.) then
+          x1 = xx
+          z1 = zz
+          xx = x1*cmltct(iz,io) - z1*cmltst(iz,io)
+          zz = x1*cmltst(iz,io) + z1*cmltct(iz,io)
+        endif
+
+c       --- find z location relative to multipole data
+        izm(ip) = int((zz+zlen/2.)*dzi)
+        wzm(ip) =     (zz+zlen/2.)*dzi - izm(ip)
+        if (zz < -zlen/2.) then
+          izm(ip) = 0
+          wzm(ip) = 0
+          imm(ip) = 0
+        elseif (zz > +zlen/2.) then
+          izm(ip) = nzmlt(imm(ip))
+          wzm(ip) = 0
+          imm(ip) = 0
+        endif
+
+c       --- Saved the coordinates relative to the multiple data.
+        xxx(ip) = xx
+        yyy(ip) = yy
+        zzz(ip) = zz + zcent
+        rr(ip) = sqrt(xx**2 + yy**2)
+        tt(ip) = atan2(yy,dvnz(xx))
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine grdlocat(np,xp,yp,npz,zp,nzl,nzlmax,
+     &                    nelemol,io,celemzs,celemze,celemid,nelem,elemlb,
+     &                    xxx,yyy,zzz,ttt,
+     &                    zlmin,zlframe,dzli,bends,linbend,
+     &                    cbendzs,cbendze,cbendrc,lslice)
+      integer(ISZ):: np,npz,nzl,nzlmax,nelemol,io,nelem
+      real(kind=8):: xp(np),yp(np),zp(npz)
+      real(kind=8):: celemzs(0:nzlmax,nelemol),celemze(0:nzlmax,nelemol)
+      integer(ISZ):: celemid(0:nzlmax,nelemol)
+      logical(ISZ):: elemlb(0:nelem)
+      real(kind=8):: xxx(np),yyy(np),zzz(np),ttt(np)
+      logical(ISZ):: bends,linbend
+      real(kind=8):: cbendzs(0:nzlmax),cbendze(0:nzlmax),cbendrc(0:nzlmax)
+      real(kind=8):: zlmin,zlframe,dzli
+      logical(ISZ):: lslice
+
+c     --- Convert warped frame coordinates to lab frame coordinates
+c     --- for elements in the lab frame.
+c  Assumes that at most one bend will be between particle and the elem center.
+
+      integer(ISZ):: id,iz,ip
+      real(kind=8):: zptemp,xx,yy,zz,tt
+      real(kind=8):: zcent,rrr,bzs,bze,bendrci
+
+      if (lslice) then
+        zptemp = zp(1)
+        iz = 0
+      endif
+
+      do ip=1,np
+
+        if (.not. lslice) then
+          zptemp = zp(ip)
+c         --- find z-cell in which particle lies
+          iz = max(0., (zptemp - zlmin - zlframe)*dzli + 0.5)
+          iz = min(nzl, iz)
+        endif
+
+        id = celemid(iz,io)
+        if (id < 0) cycle
+
+        zcent = 0.5*(celemzs(iz,io) + celemze(iz,io))
+
+        xx = xp(ip)
+        yy = yp(ip)
+        zz = zptemp
+        tt = 0.
+
+        if (bends .and. linbend .and. elemlb(id)) then
+
+c         --- Apply to all particles since it would be nontrivial to
+c         --- figure out which ones are within the range of the element
+c         --- in the lab frame.
+c         if (celemzs(iz,io) <= zptemp .and. zptemp <= celemze(iz,io)) then
+
+c           --- apply coordinate change left of mult, using index of (iz)
+            if (zptemp <= zcent) then
+              bendrci = 1./cbendrc(iz)
+c             --- find end of bend: if bend extends beyond center of mult, use
+c             --- that as the end of the bend since moments are in coordinate
+c             --- system at the center of the mult
+              if (cbendze(iz) < zcent) then
+                bze = cbendze(iz)
+              else
+                bze = zcent
+              endif
+c             --- if particle is not in bend and full bend is between particle
+c             --- and mult
+              rrr = xp(ip) + cbendrc(iz)
+              if (zptemp < cbendzs(iz) .and. cbendzs(iz) < zcent) then
+                tt = (bze - cbendzs(iz))*bendrci
+                zz = bze - rrr*sin(tt)
+     &               - (cbendzs(iz) - zptemp)*cos(tt)
+                xx = rrr*cos(tt) - cbendrc(iz)
+     &               - (cbendzs(iz) - zptemp)*sin(tt)
+c             --- if particle is in bend
+              elseif (zptemp < bze .and. cbendzs(iz) < zcent) then
+                tt = (bze - zptemp)*bendrci
+                zz = bze - rrr*sin(tt)
+                xx = rrr*cos(tt) - cbendrc(iz)
+              else
+                tt = 0.
+              endif
+c           --- apply coordinate change right of mult, using index of (iz+1)
+            elseif (zptemp >= zcent .and. iz < nzl) then
+              bendrci = 1./cbendrc(iz+1)
+c             --- find start of bend: if bend extends beyond center of mult, use
+c             --- that as the start of the bend since moments are in coordinate
+c             --- system at the center of the mult
+              if (cbendzs(iz+1) < zcent) then
+                bzs = zcent
+              else
+                bzs = cbendzs(iz+1)
+              endif
+c             --- if particle is not in bend and full bend is between particle
+c             --- and mult
+              rrr = xp(ip) + cbendrc(iz+1)
+              if (zptemp > cbendze(iz+1) .and. cbendze(iz+1) > zcent) then
+                tt =  - (cbendze(iz+1) - bzs)*bendrci
+                zz = bzs - rrr*sin(tt)
+     &               + (zptemp - cbendze(iz+1))*cos(tt)
+                xx = rrr*cos(tt) - cbendrc(iz+1)
+     &               + (zptemp - cbendze(iz+1))*sin(tt)
+c             --- if particle is in bend
+              elseif (zptemp > bzs .and. cbendze(iz+1) > zcent) then
+                tt = - (zptemp - bzs)*bendrci
+                zz = bzs - rrr*sin(tt)
+                xx = rrr*cos(tt) - cbendrc(iz+1)
+              else
+                tt = 0.
+              endif
+            else
+              tt = 0.
+            endif
+c         endif
 c         --- end of coordinate transformation out of the bends
 
-c         --- Rotate the positions into the frame of the multipole data
-c         --- xx and zz have been converted to the lab frame, out of the bends
-          xx = xx     - cmltox(iz,io)
-          yy = yp(ip) - cmltoy(iz,io)
-          zz = zz     - zcent
+        endif
 
-c         --- transverse rotation to take into account an active rotation
-c         --- of the field element. Rotation is relative to the z center.
-c         --- Particles are rotated to the frame of the element.
-c         --- Later, the field components accumulated are rotated back.
-c         --- First, rotate by cmltop about the z axis.
-          if (cmltop(iz,io) .ne. 0.) then
-            x1 = xx
-            y1 = yy
-            xx = +x1*cmltcp(iz,io) + y1*cmltsp(iz,io)
-            yy = -x1*cmltsp(iz,io) + y1*cmltcp(iz,io)
-          endif
+c       --- Saved the coordinates relative to the multiple data.
+        xxx(ip) = xx
+        yyy(ip) = yy
+        zzz(ip) = zz
+        ttt(ip) = tt
 
-c         --- then by cmltot about the new y axis
-          if (cmltot(iz,io) .ne. 0.) then
-            x1 = xx
-            z1 = zz
-            xx = x1*cmltct(iz,io) - z1*cmltst(iz,io)
-            zz = x1*cmltst(iz,io) + z1*cmltct(iz,io)
-          endif
-
-c         --- find z location relative to multipole data
-          izm(ip) = int((zz+zlen/2.)*dzi)
-          wzm(ip) =     (zz+zlen/2.)*dzi - izm(ip)
-          if (zz < -zlen/2.) then
-            izm(ip) = 0
-            wzm(ip) = 0
-            imm(ip) = 0
-          elseif (zz > +zlen/2.) then
-            izm(ip) = nzmlt(imm(ip))
-            wzm(ip) = 0
-            imm(ip) = 0
-          endif
-
-c         --- Saved the coordinates relative to the multiple data.
-          xxx(ip) = xx
-          yyy(ip) = yy
-          zzz(ip) = zz + zcent
-          rr(ip) = sqrt(xx**2 + yy**2)
-          tt(ip) = atan2(yy,dvnz(xx))
-
-        enddo
-      endif
+      enddo
 
       return
       end
@@ -4403,6 +4490,7 @@ c        + ...
       real(kind=8),allocatable:: vz(:),dzi(:)
       real(kind=8):: z1,z2,zl,zr,fl,fr,frac
       integer(ISZ):: allocerror
+      real(kind=8),pointer, dimension(:):: xxx,yyy,zzz,ttt
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -4434,6 +4522,15 @@ c       --- not needed. This only matters if vz < 0.
 
       endif
 
+      allocate(xxx(np),yyy(np),zzz(np),ttt(np),
+     &         stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applyegrd: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        call kaboom("applyegrd: allocation error")
+        return
+      endif
+
 c     --- Precalculate sines and cosines for efficiency
       allocate(ca(0:negrd),sa(0:negrd))
       allocate(ct(0:negrd),st(0:negrd))
@@ -4453,8 +4550,20 @@ c     --- Precalculate sines and cosines for efficiency
       do io=1,negrdol
         if (.not. linegrd(io)) cycle
 
+        if (bends .and. linbend .and. any(egrdlb)) then
+          call grdlocat(np,xp,yp,npz,zp,nzl,nzlmax,
+     &                  negrdol,io,cegrdzs,cegrdze,cegrdid,negrd,egrdlb,
+     &                  xxx,yyy,zzz,ttt,
+     &                  zlmin,zlframe,dzli,bends,linbend,
+     &                  cbendzs,cbendze,cbendrc,lslice)
+        else
+          xxx = xp
+          yyy = yp
+          zzz = zp
+        endif
+
 c       --- find the location of the first particle in the internal lattice arrays
-        zznext = zp(1)
+        zznext = zzz(1)
         iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
         iznext = min(nzl,iznext)
         iinext = cegrdid(iznext,io)
@@ -4482,8 +4591,8 @@ c           --- skip field accumulation if particles are outside of axial grid
 c           --- Precalculate these quantities. zl is the min of the two and
 c           --- zr is the max. This generalizes the routine, allowing left
 c           --- moving particles, vz < 0.
-            z1 = zp(1) + vz(1)*dtl
-            z2 = zp(1) + vz(1)*dtr
+            z1 = zzz(1) + vz(1)*dtl
+            z2 = zzz(1) + vz(1)*dtr
 c           --- "left" end of velocity advance step
             zl = min(z1,z2)
             fl = 0.
@@ -4512,7 +4621,7 @@ c           --- if frac is zero, no field will be applied
             id = idnext
 
             if (ip < np) then
-              zznext = zp(ip+1)
+              zznext = zzz(ip+1)
 c             --- find the location of the particle in the internal lattice arrays
               iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
               iznext = min(nzl,iznext)
@@ -4560,8 +4669,8 @@ c         zcent = 0.5*(cegrdzs(iz,io) + cegrdze(iz,io))
 c         zlen = egrdze(ii) - egrdzs(ii)
 
 c         --- find particle coordinates in frame of gridded field
-          xt = xp(ip) - egrdox(ii)
-          yt = yp(ip) - egrdoy(ii)
+          xt = xxx(ip) - egrdox(ii)
+          yt = yyy(ip) - egrdoy(ii)
           zt = zz     - zcent(iz,io)
 
 c         --- transverse rotation to take into account an active rotation
@@ -4768,10 +4877,22 @@ c           --- of the angle reversed.
               eyt = +exsave*sp(ii) + eysave*cp(ii)
             endif
 
+            if (egrdhe(ii)) then
+              ext = ext*frac
+              eyt = eyt*frac
+              ezt = ezt*frac
+            endif
+
 c           --- add in the resulting field
-            ex(ip) = ex(ip) + ext*frac
-            ey(ip) = ey(ip) + eyt*frac
-            ez(ip) = ez(ip) + ezt*frac
+            if (bends .and. linbend .and. egrdlb(ii)) then
+              ex(ip) = ex(ip) + ext*cos(ttt(ip)) - ezt*sin(ttt(ip))
+              ey(ip) = ey(ip) + eyt
+              ez(ip) = ez(ip) + ext*sin(ttt(ip)) + ezt*cos(ttt(ip))
+            else
+              ex(ip) = ex(ip) + ext
+              ey(ip) = ey(ip) + eyt
+              ez(ip) = ez(ip) + ezt
+            endif
 
           endif
 
@@ -4787,6 +4908,7 @@ c           --- add in the resulting field
       if (any(egrdhe)) then
         deallocate(vz,dzi)
       endif
+      deallocate(xxx,yyy,zzz,ttt)
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplyegrd = timeapplyegrd + wtime() - substarttime
@@ -4911,6 +5033,7 @@ c        + ...
       real(kind=8),allocatable:: vz(:),dzi(:)
       real(kind=8):: z1,z2,zl,zr,fl,fr,frac
       integer(ISZ):: allocerror
+      real(kind=8),pointer, dimension(:):: xxx,yyy,zzz,ttt
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -4942,6 +5065,15 @@ c       --- not needed. This only matters if vz < 0.
 
       endif
 
+      allocate(xxx(np),yyy(np),zzz(np),ttt(np),
+     &         stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applybgrd: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        call kaboom("applybgrd: allocation error")
+        return
+      endif
+
 c     --- Precalculate sines and cosines for efficiency
       allocate(ca(0:nbgrd),sa(0:nbgrd))
       allocate(ct(0:nbgrd),st(0:nbgrd))
@@ -4961,8 +5093,20 @@ c     --- Precalculate sines and cosines for efficiency
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
 
+        if (bends .and. linbend .and. any(bgrdlb)) then
+          call grdlocat(np,xp,yp,npz,zp,nzl,nzlmax,
+     &                  nbgrdol,io,cbgrdzs,cbgrdze,cbgrdid,nbgrd,bgrdlb,
+     &                  xxx,yyy,zzz,ttt,
+     &                  zlmin,zlframe,dzli,bends,linbend,
+     &                  cbendzs,cbendze,cbendrc,lslice)
+        else
+          xxx = xp
+          yyy = yp
+          zzz = zp
+        endif
+
 c       --- find the location of the first particle in the internal lattice arrays
-        zznext = zp(1)
+        zznext = zzz(1)
         iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
         iznext = min(nzl,iznext)
         iinext = cbgrdid(iznext,io)
@@ -4990,8 +5134,8 @@ c           --- skip field accumulation if particles are outside of axial grid
 c           --- Precalculate these quantities. zl is the min of the two and
 c           --- zr is the max. This generalizes the routine, allowing left
 c           --- moving particles, vz < 0.
-            z1 = zp(1) + vz(1)*dtl
-            z2 = zp(1) + vz(1)*dtr
+            z1 = zzz(1) + vz(1)*dtl
+            z2 = zzz(1) + vz(1)*dtr
 c           --- "left" end of velocity advance step
             zl = min(z1,z2)
             fl = 0.
@@ -5020,7 +5164,7 @@ c           --- if frac is zero, no field will be applied
             id = idnext
 
             if (ip < np) then
-              zznext = zp(ip+1)
+              zznext = zzz(ip+1)
 c             --- find the location of the particle in the internal lattice arrays
               iznext = max(0., (zznext - zlmin - zlframe)*dzli + 0.5)
               iznext = min(nzl,iznext)
@@ -5068,8 +5212,8 @@ c         zcent = 0.5*(cbgrdzs(iz,io) + cbgrdze(iz,io))
 c         zlen = bgrdze(ii) - bgrdzs(ii)
 
 c         --- find particle coordinates in frame of gridded field
-          xt = xp(ip) - bgrdox(ii)
-          yt = yp(ip) - bgrdoy(ii)
+          xt = xxx(ip) - bgrdox(ii)
+          yt = yyy(ip) - bgrdoy(ii)
           zt = zz     - zcent(iz,io)
 
 c         --- transverse rotation to take into account an active rotation
@@ -5276,10 +5420,22 @@ c           --- of the angle reversed.
               byt = +bxsave*sp(ii) + bysave*cp(ii)
             endif
 
+            if (bgrdhe(ii)) then
+              bxt = bxt*frac
+              byt = byt*frac
+              bzt = bzt*frac
+            endif
+
 c           --- add in the resulting field
-            bx(ip) = bx(ip) + bxt*frac
-            by(ip) = by(ip) + byt*frac
-            bz(ip) = bz(ip) + bzt*frac
+            if (bends .and. linbend .and. bgrdlb(ii)) then
+              bx(ip) = bx(ip) + bxt*cos(ttt(ip)) - bzt*sin(ttt(ip))
+              by(ip) = by(ip) + byt
+              bz(ip) = bz(ip) + bxt*sin(ttt(ip)) + bzt*cos(ttt(ip))
+            else
+              bx(ip) = bx(ip) + bxt
+              by(ip) = by(ip) + byt
+              bz(ip) = bz(ip) + bzt
+            endif
 
           endif
 
@@ -5295,6 +5451,7 @@ c           --- add in the resulting field
       if (any(bgrdhe)) then
         deallocate(vz,dzi)
       endif
+      deallocate(xxx,yyy,zzz,ttt)
 
 !$OMP MASTER
       if (ltoptimesubs) timeapplybgrd = timeapplybgrd + wtime() - substarttime
