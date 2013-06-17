@@ -4766,13 +4766,13 @@ c           --- of the grid, but one of the zl or zr may be inside.
 c           --- Put the z-location at the edge of the grid (or just inside
 c           --- the upper edge so that zk < egrdnz)
             if (zk < 0.) zk = 0.
-            if (zk > egrdnz) zk = egrdnz - 1.e-12
+            if (zk > egrdlz(id)) zk = egrdlz(id) - 1.e-12
           endif
 
 c         --- Only calculate for particles inside the E field grid
-          if ((0 <= xi .and. xi < egrdnx) .and.
-     &        (0 <= yj .and. yj < egrdny .or. egrdrz(id) .or. egrdny == 0) .and.
-     &        (0 <= zk .and. zk < egrdnz)) then
+          if ((0 <= xi .and. xi < egrdlx(id)) .and.
+     &        (0 <= yj .and. yj < egrdly(id) .or. egrdrz(id) .or. egrdly(id) == 0) .and.
+     &        (0 <= zk .and. zk < egrdlz(id))) then
 
             i = xi
             j = yj
@@ -4788,7 +4788,7 @@ c           --- Calculate linear weights
 
             efac = egrdsc(ii) + egrdsf(ii)
 
-            if (egrdrz(id) .or. egrdny == 0) then
+            if (egrdrz(id) .or. egrdly(id) == 0) then
               ext = xsign*efac*(u0*w0*egrdex(i  ,0  ,k  ,id) +
      &                          u1*w0*egrdex(i+1,0  ,k  ,id) +
      &                          u0*w1*egrdex(i  ,0  ,k+1,id) +
@@ -4939,15 +4939,15 @@ c The results are put in egrdfs and egrdfe.
 
 c       --- The transverse mins and maxs of the grid
         xmin = egrdxs(ie)
-        xmax = egrdxs(ie) + egrddx(id)*egrdnx
+        xmax = egrdxs(ie) + egrddx(id)*egrdlx(id)
         ymin = egrdys(ie)
-        ymax = egrdys(ie) + egrddy(id)*egrdny
+        ymax = egrdys(ie) + egrddy(id)*egrdly(id)
 
         if (egrdrz(id)) then
 c         --- For RZ, extend the mins and maxs to cover the full transverse
 c         --- extent as if the grid were 3D. The y extent is the same as x,
 c         --- but with the appropriate y center.
-          xmin = egrdxs(ie) - egrddx(id)*egrdnx
+          xmin = egrdxs(ie) - egrddx(id)*egrdlx(id)
           ymin = xmin - egrdxs(ie) + egrdys(ie)
           ymax = xmax - egrdxs(ie) + egrdys(ie)
         endif
@@ -5309,13 +5309,13 @@ c           --- of the grid, but one of the zl or zr may be inside.
 c           --- Put the z-location at the edge of the grid (or just inside
 c           --- the upper edge so that zk < bgrdnz)
             if (zk < 0.) zk = 0.
-            if (zk > bgrdnz) zk = bgrdnz - 1.e-12
+            if (zk > bgrdlz(id)) zk = bgrdlz(id) - 1.e-12
           endif
 
 c         --- Only calculate for particles inside the B field grid
-          if ((0 <= xi .and. xi < bgrdnx) .and.
-     &        (0 <= yj .and. yj < bgrdny .or. bgrdrz(id) .or. bgrdny == 0) .and.
-     &        (0 <= zk .and. zk < bgrdnz)) then
+          if ((0 <= xi .and. xi < bgrdlx(id)) .and.
+     &        (0 <= yj .and. yj < bgrdly(id) .or. bgrdrz(id) .or. bgrdly(id) == 0) .and.
+     &        (0 <= zk .and. zk < bgrdlz(id))) then
 
             i = xi
             j = yj
@@ -5331,7 +5331,7 @@ c           --- Calculate linear weights
 
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
-            if (bgrdrz(id) .or. bgrdny == 0) then
+            if (bgrdrz(id) .or. bgrdly(id) == 0) then
               bxt = xsign*bfac*(u0*w0*bgrdbx(i  ,0  ,k  ,id) +
      &                          u1*w0*bgrdbx(i+1,0  ,k  ,id) +
      &                          u0*w1*bgrdbx(i  ,0  ,k+1,id) +
@@ -5482,15 +5482,15 @@ c The results are put in bgrdfs and bgrdfe.
 
 c       --- The transverse mins and maxs of the grid
         xmin = bgrdxs(ib)
-        xmax = bgrdxs(ib) + bgrddx(id)*bgrdnx
+        xmax = bgrdxs(ib) + bgrddx(id)*bgrdlx(id)
         ymin = bgrdys(ib)
-        ymax = bgrdys(ib) + bgrddy(id)*bgrdny
+        ymax = bgrdys(ib) + bgrddy(id)*bgrdly(id)
 
         if (bgrdrz(id)) then
 c         --- For RZ, extend the mins and maxs to cover the full transverse
 c         --- extent as if the grid were 3D. The y extent is the same as x,
 c         --- but with the appropriate y center.
-          xmin = bgrdxs(ib) - bgrddx(id)*bgrdnx
+          xmin = bgrdxs(ib) - bgrddx(id)*bgrdlx(id)
           ymin = xmin - bgrdxs(ib) + bgrdys(ib)
           ymax = xmax - bgrdxs(ib) + bgrdys(ib)
         endif
@@ -5910,9 +5910,9 @@ c         --- Calculate linear weights
           w0 = 1. - w1
 
 c         --- Only calculate for particles inside the B field grid
-          if (0 <= i .and. i < pgrdnx .and.
-     &        0 <= j .and. j < pgrdny .and.
-     &        0 <= k .and. k < pgrdnz) then
+          if (0 <= i .and. i < pgrdlx(id) .and.
+     &        0 <= j .and. j < pgrdly(id) .and.
+     &        0 <= k .and. k < pgrdlz(id)) then
 
 c           --- make sure all indices refer to first quadrant
             im1 = i - 1
@@ -6028,9 +6028,9 @@ c         --- Calculate linear weights
           w0 = 1. - w1
 
 c         --- Only calculate for particles inside the field grid
-          if (0 <= i .and. i < pgrdnx .and.
-     &        0 <= j .and. j < pgrdny .and.
-     &        0 <= k .and. k < pgrdnz) then
+          if (0 <= i .and. i < pgrdlx(id) .and.
+     &        0 <= j .and. j < pgrdly(id) .and.
+     &        0 <= k .and. k < pgrdlz(id)) then
 
             p(ip) = p(ip) + (pgrdsc(ii)+pgrdsf(ii)) *
      &            (u0*v0*w0*pgrd(i  ,j  ,k  ,id)

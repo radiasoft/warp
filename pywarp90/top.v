@@ -701,6 +701,9 @@ egrddz(egrdns)   _real [m]   # Z cell size
 egrddxi(egrdns)  _real [1/m] # 1 over X cell size (autoset)
 egrddyi(egrdns)  _real [1/m] # 1 over Y cell size (autoset)
 egrddzi(egrdns)  _real [1/m] # 1 over Z cell size (autoset)
+egrdlx(egrdns)   _integer /0/ # Number of x points in grid used by egrd element
+egrdly(egrdns)   _integer /0/ # Number of y points in grid used by egrd element
+egrdlz(egrdns)   _integer /0/ # Number of z points in grid used by egrd element
 egrdrz(egrdns)   _logical /0/ # When true, data is RZ only
 egrdex(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ex
 egrdey(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ey
@@ -721,6 +724,9 @@ bgrddz(bgrdns)   _real [m]   # Z cell size
 bgrddxi(bgrdns)  _real [1/m] # 1 over X cell size (autoset)
 bgrddyi(bgrdns)  _real [1/m] # 1 over Y cell size (autoset)
 bgrddzi(bgrdns)  _real [1/m] # 1 over Z cell size (autoset)
+bgrdlx(bgrdns)   _integer /0/ # Number of x points in grid used by bgrd element
+bgrdly(bgrdns)   _integer /0/ # Number of y points in grid used by bgrd element
+bgrdlz(bgrdns)   _integer /0/ # Number of z points in grid used by bgrd element
 bgrdrz(bgrdns)   _logical /0/ # When true, data is RZ only
 bgrdbx(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bx
 bgrdby(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # By
@@ -754,12 +760,15 @@ pgrdnx integer /0/ # Number of X cells
 pgrdny integer /0/ # Number of Y cells
 pgrdnz integer /0/ # Number of Z cells
 pgrdns integer /0/ # Number of data sets
-pgrddx(pgrdns)                      _real [m]   # X cell size
-pgrddy(pgrdns)                      _real [m]   # Y cell size
-pgrddz(pgrdns)                      _real [m]   # Z cell size
-pgrddxi(pgrdns)                     _real [1/m] # 1 over X cell size (autoset)
-pgrddyi(pgrdns)                     _real [1/m] # 1 over Y cell size (autoset)
-pgrddzi(pgrdns)                     _real [1/m] # 1 over Z cell size (autoset)
+pgrddx(pgrdns)   _real [m]   # X cell size
+pgrddy(pgrdns)   _real [m]   # Y cell size
+pgrddz(pgrdns)   _real [m]   # Z cell size
+pgrddxi(pgrdns)  _real [1/m] # 1 over X cell size (autoset)
+pgrddyi(pgrdns)  _real [1/m] # 1 over Y cell size (autoset)
+pgrddzi(pgrdns)  _real [1/m] # 1 over Z cell size (autoset)
+pgrdlx(pgrdns)   _integer /0/ # Number of x points in grid used by pgrd element
+pgrdly(pgrdns)   _integer /0/ # Number of y points in grid used by pgrd element
+pgrdlz(pgrdns)   _integer /0/ # Number of z points in grid used by pgrd element
 pgrd(0:pgrdnx,0:pgrdny,-1:pgrdnz+1,pgrdns) _real [V] # Potential
 
 ******** Pyelemdata:

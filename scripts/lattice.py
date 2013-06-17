@@ -2795,6 +2795,9 @@ Some extra data may be saved,
   top.egrddx[-1] = dx
   top.egrddy[-1] = dy
   top.egrddz[-1] = zlength/nz
+  top.egrdlx[-1] = nx
+  top.egrdly[-1] = ny
+  top.egrdlz[-1] = nz
   if ex is not None: top.egrdex[:nx+1,:ny+1,:nz+1,-1] = ex
   if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
   if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
@@ -2955,6 +2958,9 @@ One or more 3-D field arrays may be specified
   top.bgrddx[-1] = dx
   top.bgrddy[-1] = dy
   top.bgrddz[-1] = zlength/nz
+  top.bgrdlx[-1] = nx
+  top.bgrdly[-1] = ny
+  top.bgrdlz[-1] = nz
   if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
   if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
   if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
@@ -3291,6 +3297,9 @@ scale factor. One of the following can be supplied:
     top.pgrddx[-1] = dx
     top.pgrddy[-1] = dy
     top.pgrddz[-1] = (ze - zs)/nz
+    top.pgrdlx[-1] = nx
+    top.pgrdly[-1] = ny
+    top.pgrdlz[-1] = nz
     top.pgrd[:nx+1,:ny+1,:nz+3,-1] = phi
 
   if (time is not None and data is not None) or func is not None:
@@ -3763,7 +3772,7 @@ such as contours, and cellarray.
   xs = getattr(top,'egrd'+ax[0]+'s')[ie]
   if ax[0] == 'z': xs = xs + zlatstrt
   else:            xs = xs + getattr(top,'egrdo'+ax[0])[ie]
-  nx = getattr(top,'egrdn'+ax[0])
+  nx = getattr(top,'egrdl'+ax[0])[id]
   dx = getattr(top,'egrdd'+ax[0])[id]
 
   if len(ax) > 1:
@@ -3771,7 +3780,7 @@ such as contours, and cellarray.
     ys = getattr(top,'egrd'+ax[1]+'s')[ie]
     if ax[1] == 'z': ys = ys + zlatstrt
     else:            ys = ys + getattr(top,'egrdo'+ax[1])[ie]
-    ny = getattr(top,'egrdn'+ax[1])
+    ny = getattr(top,'egrdl'+ax[1])[id]
     dy = getattr(top,'egrdd'+ax[1])[id]
 
   if component == 'phi':
@@ -3783,7 +3792,7 @@ such as contours, and cellarray.
     # --- Make 1-d line plot
     xm = xs + iota(0,nx)*dx
     color = kw.get('color','fg')
-    plg(ee,xm,color=color,**kw)
+    plg(ee[:nx+1],xm,color=color,**kw)
     if titles:
       if component == 'phi':
         unitstitle = 'Potential%s'%units
@@ -3812,7 +3821,7 @@ such as contours, and cellarray.
       # --- Take the transpose so that z will be along the horizontal axis.
       ee = ee.T
 
-    ppgeneric(grid=ee,kwdict=kw)
+      ppgeneric(grid=ee[:nx+1,ny+1],kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
@@ -3881,7 +3890,7 @@ such as contours, and cellarray.
   xs = getattr(top,'bgrd'+ax[0]+'s')[ib]
   if ax[0] == 'z': xs = xs + zlatstrt
   else:            xs = xs + getattr(top,'bgrdo'+ax[0])[ib]
-  nx = getattr(top,'bgrdn'+ax[0])
+  nx = getattr(top,'bgrdl'+ax[0])[id]
   dx = getattr(top,'bgrdd'+ax[0])[id]
 
   if len(ax) > 1:
@@ -3889,7 +3898,7 @@ such as contours, and cellarray.
     ys = getattr(top,'bgrd'+ax[1]+'s')[ib]
     if ax[1] == 'z': ys = ys + zlatstrt
     else:            ys = ys + getattr(top,'bgrdo'+ax[1])[ib]
-    ny = getattr(top,'bgrdn'+ax[1])
+    ny = getattr(top,'bgrdl'+ax[1])[id]
     dy = getattr(top,'bgrdd'+ax[1])[id]
 
 
@@ -3897,7 +3906,7 @@ such as contours, and cellarray.
     # --- Make 1-d line plot
     xm = xs + iota(0,nx)*dx
     color = kw.get('color','fg')
-    plg(bb,xm,color=color,**kw)
+    plg(bb[:nx+1],xm,color=color,**kw)
 
     if titles:
       ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),
@@ -3924,7 +3933,7 @@ such as contours, and cellarray.
       # --- Take the transpose so that z will be along the horizontal axis.
       bb = bb.T
 
-    ppgeneric(grid=bb,kwdict=kw)
+      ppgeneric(grid=bb[:nx+1,:ny+1],kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
@@ -3993,7 +4002,7 @@ such as contours, and cellarray.
   xs = getattr(top,'pgrd'+ax[0]+'s')[ip]
   if ax[0] == 'z': xs = xs + zlatstrt
   else:            xs = xs + getattr(top,'pgrdo'+ax[0])[ip]
-  nx = getattr(top,'pgrdn'+ax[0])
+  nx = getattr(top,'pgrdl'+ax[0])[id]
   dx = getattr(top,'pgrdd'+ax[0])[id]
 
   if len(ax) > 1:
@@ -4001,7 +4010,7 @@ such as contours, and cellarray.
     ys = getattr(top,'pgrd'+ax[1]+'s')[ip]
     if ax[1] == 'z': ys = ys + zlatstrt
     else:            ys = ys + getattr(top,'pgrdo'+ax[1])[ip]
-    ny = getattr(top,'pgrdn'+ax[1])
+    ny = getattr(top,'pgrdl'+ax[1])[id]
     dy = getattr(top,'pgrdd'+ax[1])[id]
 
 
@@ -4009,7 +4018,7 @@ such as contours, and cellarray.
     # --- Make 1-d line plot
     xm = xs + iota(0,nx)*dx
     color = kw.get('color','fg')
-    plg(pp,xm,color=color,**kw)
+    plg(pp[:nx+1],xm,color=color,**kw)
 
     if titles:
       ptitles('PGRD element #%d'%ip,'%s (m)'%ax[0].upper(),'phi%s'%units)
@@ -4033,7 +4042,7 @@ such as contours, and cellarray.
       # --- Take the transpose so that z will be along the horizontal axis.
       pp = pp.T
 
-    ppgeneric(grid=pp,kwdict=kw)
+    ppgeneric(grid=pp[:nx+1,:ny+1],kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
