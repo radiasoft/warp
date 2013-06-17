@@ -3583,8 +3583,8 @@ scale factor. One of the following can be supplied:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None,withscaling=1,
-             titles=1,**kw):
+def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None,withscaling=True,
+             titles=True,**kw):
   """
 Plots the field of the emlt element
   - ie: the element to plot
@@ -3593,7 +3593,7 @@ Plots the field of the emlt element
   - color='fg': color of plot
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
-  - withscaling=1: when true, apply the sc and sf scaling factors
+  - withscaling=True: when true, apply the sc and sf scaling factors
   """
   assert 0 <= ie <= top.nemlt,\
          "No such emlt element, %d, defined"%ie
@@ -3616,7 +3616,7 @@ Plots the field of the emlt element
             'multipole n=%d v=%d'%(top.emlt_n[m],top.emlt_v[m]))
 
 def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
-             scale=1.,zoffset=None,withscaling=1,titles=1,**kw):
+             scale=1.,zoffset=None,withscaling=True,titles=True,**kw):
   """
 Plots the field of the emlt element
   - im: the element to plot
@@ -3626,7 +3626,7 @@ Plots the field of the emlt element
   - getfield=0: when true, the field and zmesh are returned
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
-  - withscaling=1: when true, apply the sc and sf scaling factors
+  - withscaling=True: when true, apply the sc and sf scaling factors
   """
   assert 0 <= im <= top.nmmlt,\
          "No such mmlt element, %d, defined"%im
@@ -3700,8 +3700,8 @@ Plots the time dependent field of the accl element
     if not tcentered: tt = top.acclts[ii] + tt
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color,**kw)
 
-def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,titles=True,**kw):
+def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=True,
+             zlatstrt=None,withscaling=True,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - ie: the index of the lattice element to plot
@@ -3711,10 +3711,10 @@ Plots the one of the field components in one of the planes
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
                Each is an integer between 0 and egrdnx, egrdny, or egrdnz.
- - withbends=1: When true, account for bends and convert to the lab frame.
-                Only applies with iy specified.
+ - withbends=True: When true, account for bends and convert to the lab frame.
+                   Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
- - withscaling=1: when true, apply the sc and sf scaling factors
+ - withscaling=True: when true, apply the sc and sf scaling factors
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
@@ -3770,16 +3770,16 @@ such as contours, and cellarray.
 
   # --- Get mesh quantities along first axis
   xs = getattr(top,'egrd'+ax[0]+'s')[ie]
-  if ax[0] == 'z': xs = xs + zlatstrt
-  else:            xs = xs + getattr(top,'egrdo'+ax[0])[ie]
+  if ax[0] == 'z': xo = zlatstrt
+  else:            xo = getattr(top,'egrdo'+ax[0])[ie]
   nx = getattr(top,'egrdl'+ax[0])[id]
   dx = getattr(top,'egrdd'+ax[0])[id]
 
   if len(ax) > 1:
     # --- Get mesh quantities along second axis
     ys = getattr(top,'egrd'+ax[1]+'s')[ie]
-    if ax[1] == 'z': ys = ys + zlatstrt
-    else:            ys = ys + getattr(top,'egrdo'+ax[1])[ie]
+    if ax[1] == 'z': yo = zlatstrt
+    else:            yo = getattr(top,'egrdo'+ax[1])[ie]
     ny = getattr(top,'egrdl'+ax[1])[id]
     dy = getattr(top,'egrdd'+ax[1])[id]
 
@@ -3790,7 +3790,7 @@ such as contours, and cellarray.
 
   if len(ax) == 1:
     # --- Make 1-d line plot
-    xm = xs + iota(0,nx)*dx
+    xm = xs + xo + iota(0,nx)*dx
     color = kw.get('color','fg')
     plg(ee[:nx+1],xm,color=color,**kw)
     if titles:
@@ -3801,25 +3801,43 @@ such as contours, and cellarray.
       ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),unitstitle)
 
   elif len(ax) == 2:
+    if iz is None:
+      # --- Take the transpose so that z will be along the horizontal axis.
+      ee = ee.T
+
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+    xx = xm + xo
+    yy = ym + yo
 
     # --- Note that this still needs to account for the egrdlb flag
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
 
-    kw['xmesh'] = xm
-    kw['ymesh'] = ym
+    kw['xmesh'] = xx
+    kw['ymesh'] = yy
     kw['titles'] = titles
     kw.setdefault('titlet','EGRD element #%d %s'%(ie,unitstitle))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    if iz is None:
-      # --- Take the transpose so that z will be along the horizontal axis.
-      ee = ee.T
+    ppgeneric(grid=ee[:nx+1,ny+1],kwdict=kw)
+
+    if top.egrdrz[id] and iz is None:
+      xx = xm + xo
+      yy = -ym + yo
+
+      # --- Note that this still needs to account for the egrdlb flag
+
+      if withbends and iy is not None and top.bends:
+        # --- Apply coordinate transformations in any bends
+        tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+
+      kw['xmesh'] = xx
+      kw['ymesh'] = yy
+      kw['titles'] = False
 
       ppgeneric(grid=ee[:nx+1,ny+1],kwdict=kw)
 
@@ -3827,8 +3845,8 @@ such as contours, and cellarray.
     # --- Will do isosurface or volume rendering in future
     raise Exception('3-d plot Not yet implemented')
 
-def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,titles=True,**kw):
+def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=True,
+             zlatstrt=None,withscaling=True,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - ib: the index of the lattice element to plot
@@ -3836,10 +3854,10 @@ Plots the one of the field components in one of the planes
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
                Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
- - withbends=1: When true, account for bends and convert to the lab frame.
-                Only applies with iy specified.
+ - withbends=True: When true, account for bends and convert to the lab frame.
+                   Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
- - withscaling=1: when true, apply the sc and sf scaling factors
+ - withscaling=True: when true, apply the sc and sf scaling factors
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
@@ -3888,23 +3906,23 @@ such as contours, and cellarray.
 
   # --- Get mesh quantities along first axis
   xs = getattr(top,'bgrd'+ax[0]+'s')[ib]
-  if ax[0] == 'z': xs = xs + zlatstrt
-  else:            xs = xs + getattr(top,'bgrdo'+ax[0])[ib]
+  if ax[0] == 'z': xo = zlatstrt
+  else:            xo = getattr(top,'bgrdo'+ax[0])[ib]
   nx = getattr(top,'bgrdl'+ax[0])[id]
   dx = getattr(top,'bgrdd'+ax[0])[id]
 
   if len(ax) > 1:
     # --- Get mesh quantities along second axis
     ys = getattr(top,'bgrd'+ax[1]+'s')[ib]
-    if ax[1] == 'z': ys = ys + zlatstrt
-    else:            ys = ys + getattr(top,'bgrdo'+ax[1])[ib]
+    if ax[1] == 'z': yo = zlatstrt
+    else:            yo = getattr(top,'bgrdo'+ax[1])[ib]
     ny = getattr(top,'bgrdl'+ax[1])[id]
     dy = getattr(top,'bgrdd'+ax[1])[id]
 
 
   if len(ax) == 1:
     # --- Make 1-d line plot
-    xm = xs + iota(0,nx)*dx
+    xm = xs + xo + iota(0,nx)*dx
     color = kw.get('color','fg')
     plg(bb[:nx+1],xm,color=color,**kw)
 
@@ -3913,25 +3931,43 @@ such as contours, and cellarray.
               'B%s%s'%(component,units))
 
   elif len(ax) == 2:
+    if iz is None:
+      # --- Take the transpose so that z will be along the horizontal axis.
+      bb = bb.T
+
     # --- Make 2-d plot
     xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+    xx = xm + xo
+    yy = ym + yo
 
     # --- Note that this still needs to account for the bgrdlb flag
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
 
-    kw['xmesh'] = xm
-    kw['ymesh'] = ym
+    kw['xmesh'] = xx
+    kw['ymesh'] = yy
     kw['titles'] = titles
     kw.setdefault('titlet','BGRD element #%d B%s%s'%(ib,component,units))
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    if iz is None:
-      # --- Take the transpose so that z will be along the horizontal axis.
-      bb = bb.T
+    ppgeneric(grid=bb[:nx+1,:ny+1],kwdict=kw)
+
+    if top.bgrdrz[id] and iz is None:
+      xx = xm + xo
+      yy = -ym + yo
+
+      # --- Note that this still needs to account for the bgrdlb flag
+
+      if withbends and iy is not None and top.bends:
+        # --- Apply coordinate transformations in any bends
+        tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+
+      kw['xmesh'] = xx
+      kw['ymesh'] = yy
+      kw['titles'] = False
 
       ppgeneric(grid=bb[:nx+1,:ny+1],kwdict=kw)
 
@@ -3939,8 +3975,8 @@ such as contours, and cellarray.
     # --- Will do isosurface or volume rendering in future
     raise Exception('3-d plot Not yet implemented')
 
-def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,withscaling=1,titles=True,**kw):
+def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=True,
+             zlatstrt=None,withscaling=True,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
  - component: Component to plot, one of 'x', 'y', or 'z'.
@@ -3948,10 +3984,10 @@ Plots the one of the field components in one of the planes
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
                Each is an integer between 0 and pgrdnx, pgrdny, or pgrdnz.
- - withbends=1: When true, account for bends and convert to the lab frame.
-                Only applies with iy specified.
+ - withbends=True: When true, account for bends and convert to the lab frame.
+                   Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
- - withscaling=1: when true, apply the sc and sf scaling factors
+ - withscaling=True: when true, apply the sc and sf scaling factors
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
