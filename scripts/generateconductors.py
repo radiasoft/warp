@@ -372,7 +372,7 @@ Should never be directly created by the user.
       print 'drawzy method not implemented for '+self.__class__.__name__
 
   def plotdata(self,r,z,color='fg',filled=None,fullplane=1,
-               xcent=None,zcent=None,xshift=0.,zshift=0.):
+               xcent=None,zcent=None,xshift=0.,zshift=0.,**kw):
     if xcent is None: xcent = self.xcent
     if zcent is None: zcent = self.zcent
     xcent += xshift
@@ -380,15 +380,15 @@ Should never be directly created by the user.
     z = array(z) + zcent
     r = array(r)
     if color is not None:
-      plg(xcent+r,z,color=color)
+      plg(xcent+r,z,color=color,**kw)
       if fullplane:
-        plg(xcent-array(r),z,color=color)
+        plg(xcent-array(r),z,color=color,**kw)
     if filled is not None:
       if filled == 'condid': filled = self.condid
       c = array([filled]).astype(ubyte)
-      plfp(c,xcent+r,z,[len(r)])
+      plfp(c,xcent+r,z,[len(r)],**kw)
       if fullplane:
-        plfp(c,xcent-array(r),z,[len(r)])
+        plfp(c,xcent-array(r),z,[len(r)],**kw)
 
   def get_energy_histogram(self,js=0,n=1000):
     """
@@ -3520,7 +3520,7 @@ Outside of a cylinder aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
-  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+  def draw(self,color='fg',filled=None,fullplane=1,rmax=None,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -3529,7 +3529,6 @@ Plots the r versus z
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=w3d.xmmax: outer range in r to include in plot
     """
-    rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
     if rmax < self.radius: rmax = self.radius
     r = [self.radius,self.radius,rmax,rmax,self.radius]
@@ -3603,7 +3602,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
-  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+  def draw(self,color='fg',filled=None,fullplane=1,rmax=None,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -3612,7 +3611,6 @@ Plots the r versus z
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=w3d.xmmax: outer range in r to include in plot
     """
-    rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
     if rmax < self.radius: rmax = self.radius
     zc = self.length/2. - self.radius2

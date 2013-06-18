@@ -762,6 +762,19 @@ Refresh the current gist windows.
 #sf = redraw
 
 ##########################################################################
+def _converttolabfrm(kw,x,z):
+  """Convert the coordinates from the bent frame to the lab frame if requested.
+  Note that this has the side effect of popping the withbends keyword argument.
+  """
+  withbends = kw.pop('withbends',False)
+  if not withbends: return x,z
+  if x is None or z is None: return x,z
+  x = array(x,copy=True)
+  z = array(z,copy=True)
+  tolabfrm(0.,x.size,ravel(x),ravel(z))
+  return x,z
+
+##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
 # It replaces the plg from gist, which can only plot 1-d arrays.
 def pla(y,x=None,linetype="solid",local=1,**kw):
@@ -799,6 +812,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   else:
     # --- Extend yy into a 2-D array, with a second dimension of length 1.
     yy = y[:,newaxis]
+  yy,xx = _converttolabfrm(kw,yy,xx)
   if not local and lparallel:
     # --- This way is preferred over a gatherarray since, for large data sets,
     # --- it reduces the risk of running out of memory since only part of the
@@ -865,6 +879,8 @@ def limits(xmin=None,xmax=None,ymin=None,ymax=None,**kw):
     callplotfunction("axis",[(xmin,xmax,ymin,ymax)],kw)
 limits.__doc__ = gist.limits.__doc__
 def pldj(x0,y0,x1,y1,local=1,**kw):
+  y0,x0 = _converttolabfrm(kw,y0,x0)
+  y1,x1 = _converttolabfrm(kw,y1,x1)
   if not _accumulateplotlists and not local:
     x0 = gatherarray(x0)
     y0 = gatherarray(y0)
@@ -877,6 +893,7 @@ def pldj(x0,y0,x1,y1,local=1,**kw):
     callplotfunction("plot",[array([x0,x1]),array([y0,y1])],kw)
 pldj.__doc__ = gist.pldj.__doc__
 def plfp(z,y,x,n,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
     y = gatherarray(y)
@@ -893,6 +910,7 @@ def plfp(z,y,x,n,local=1,**kw):
       i += j
 plfp.__doc__ = gist.plfp.__doc__
 def plfc(z,y,x,ireg,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
     y = gatherarray(y)
@@ -906,6 +924,7 @@ def plfc(z,y,x,ireg,local=1,**kw):
     callplotfunction("contourf",[x,y,z],kw)
 plfc.__doc__ = gist.plfc.__doc__
 def plc(z,y=None,x=None,ireg=None,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
     if y is not None: y = gatherarray(y)
@@ -919,6 +938,9 @@ def plc(z,y=None,x=None,ireg=None,local=1,**kw):
     callplotfunction("contour",[x,y,z],kw)
 plc.__doc__ = gist.plc.__doc__
 def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
+  # --- Do the pop since calling _converttolabfrm doesn't make sense
+  # --- since x0 etc are scalars.
+  kw.pop('withbends',False)
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
     if x0 is not None: x0 = gatherarray(x0)
@@ -956,6 +978,7 @@ def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
     callplotfunction("pcolor",[xg,yg,z],kw)
 pli.__doc__ = gist.pli.__doc__
 def plf(z,y=None,x=None,ireg=None,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
     if y is not None: y = gatherarray(y)
@@ -969,6 +992,7 @@ def plf(z,y=None,x=None,ireg=None,local=1,**kw):
     callplotfunction("pcolor",[x,y,z],kw)
 plf.__doc__ = gist.plf.__doc__
 def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     vy = gatherarray(vy)
     vx = gatherarray(vx)
@@ -982,6 +1006,7 @@ def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
     callplotfunction("quiver",[x,y,vx,vy],kw)
 plv.__doc__ = gist.plv.__doc__
 def plt(text,x,y,local=1,**kw):
+  y,x = _converttolabfrm(kw,y,x)
   if not _accumulateplotlists and not local:
     textlist = gather(text)
     xlist = gather(x)
@@ -1349,6 +1374,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'view':None,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
+                'withbends':False,
                 'returngrid':0,'local':1,
                 'checkargs':0,'allowbadargs':0}
 
@@ -1439,6 +1465,9 @@ Note that either the x and y coordinates or the grid must be passed in.
                When None, uses the current view. Otherwise, the value is passed
                to plsys.
   - width=1.0: width of hash marks for hash plots
+  - withbends=False: when True, the coordinates are converted from the bent
+                     frame to the lab frame. It is assumed that the first
+                     coordinate is x and the second z.
   - xbound=dirichlet: sets boundary condition on gridded data for x
   - xcoffset,ycoffset=0: offsets of coordinates in grid plots
   - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
@@ -1529,6 +1558,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   ymesh = kwvalues['ymesh']
   returngrid = kwvalues['returngrid']
   local = kwvalues['local']
+  withbends = kwvalues['withbends']
   checkargs = kwvalues['checkargs']
   allowbadargs = kwvalues['allowbadargs']
 
@@ -1877,7 +1907,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
-            leveloverlap=leveloverlap,local=grid_local)
+            leveloverlap=leveloverlap,local=grid_local,withbends=withbends)
 
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it. The min and max are adjusted so that the patch for
@@ -1885,7 +1915,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If the user supplies a mesh, then use plf, a filled mesh plot, since
   # --- the meshes may not be Cartesian.
   if cellarray and nx > 1 and ny > 1:
-    if not usermesh:
+    if not usermesh and not withbends:
       if centering == 'node':
         xminc = xmin
         xmaxc = xmax + dx
@@ -1904,7 +1934,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       pli(transpose(grid),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax,
           local=grid_local)
     else:
-      plf(grid,ymesh,xmesh,local=grid_local)
+      plf(grid,ymesh,xmesh,local=grid_local,withbends=withbends)
 
   # --- Plot particles
   if particles:
@@ -1934,10 +1964,12 @@ Note that either the x and y coordinates or the grid must be passed in.
       if ncolor is None: ncolor = top.ncolor
       # --- Plot particles with color based on the density from the grid.
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,zmin=cmin,zmax=cmax,
-           ncolor=ncolor,usepalette=usepalette,npalette=npalette,local=local)
+           ncolor=ncolor,usepalette=usepalette,npalette=npalette,
+           withbends=withbends,local=local)
     else:
       # --- Plot particles as a solid color.
-      plp(yms,x,color=color,marker=marker,msize=msize,local=local)
+      plp(yms,x,color=color,marker=marker,msize=msize,
+          withbends=withbends,local=local)
 
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
@@ -1945,7 +1977,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
-            leveloverlap=leveloverlap,local=grid_local)
+            leveloverlap=leveloverlap,local=grid_local,withbends=withbends)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
@@ -1958,7 +1990,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     for ix in range(nx+1):
       for iy in range(ny+1):
         plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid[ix,iy]]),
-            color=hcolor,width=width)
+            color=hcolor,width=width,withbends=withbends)
 
   # --- Add colorbar if needed
   if (lcolorbar and
@@ -3823,7 +3855,6 @@ Plots y versus x with color based in z
 
   # --- Make sure arrays are 1-D
   rx = ravel(x)
-  ry = ravel(y)
   rz = ravel(z)
 
   # --- Find extrema
