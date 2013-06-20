@@ -1070,7 +1070,7 @@ Plots any history versus z
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=7,
           filled=0,width=1.,linetype='solid',cmin=None,cmax=None,
-          leveloverlap=None,local=1):
+          leveloverlap=None,local=1,**kw):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -1080,7 +1080,7 @@ Simple interface to contour plotting, same arguments as plc
   - contours=8 Optional number of levels or list of levels
   - filled=0 When 1, draws filled contours
   - cmin, cmax: min and max of contours levels
-  - leveloverlap=0. fractional overlap of contour levels
+  - leveloverlap=0. fractional overlap of filled contour levels
   """
   s = shape(zz)
   if len(s) != 2:
@@ -1108,33 +1108,26 @@ Simple interface to contour plotting, same arguments as plc
     if cmin is None: cmin = minnd(zz)*1.
     if cmax is None: cmax = maxnd(zz)*1.
     contours = 1.*iota(1,contours)*(cmax-cmin)/(contours+1) + cmin
-  # --- leveloverlap is handled in a keyword dict so that it won't cause
-  # --- problems with older version of pygist that don't support
-  # --- the argument.
-  if leveloverlap is None:
-    kw = {}
-  else:
-    kw = {'leveloverlap':leveloverlap}
   if filled:
     # --- ireg must be of type integer because some legacy code used
     # --- expects it.
     ireg = ireg.astype('i')
-    plfc(zz,xx,yy,ireg,contours=contours,local=local,**kw)
+    plfc(zz,xx,yy,ireg,contours=contours,leveloverlap=leveloverlap,local=local,**kw)
   else:
     plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
         local=local,**kw)
 
-def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,leveloverlap=None,local=1):
+def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,local=1,**kw):
   """
 Simple interface to filled contour plotting, same arguments as plfc
-  - zz 2-D array to be plotted
-  - xx, yy Optional axis. Can either be 1-D or 2-D.
-  - ireg Optional region. Must be same shape as zz
-  - color='fg'
-  - contours Optional number of levels or list of levels
+  - zz: 2-D array to be plotted
+  - xx, yy: Optional axis. Can either be 1-D or 2-D.
+  - ireg: Optional region. Must be same shape as zz
+  - color='fg': contour color
+  - contours: Optional number of levels or list of levels
   """
   plotc(zz,xx=xx,yy=yy,ireg=ireg,color=color,contours=contours,filled=1,
-        leveloverlap=leveloverlap,local=local)
+        local=local,**kw)
 
 # --- Define variables names for the allowed colors
 fg = 'fg'
