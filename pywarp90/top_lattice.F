@@ -1851,6 +1851,9 @@ c============================================================================
       use LatticeInternal
       use InGen, only: boost_gamma,vbeamfrm
       use Constant, only: clight
+      use EGRDdata,Only: egrdlx,egrdly,egrdlz,egrdnx,egrdny,egrdnz
+      use BGRDdata,Only: bgrdlx,bgrdly,bgrdlz,bgrdnx,bgrdny,bgrdnz
+      use PGRDdata,Only: pgrdlx,pgrdly,pgrdlz,pgrdnx,pgrdny,pgrdnz
       real(kind=8):: zbeam,time
 
 c  Sets the lattice data at zbeam and time into 1d arrays.
@@ -1876,7 +1879,7 @@ c                                  cdipozs(j+1)        cdipoze(j+1)
 
       integer(ISZ):: io,iz
       integer(ISZ):: iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
-      integer(ISZ):: id
+      integer(ISZ):: id,is
       real(kind=8):: zz,offset,wi,uzboost
 
 c     --- Save the z location and time at which the internal lattice frame
@@ -2199,13 +2202,22 @@ c        --- a rotation off the z-axis.
      &                    oegrdnn(io),oegrdoi(oegrdii(io):),oegrdio,
      &                    cegrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           cegrdzs(iz,io) = egrdfs(cegrdid(iz,io)) + offset
-           cegrdze(iz,io) = egrdfe(cegrdid(iz,io)) + offset
+           id = cegrdid(iz,io)
+           cegrdzs(iz,io) = egrdfs(id) + offset
+           cegrdze(iz,io) = egrdfe(id) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cegrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
      &                           zlmin+zlframe-zlatbuffer <= cegrdze(iz,io))
      &       linegrd(io) = .true.
+c          --- Fix the array size info, if needed (if data was read in
+c          --- from old data sets, for instance).
+           is = egrdid(id)
+           if (egrdlx(is) == 0 .and. egrdly(is) == 0 .and. egrdlz(is) == 0) then
+             egrdlx(is) = egrdnx
+             egrdly(is) = egrdny
+             egrdlz(is) = egrdnz
+           endif
          enddo
 
 c        --- find index of nearest bgrd element
@@ -2218,13 +2230,22 @@ c        --- a rotation off the z-axis.
      &                    obgrdnn(io),obgrdoi(obgrdii(io):),obgrdio,
      &                    cbgrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           cbgrdzs(iz,io) = bgrdfs(cbgrdid(iz,io)) + offset
-           cbgrdze(iz,io) = bgrdfe(cbgrdid(iz,io)) + offset
+           id = cbgrdid(iz,io)
+           cbgrdzs(iz,io) = bgrdfs(id) + offset
+           cbgrdze(iz,io) = bgrdfe(id) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cbgrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
      &                           zlmin+zlframe-zlatbuffer <= cbgrdze(iz,io))
      &       linbgrd(io) = .true.
+c          --- Fix the array size info, if needed (if data was read in
+c          --- from old data sets, for instance).
+           is = bgrdid(id)
+           if (bgrdlx(is) == 0 .and. bgrdly(is) == 0 .and. bgrdlz(is) == 0) then
+             bgrdlx(is) = bgrdnx
+             bgrdly(is) = bgrdny
+             bgrdlz(is) = bgrdnz
+           endif
          enddo
 
 c        --- find index of nearest pgrd element
@@ -2235,13 +2256,22 @@ c        --- elements described by potential data on a 3-D grid.
      &                    opgrdnn(io),opgrdoi(opgrdii(io):),opgrdio,
      &                    cpgrdid(iz,io),io)
 c          --- load lattice info into comoving 1d array
-           cpgrdzs(iz,io) = pgrdzs(cpgrdid(iz,io)) + offset
-           cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
+           id = cpgrdid(iz,io)
+           cpgrdzs(iz,io) = pgrdzs(id) + offset
+           cpgrdze(iz,io) = pgrdze(id) + offset
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
            if (cpgrdzs(iz,io) <= zlmax+zlframe+zlatbuffer .and.
      &                           zlmin+zlframe-zlatbuffer <= cpgrdze(iz,io))
      &       linpgrd(io) = .true.
+c          --- Fix the array size info, if needed (if data was read in
+c          --- from old data sets, for instance).
+           is = pgrdid(id)
+           if (pgrdlx(is) == 0 .and. pgrdly(is) == 0 .and. pgrdlz(is) == 0) then
+             pgrdlx(is) = pgrdnx
+             pgrdly(is) = pgrdny
+             pgrdlz(is) = pgrdnz
+           endif
          enddo
 
 c        --- find index of nearest bsqgrad element
