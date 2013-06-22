@@ -3816,8 +3816,8 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
           color=color[ic%len(color)],**kw)
 
 ##########################################################################
-def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
-         ncolor=None,usepalette=1,npalette=200,local=1):
+def ppco(y,x,z,uz=1.,zmin=None,zmax=None,
+         ncolor=None,usepalette=1,npalette=200,local=1,**kw):
   """
 Plots y versus x with color based in z
   - y: y coordinate
@@ -3882,7 +3882,7 @@ Plots y versus x with color based in z
         c = nint((npalette-1.)*ic/(ncolor-1.))
     else:
       c = color[ic%len(color)]
-    plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize,local=local)
+    plp(take(y,ii),take(x,ii),color=c,local=local,**kw)
 
 ##########################################################################
 # To be implemented
