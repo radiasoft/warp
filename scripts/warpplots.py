@@ -1070,7 +1070,7 @@ Plots any history versus z
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=7,
           filled=0,width=1.,linetype='solid',cmin=None,cmax=None,
-          leveloverlap=None,local=1,**kw):
+          local=1,**kw):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -1080,7 +1080,6 @@ Simple interface to contour plotting, same arguments as plc
   - contours=8 Optional number of levels or list of levels
   - filled=0 When 1, draws filled contours
   - cmin, cmax: min and max of contours levels
-  - leveloverlap=0. fractional overlap of filled contour levels
   """
   s = shape(zz)
   if len(s) != 2:
@@ -1112,7 +1111,7 @@ Simple interface to contour plotting, same arguments as plc
     # --- ireg must be of type integer because some legacy code used
     # --- expects it.
     ireg = ireg.astype('i')
-    plfc(zz,xx,yy,ireg,contours=contours,leveloverlap=leveloverlap,local=local,**kw)
+    plfc(zz,xx,yy,ireg,contours=contours,local=local,**kw)
   else:
     plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
         local=local,**kw)
@@ -1357,7 +1356,7 @@ _ppgeneric_kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'usepalette':1,'npalette':200,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg','leveloverlap':None,
+                'contours':None,'filled':0,'ccolor':'fg','leveloverlap':0.,
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
