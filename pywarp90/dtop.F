@@ -944,6 +944,7 @@ c   labxe        X location of bend ends in lab frame
       real(kind=8),allocatable:: labzs(:), labxs(:)
       real(kind=8),allocatable:: labze(:), labxe(:)
       real(kind=8):: offset,zzzmin,zzzmax,offsetmx,offsetmn,angle,aa,zz,tz
+      real(kind=8):: bendlateicentl,bendlatsicentr
       integer(ISZ):: i,ib,numb,icentl,icentr,id,ibendl,ibendr,il,ir
       integer(ISZ):: ibendmn,ibendmx
 
@@ -1041,6 +1042,7 @@ c Calculate index of bend left and right of frame center.
 c Calculate sum of bend angles from bends surrounding zcent up to the
 c bend previous to the current bend.
       if (icentl > 0) then
+        bendlateicentl = bendlate(icentl)
         i = icentl
         zz = min((bendlate(i)-bendlats(i)),(zcent - bendlats(i)))
         bends_sum(i) = zz/bendrc(ibend(i))
@@ -1057,9 +1059,12 @@ c bend previous to the current bend.
           cosbesum(i) = cos(bende_sum(i))
           sinbesum(i) = sin(bende_sum(i))
         enddo
+      else
+        bendlateicentl = -LARGEPOS
       endif
 
       if (icentr <= numb) then
+        bendlatsicentr = bendlats(icentr)
         i = icentr
         zz = min((bendlate(i)-bendlats(i)),(bendlate(i) - zcent))
         bends_sum(i) = max(0.,(zcent - bendlats(i)))/bendrc(ibend(i))
@@ -1076,6 +1081,8 @@ c bend previous to the current bend.
           cosbesum(i) = cos(bende_sum(i))
           sinbesum(i) = sin(bende_sum(i))
         enddo
+      else
+        bendlatsicentr = +LARGEPOS
       endif
 
 c Calculate location of starts and ends of bends in lab frame.
@@ -1152,7 +1159,7 @@ c       --- Find bend starting to the left and bend ending to the right of zzz.
 c       --- Do work for cases where zzz < end of bend left of zcent.
 c       --- Only two cases: zzz is in bend, so il=ir; or zzz is in drift so
 c       --- ir = il+1.
-        if (zzz(id) < bendlate(icentl)) then
+        if (zzz(id) < bendlateicentl) then
           if (il == ir) then
             aa = bends_sum(il) - (zzz(id) - bendlats(il))/bendrc(ibend(il))
             tz = (labzs(il) - bendrc(ibend(il))*(sin(aa) - sinbssum(il)) -
@@ -1170,7 +1177,7 @@ c       --- ir = il+1.
 c       --- Do work for cases where zzz > start of bend right of zcent.
 c       --- Only two cases: zzz is in bend, so il=ir; or zzz is in drift so
 c       --- ir = il+1.
-        elseif (zzz(id) > bendlats(icentr)) then
+        elseif (zzz(id) > bendlatsicentr) then
           if (il == ir) then
             aa = bende_sum(il) - (bendlate(il) - zzz(id))/bendrc(ibend(il))
             tz = (labze(il) + bendrc(ibend(il))*(sin(aa) - sinbesum(il)) +
