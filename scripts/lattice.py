@@ -3823,7 +3823,7 @@ such as contours, and cellarray.
     kw.setdefault('titleb','%s (m)'%ax[0].upper())
     kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
-    ppgeneric(grid=ee[:nx+1,ny+1],kwdict=kw)
+    ppgeneric(grid=ee[:nx+1,:ny+1],kwdict=kw)
 
     if top.egrdrz[id] and iz is None:
       xx = xm + xo
@@ -3839,7 +3839,7 @@ such as contours, and cellarray.
       kw['ymesh'] = yy
       kw['titles'] = False
 
-      ppgeneric(grid=ee[:nx+1,ny+1],kwdict=kw)
+      ppgeneric(grid=ee[:nx+1,:ny+1],kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
