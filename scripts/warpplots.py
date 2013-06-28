@@ -1070,7 +1070,7 @@ Plots any history versus z
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=7,
           filled=0,width=1.,linetype='solid',cmin=None,cmax=None,
-          local=1,**kw):
+          local=1,leveloverlap=False,withbends=False):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -1111,10 +1111,10 @@ Simple interface to contour plotting, same arguments as plc
     # --- ireg must be of type integer because some legacy code used
     # --- expects it.
     ireg = ireg.astype('i')
-    plfc(zz,xx,yy,ireg,contours=contours,local=local,**kw)
+    plfc(zz,xx,yy,ireg,contours=contours,local=local,leveloverlap=leveloverlap,withbends=withbends)
   else:
     plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
-        local=local,**kw)
+        local=local,withbends=withbends)
 
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,local=1,**kw):
   """
