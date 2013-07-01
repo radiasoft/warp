@@ -26,41 +26,40 @@ def plg(*x,**xx):
   pass
 def plv(*x,**xx):
   pass
-def fma():
+def fma(*x,**xx):
   pass
 def plt(*x,**xx):
   pass
-def plsys(i=0):
+def plsys(*x,**xx):
   return 1
-def winkill(*N):
+def winkill(*x,**xx):
   pass
-def pltitle(title):
+def pltitle(*x,**xx):
   pass
 def limits(*x,**xx):
   pass
-def ylimits(ymin='u',ymax='u'):
+def ylimits(*x,**xx):
   pass
-def moush(*arg):
+def moush(*x,**xx):
   pass
-def eps(name):
+def eps(*x,**xx):
   import os
   pass
-def xytitles(xtitle = "", ytitle = "", delta = (0.,0.)):
+def xytitles(*x,**xx):
   pass
-def _spanz(lb,ub,n):
+def _spanz(*x,**xx):
   pass
-def plmk(y,x=None,marker=None,width=None,color=None,msize=None):
+def plmk(*x,**xx):
   pass
-def spann (zmin, zmax, n = 8, fudge = 0, force = 0) :
+def spann(*x,**xx):
   pass
-def plfc (z, y, x, ireg, contours = 20, colors = None, region = 0,
-          triangle = None, scale = "lin") :
+def plfc(*x,**xx):
   pass
 def plc(*x,**xx):
   pass
-def redraw():
+def redraw(*x,**xx):
   pass
-def current_window():
+def current_window(*x,**xx):
   return 0
 def pldefault(*x,**xx):
   pass
@@ -78,9 +77,9 @@ def unzoom(*x,**xx):
   pass
 def logxy(*x,**xx):
   pass
-def pyg_pending():
+def pyg_pending(*x,**xx):
   pass
-def pyg_idler():
+def pyg_idler(*x,**xx):
   pass
 def gridxy(*x,**xx):
   pass
