@@ -584,15 +584,6 @@ setupiondensitygrid3d(xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,
    subroutine # Sets up the iondensity grid for the 3d Boltzman electron
               # field solver.
 
-
-*********** Multigrid3d_work:
-# Temporary variables and array used by subgrid_sor_to_mg
-wnx integer
-wny integer
-wnz integer
-iii(0:wnx,0:wny,0:wnz) _integer
-
-
 %%%%%%%%%%% BFieldGridType:
 nx      integer  /0/  # Number of grid cells in x in B grid
 ny      integer  /0/  # Number of grid cells in y in B grid
