@@ -168,20 +168,22 @@ lrelativ      logical /.false./           # Flag for relativity
 
 *********** Constant:
 # Physical constants, in one place so they stay consistent
+# Values from 2010CODATA
+# http://physics.nist.gov/cuu/Constants/bibliography.html
 pi            real /3.14159265358979323/  # Pi
-amu           real /1.66053873e-27/  [kg] # Atomic Mass Unit
+amu           real /1.660538921e-27/  [kg] # Atomic Mass Unit
 clight        real /2.99792458e+8/  [m/s] # Speed of light in vacuum (exact)
-echarge       real /1.602176462e-19/  [C] # Proton charge
-emass         real /9.10938188e-31/  [kg] # Electron mass
+echarge       real /1.602176565e-19/  [C] # Proton charge
+emass         real /9.10938291e-31/  [kg] # Electron mass
 eps0          real /0.0/     [F/m]        # Permittivity of free space
                                           # set from clight, mu0 in derivqty
 euler         real /0.57721566490153386/  # Euler-Masceroni constant
 jperev        real /0.0/    [J/eV]        # Conversion factor, Joules per eV
                                           # Set to echarge in derivqty
 mu0           real /0.0/    [H/m]         # Permeability of free space
-boltzmann     real /1.3806503e-23/ [J/K]  # Boltzmann's constant
-avogadro      real /6.02214179e23/        # Avogadro's Number
-planck        real /6.62606896e-34/ [J.s] # Planck's constant
+boltzmann     real /1.3806488e-23/ [J/K]  # Boltzmann's constant
+avogadro      real /6.02214129e23/        # Avogadro's Number
+planck        real /6.62606957e-34/ [J.s] # Planck's constant
 fuz           real /3.e-5/                # for integer-real comparisons
 
 **** Ch_var dump:
