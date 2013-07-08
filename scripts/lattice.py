@@ -3583,14 +3583,13 @@ scale factor. One of the following can be supplied:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=None,withscaling=True,
+def plotemlt(ie,m=0,p=0,scale=1.,zoffset=None,withscaling=True,
              titles=True,**kw):
   """
 Plots the field of the emlt element
   - ie: the element to plot
   - m=0: the multipole number to plot
   - p=0: when true, plot z-derivative (emltp)
-  - color='fg': color of plot
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
   - withscaling=True: when true, apply the sc and sf scaling factors
@@ -3608,21 +3607,20 @@ Plots the field of the emlt element
   else:
     ss = 1.
   if p == 0:
-    plg(ss*top.esemlt[:nz+1,m,id]*scale,zz,color=color,**kw)
+    plg(ss*top.esemlt[:nz+1,m,id]*scale,zz,**kw)
   else:
-    plg(ss*top.esemltp[:nz+1,m,id]*scale,zz,color=color,**kw)
+    plg(ss*top.esemltp[:nz+1,m,id]*scale,zz,**kw)
   if titles:
     ptitles('EMLT element #%d'%ie,'Z (m)',
             'multipole n=%d v=%d'%(top.emlt_n[m],top.emlt_v[m]))
 
-def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
+def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,getfield=0,
              scale=1.,zoffset=None,withscaling=True,titles=True,**kw):
   """
 Plots the field of the emlt element
   - im: the element to plot
   - m=0: the multipole number to plot
   - p=0: when true, plot z-derivative (mmltp)
-  - color='fg': color of plot
   - getfield=0: when true, the field and zmesh are returned
   - scale=1.: multiplicative factor on the data plotted
   - zoffset=top.zlatstrt: the shift in the z location of the data plotted
@@ -3671,17 +3669,16 @@ Plots the field of the emlt element
   else:
     mm = top.msmmltp[:nz+1,m,id]
   mm = ss*mm*cc*scale
-  plg(mm,zz,color=color,**kw)
+  plg(mm,zz,**kw)
   if titles:
     ptitles('MMLT element #%d'%im,'Z (m)',
             'multipole n=%d v=%d'%(top.mmlt_n[m],top.mmlt_v[m]))
   if getfield: return mm,zz
 
-def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,color='fg',**kw):
+def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,**kw):
   """
 Plots the time dependent field of the accl element
   - ia=None: the element to plot, when unspecified, plot all elements
-  - color='fg': color of plot
   - oscale=1.: scale for ordinate
   - ascale=1.: scale for abscissa
   - tcentered=0: when true, time is plotted relative to acclts.
@@ -3698,7 +3695,7 @@ Plots the time dependent field of the accl element
   for ii in xrange(i1,i2+1):
     tt = iota(0,top.ntaccl)*top.accldt[ii]
     if not tcentered: tt = top.acclts[ii] + tt
-    plg(top.acclet[:,ii]*ascale,tt*oscale,color=color,**kw)
+    plg(top.acclet[:,ii]*ascale,tt*oscale,**kw)
 
 def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=True,
              zlatstrt=None,withscaling=True,titles=True,**kw):
@@ -3791,8 +3788,7 @@ such as contours, and cellarray.
   if len(ax) == 1:
     # --- Make 1-d line plot
     xm = xs + xo + iota(0,nx)*dx
-    color = kw.get('color','fg')
-    plg(ee[:nx+1],xm,color=color,**kw)
+    plg(ee[:nx+1],xm,**kw)
     if titles:
       if component == 'phi':
         unitstitle = 'Potential%s'%units
@@ -3923,8 +3919,7 @@ such as contours, and cellarray.
   if len(ax) == 1:
     # --- Make 1-d line plot
     xm = xs + xo + iota(0,nx)*dx
-    color = kw.get('color','fg')
-    plg(bb[:nx+1],xm,color=color,**kw)
+    plg(bb[:nx+1],xm,**kw)
 
     if titles:
       ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),
@@ -4053,8 +4048,7 @@ such as contours, and cellarray.
   if len(ax) == 1:
     # --- Make 1-d line plot
     xm = xs + iota(0,nx)*dx
-    color = kw.get('color','fg')
-    plg(pp[:nx+1],xm,color=color,**kw)
+    plg(pp[:nx+1],xm,**kw)
 
     if titles:
       ptitles('PGRD element #%d'%ip,'%s (m)'%ax[0].upper(),'phi%s'%units)
