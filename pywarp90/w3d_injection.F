@@ -1421,7 +1421,7 @@ c                   --- appropriately.
      &                     (pgroup%yp(ii)*binji)**2 > 1.) .or.
      &                    ((pgroup%xp(ii)*binjmin(ij))**2 +
      &                     (pgroup%yp(ii)*ainjmin(ij))**2 <
-     &                     ainjmin(ij)*binjmin(ij))) then
+     &                     (ainjmin(ij)*binjmin(ij))**2)) then
                         inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
                         cycle
                       endif
