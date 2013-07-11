@@ -1660,8 +1660,8 @@ c A positive zsign means that the conductor is the region above z0.
 
       do iz=0,nz
         zz = zmmin + iz*dz - zcent
-        if ((zsign > 0. .and. zz > z0) .or.
-     &      (zsign < 0. .and. zz < z0))then
+        if ((zsign > 0. .and. zz >= z0) .or.
+     &      (zsign < 0. .and. zz <= z0))then
 c         --- inside the object
           xintercepts(1,:,iz) = -LARGEPOS
           xintercepts(2,:,iz) = +LARGEPOS
@@ -1674,8 +1674,8 @@ c         --- outside the object
 
       do iz=0,nz
         zz = zmmin + iz*dz - zcent
-        if ((zsign > 0. .and. zz > z0) .or.
-     &      (zsign < 0. .and. zz < z0))then
+        if ((zsign > 0. .and. zz >= z0) .or.
+     &      (zsign < 0. .and. zz <= z0))then
 c         --- inside the object
           yintercepts(1,:,iz) = -LARGEPOS
           yintercepts(2,:,iz) = +LARGEPOS
@@ -1882,8 +1882,8 @@ c A positive zsign means that the conductor is the region above zcent.
           yy = ymmin + iy*dy - ycent
           zp = yy*sphi + zz*ctheta*cphi
           if (stheta*cphi == 0.) then
-            if ((zsign > 0. .and. zp > z0) .or.
-     &          (zsign < 0. .and. zp < z0))then
+            if ((zsign > 0. .and. zp >= z0) .or.
+     &          (zsign < 0. .and. zp <= z0))then
 c             --- inside the object
               xintercepts(1,iy,iz) = -LARGEPOS
               xintercepts(2,iy,iz) = +LARGEPOS
@@ -1894,12 +1894,12 @@ c             --- outside the object
             endif
           else
             xi = (z0 - zz*ctheta*cphi - yy*sphi)*sci
-            if (zsign > 0.) then
-              xintercepts(1,iy,iz) = xi
+            if (zsign*ctheta*cphi*sci > 0.) then
+              xintercepts(1,iy,iz) = xi + xcent
               xintercepts(2,iy,iz) = +LARGEPOS
             else
               xintercepts(1,iy,iz) = -LARGEPOS
-              xintercepts(2,iy,iz) = xi
+              xintercepts(2,iy,iz) = xi + xcent
             endif
           endif
         enddo
@@ -1911,8 +1911,8 @@ c             --- outside the object
           xx = xmmin + ix*dx - xcent
           zp = xx*stheta*cphi + zz*ctheta*cphi
           if (sphi == 0.) then
-            if ((zsign > 0. .and. zp > z0) .or.
-     &          (zsign < 0. .and. zp < z0))then
+            if ((zsign > 0. .and. zp >= z0) .or.
+     &          (zsign < 0. .and. zp <= z0))then
 c             --- inside the object
               yintercepts(1,ix,iz) = -LARGEPOS
               yintercepts(2,ix,iz) = +LARGEPOS
@@ -1923,12 +1923,12 @@ c             --- outside the object
             endif
           else
             yi = (z0 - xx*stheta*cphi - zz*ctheta*cphi)*si
-            if (zsign > 0.) then
-              yintercepts(1,ix,iz) = yi
+            if (zsign*stheta*cphi*si > 0.) then
+              yintercepts(1,ix,iz) = yi + ycent
               yintercepts(2,ix,iz) = +LARGEPOS
             else
               yintercepts(1,ix,iz) = -LARGEPOS
-              yintercepts(2,ix,iz) = yi
+              yintercepts(2,ix,iz) = yi + ycent
             endif
           endif
         enddo
@@ -1940,8 +1940,8 @@ c             --- outside the object
           xx = xmmin + ix*dx - xcent
           zp = xx*stheta*cphi + yy*sphi
           if (ctheta*cphi == 0.) then
-            if ((zsign > 0. .and. zp > z0) .or.
-     &          (zsign < 0. .and. zp < z0)) then
+            if ((zsign > 0. .and. zp >= z0) .or.
+     &          (zsign < 0. .and. zp <= z0)) then
 c             --- inside the object
               zintercepts(1,ix,iy) = -LARGEPOS
               zintercepts(2,ix,iy) = +LARGEPOS
@@ -1953,11 +1953,11 @@ c             --- outside the object
           else
             zi = (z0 - xx*stheta*cphi - yy*sphi)*cci
             if (zsign > 0.) then
-              zintercepts(1,ix,iy) = zcent
+              zintercepts(1,ix,iy) = zi + zcent
               zintercepts(2,ix,iy) = +LARGEPOS
             else
               zintercepts(1,ix,iy) = -LARGEPOS
-              zintercepts(2,ix,iy) = zcent
+              zintercepts(2,ix,iy) = zi + zcent
             endif
           endif
         enddo
