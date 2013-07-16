@@ -2593,19 +2593,25 @@ Creates a grid object which can generate conductor data.
     if extent is not None:
       if extent.mins[0]-dx > xmin:
         xmin = int((extent.mins[0]-dx - xmin)/dx)*dx + xmin
+        if xmin >= xmax: xmin = xmax - 2*dx
       if extent.mins[1]-dy > ymin:
         ymin = int((extent.mins[1]-dy - ymin)/dy)*dy + ymin
+        if ymin >= ymax: ymin = ymax - 2*dy
       if extent.mins[2]-dz > zmin:
         zmin = int((extent.mins[2]-dz - zmin)/dz)*dz + zmin
+        if zmin >= zmax: zmin = zmax - 2*dz
       if extent.maxs[0]+dx < xmax:
         xmax = int((extent.maxs[0]+dx - xmin)/dx)*dx + xmin
         if xmax < extent.maxs[0]+dx: xmax += dx
+        if xmax <= xmin: xmax = xmin + 2*dx
       if extent.maxs[1]+dy < ymax:
         ymax = int((extent.maxs[1]+dy - ymin)/dy)*dy + ymin
         if ymax < extent.maxs[1]+dy: ymax += dy
+        if ymax <= ymin: ymax = ymin + 2*dy
       if extent.maxs[2]+dz < zmax:
         zmax = int((extent.maxs[2]+dz - zmin)/dz)*dz + zmin
         if zmax < extent.maxs[2]+dz: zmax += dz
+        if zmax <= zmin: zmax = zmin + 2*dz
 
       nxlocal = nint((xmax - xmin)/dx)
       nylocal = nint((ymax - ymin)/dy)
