@@ -3033,9 +3033,9 @@ Plane class
     self.zsign = zsign
     self.theta = theta
     self.phi = phi
-    if self.theta == 0. and self.phi == 0.: z1,z2 = z0,z0
-    else:                                   z1,z2 = -largepos,+largepos
-    self.createextent([-largepos,-largepos,z1],[+largepos,+largepos,z2])
+    # --- Just assume that the conductor extends everywhere since it can be tricky
+    # --- to calculate its extent within the grid.
+    self.createextent([-largepos,-largepos,-largepos],[+largepos,+largepos,+largepos])
 
 #============================================================================
 class ZPlane(Assembly):
