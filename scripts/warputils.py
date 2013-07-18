@@ -308,7 +308,7 @@ except:
 # --- Convenience function to read in data from a text file
 def getdatafromtextfile(filename,nskip=0,dims=None,dtype='d',fortranordering=True,
                         converter=float,mode='r',get_header=False,l_checkdims=False,
-                        separator=None):
+                        separator=None,readuntilerror=False):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
 logically Cartesian mesh.
@@ -336,6 +336,9 @@ logically Cartesian mesh.
  - separator=' ': separating character between data values. If not specified,
                   either a space or a comma will be used depending on what is in
                   the file.
+ - readuntilerror=False: If True, when reading in open ended data, an error in the
+                         number of data points in a line or in the data conversion is
+                         taken to be a flag signifying the end of the data.
 
 Here's an example data file called 'testdata'::
 
@@ -424,8 +427,17 @@ automatically.::
   for line in lines:
     words = line.split(separator)
     if l_checkdims:assert len(words)==dims[0],"ERROR reading data from "+filename+": dimensions 1st axis are incompatible. %g passed as argument, %g found in file."%(dims[0],len(words))
-    dataline = map(converter,words)
-    data.append(dataline)
+    if readuntilerror and len(words) != dims[0]:
+        break
+    try:
+        dataline = map(converter,words)
+    except ValueError:
+        if readuntilerror:
+            break
+        else:
+            raise sys.exc_info()
+    else:
+        data.append(dataline)
     if ntot is not None and len(data) >= ntot: break
 
   # --- Get the data out of the appendable array.
