@@ -2402,17 +2402,15 @@ scale factor. One of the following can be supplied:
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already emlts, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that emltid > 0,
-  # --- to determine whether or not an emlt is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.nemlt and top.emltzs[ie] <= zs and top.emltid[ie] > 0):
+  while ie <= top.nemlt and top.emltzs[ie] <= zs and top.emltze[ie] != top.emltzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.nemlt or top.emltid[-1] != 0:
+  if ie > top.nemlt:
     top.nemlt = top.nemlt + 100
     top.neerr = top.neerr + 100
     gchange("Lattice")
@@ -2615,17 +2613,15 @@ scale factor. One of the following can be supplied:
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already mmlts, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that mmltid > 0,
-  # --- to determine whether or not an mmlt is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltid[ie] > 0):
+  while ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltze[ie] != top.mmltzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.nmmlt or top.mmltid[-1] != 0:
+  if ie > top.nmmlt:
     top.nmmlt = top.nmmlt + 100
     top.nmerr = top.nmerr + 100
     gchange("Lattice")
@@ -2867,17 +2863,15 @@ of dx, dy, nx, ny, nz, must be passed in"""
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already egrds, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that egrdid > 0,
-  # --- to determine whether or not a egrd is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.negrd and top.egrdzs[ie] <= zs and top.egrdid[ie] > 0):
+  while ie <= top.negrd and top.egrdzs[ie] <= zs and top.egrdze[ie] != top.egrdzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.negrd or top.egrdid[-1] != 0:
+  if ie > top.negrd:
     top.negrd = top.negrd + 100
     gchange("Lattice")
 
@@ -3019,17 +3013,15 @@ of dx, dy, nx, ny, nz, must be passed in"""
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already bgrds, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that bgrdid > 0,
-  # --- to determine whether or not a bgrd is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.nbgrd and top.bgrdzs[ie] <= zs and top.bgrdid[ie] > 0):
+  while ie <= top.nbgrd and top.bgrdzs[ie] <= zs and top.bgrdze[ie] != top.bgrdzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.nbgrd or top.bgrdid[-1] != 0:
+  if ie > top.nbgrd:
     top.nbgrd = top.nbgrd + 100
     gchange("Lattice")
 
@@ -3123,18 +3115,15 @@ bsqgrad arrays with the same suffices:
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already bsqgrads, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that bsqgradid > 0,
-  # --- to determine whether or not a bsqgrad is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.nbsqgrad and top.bsqgradzs[ie] <= zs and
-         top.bsqgradid[ie] > 0):
+  while ie <= top.nbsqgrad and top.bsqgradzs[ie] <= zs and top.bsqgradze[ie] != top.bsqgradzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.nbsqgrad or top.bsqgradid[-1] != 0:
+  if ie > top.nbsqgrad:
     top.nbsqgrad = top.nbsqgrad + 100
     gchange("Lattice")
 
@@ -3241,17 +3230,15 @@ scale factor. One of the following can be supplied:
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already pgrds, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that pgrdid > 0,
-  # --- to determine whether or not a pgrd is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.npgrd and top.pgrdzs[ie] <= zs and top.pgrdid[ie] > 0):
+  while ie <= top.npgrd and top.pgrdzs[ie] <= zs and top.pgrdze[ie] != top.pgrdzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.npgrd or top.pgrdid[-1] != 0:
+  if ie > top.npgrd:
     top.npgrd = top.npgrd + 100
     gchange("Lattice")
 
@@ -3533,17 +3520,15 @@ scale factor. One of the following can be supplied:
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already pyelems, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
-  # --- Note that this uses that same check as in resetlat, that pyelemid > 0,
-  # --- to determine whether or not a pyelem is defined.
   ie = 0
   # --- Find which element the new one goes before.
-  while (ie <= top.npyelem and top.pyelemzs[ie] <= zs and top.pyelemid[ie] > 0):
+  while ie <= top.npyelem and top.pyelemzs[ie] <= zs and top.pyelemze[ie] != top.pyelemzs[ie]:
     ie = ie + 1
 
   # --- Increase the size of the arrays by one. Except for the case when
   # --- there are no elements yet defined, which is true when the not'ed
   # --- statement is true.
-  if ie > top.npyelem or top.pyelemid[-1] != 0:
+  if ie > top.npyelem:
     top.npyelem = top.npyelem + 100
     gchange("Lattice")
 
