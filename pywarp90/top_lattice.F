@@ -962,6 +962,7 @@ c     --- routines also gather E.
 
         do ib = 0, nbsqgrad
           id = bsqgradid(ib)
+          if (id == 0) cycle
           do iz=0,bsqgradnz
             do iy=0,bsqgradny
               do ix=0,bsqgradnx
@@ -1001,6 +1002,7 @@ c     --- Now fetch the B fields
       nn = (1+bsqgradnx)*(1+bsqgradny)*(1+bsqgradnz)
       do ib = 0, nbsqgrad
         id = bsqgradid(ib)
+        if (id == 0) cycle
 
 c       bsqgradtemp(0:nx,0:ny,0:nz, 5,id) = 0.
 c       bsqgradtemp(0:nx,0:ny,0:nz, 6,id) = 0.
@@ -2213,10 +2215,12 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
 c          --- Fix the array size info, if needed (if data was read in
 c          --- from old data sets, for instance).
            is = egrdid(id)
-           if (egrdlx(is) == 0 .and. egrdly(is) == 0 .and. egrdlz(is) == 0) then
-             egrdlx(is) = egrdnx
-             egrdly(is) = egrdny
-             egrdlz(is) = egrdnz
+           if (is > 0) then
+             if (egrdlx(is) == 0 .and. egrdly(is) == 0 .and. egrdlz(is) == 0) then
+               egrdlx(is) = egrdnx
+               egrdly(is) = egrdny
+               egrdlz(is) = egrdnz
+             endif
            endif
          enddo
 
@@ -2241,10 +2245,12 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
 c          --- Fix the array size info, if needed (if data was read in
 c          --- from old data sets, for instance).
            is = bgrdid(id)
-           if (bgrdlx(is) == 0 .and. bgrdly(is) == 0 .and. bgrdlz(is) == 0) then
-             bgrdlx(is) = bgrdnx
-             bgrdly(is) = bgrdny
-             bgrdlz(is) = bgrdnz
+           if (is > 0) then
+             if (bgrdlx(is) == 0 .and. bgrdly(is) == 0 .and. bgrdlz(is) == 0) then
+               bgrdlx(is) = bgrdnx
+               bgrdly(is) = bgrdny
+               bgrdlz(is) = bgrdnz
+             endif
            endif
          enddo
 
@@ -2267,10 +2273,12 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
 c          --- Fix the array size info, if needed (if data was read in
 c          --- from old data sets, for instance).
            is = pgrdid(id)
-           if (pgrdlx(is) == 0 .and. pgrdly(is) == 0 .and. pgrdlz(is) == 0) then
-             pgrdlx(is) = pgrdnx
-             pgrdly(is) = pgrdny
-             pgrdlz(is) = pgrdnz
+           if (is > 0) then
+             if (pgrdlx(is) == 0 .and. pgrdly(is) == 0 .and. pgrdlz(is) == 0) then
+               pgrdlx(is) = pgrdnx
+               pgrdly(is) = pgrdny
+               pgrdlz(is) = pgrdnz
+             endif
            endif
          enddo
 
@@ -4966,6 +4974,11 @@ c The results are put in egrdfs and egrdfe.
 
       do ie = 0,negrd
         id = egrdid(ie)
+        if (id == 0) then
+          egrdfs(ie) = egrdzs(ie)
+          egrdfe(ie) = egrdze(ie)
+          cycle
+        endif
 
 c       --- The transverse mins and maxs of the grid
         xmin = egrdxs(ie)
@@ -5509,6 +5522,11 @@ c The results are put in bgrdfs and bgrdfe.
 
       do ib = 0,nbgrd
         id = bgrdid(ib)
+        if (id == 0) then
+          bgrdfs(ib) = bgrdzs(ib)
+          bgrdfe(ib) = bgrdze(ib)
+          cycle
+        endif
 
 c       --- The transverse mins and maxs of the grid
         xmin = bgrdxs(ib)
