@@ -57,8 +57,9 @@ addnewpgrd: Adds a new pgrd element
 plotemlt: plots the multipole components
 plotmmlt: plots the multipole components
 plotacclet: plots the time depenedent accl field
-plotegrd: plots components of the B field
+plotegrd: plots components of the E field
 plotbgrd: plots components of the B field
+plotpgrd: plots the potential
 """
 
 todo = """ Add comment attribute to elements """
@@ -3775,10 +3776,6 @@ such as contours, and cellarray.
     xm = xs + xo + iota(0,nx)*dx
     plg(ee[:nx+1],xm,**kw)
     if titles:
-      if component == 'phi':
-        unitstitle = 'Potential%s'%units
-      else:
-        unitstitle = 'E%s%s'%(component,units)
       ptitles('EGRD element #%d'%ie,'%s (m)'%ax[0].upper(),unitstitle)
 
   elif len(ax) == 2:
@@ -3787,39 +3784,52 @@ such as contours, and cellarray.
       ee = ee.T
 
     # --- Make 2-d plot
-    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
-    xx = xm + xo
-    yy = ym + yo
-
     # --- Note that this still needs to account for the egrdlb flag
+    # --- and rotations
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
+      xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+      xx = xm + xo
+      yy = ym + yo
       tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+      kw['xmesh'] = xx
+      kw['ymesh'] = yy
+    else:
+      # --- Only the grid extrema are needed
+      kw['xmin'] = xs + xo
+      kw['xmax'] = xs + xo + nx*dx
+      kw['ymin'] = ys + yo
+      kw['ymax'] = ys + yo + ny*dy
 
-    kw['xmesh'] = xx
-    kw['ymesh'] = yy
     kw['titles'] = titles
-    kw.setdefault('titlet','EGRD element #%d %s'%(ie,unitstitle))
-    kw.setdefault('titleb','%s (m)'%ax[0].upper())
-    kw.setdefault('titlel','%s (m)'%ax[1].upper())
+    if titles:
+      kw.setdefault('titlet','EGRD element #%d %s'%(ie,unitstitle))
+      kw.setdefault('titleb','%s (m)'%ax[0].upper())
+      kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
     ppgeneric(grid=ee[:nx+1,:ny+1],kwdict=kw)
 
     if top.egrdrz[id] and iz is None:
-      xx = xm + xo
-      yy = -ym + yo
 
       # --- Note that this still needs to account for the egrdlb flag
+      # --- and rotations
 
       if withbends and iy is not None and top.bends:
         # --- Apply coordinate transformations in any bends
+        xx = xm + xo
+        yy = -ym + yo
         tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+        kw['xmesh'] = xx
+        kw['ymesh'] = yy
+      else:
+        # --- Only the grid extrema are needed
+        kw['xmin'] = xs + xo
+        kw['xmax'] = xs + xo + nx*dx
+        kw['ymin'] = -ys + yo
+        kw['ymax'] = -ys + yo - ny*dy
 
-      kw['xmesh'] = xx
-      kw['ymesh'] = yy
       kw['titles'] = False
-
       ppgeneric(grid=ee[:nx+1,:ny+1],kwdict=kw)
 
   elif len(ax) == 3:
@@ -3905,10 +3915,8 @@ such as contours, and cellarray.
     # --- Make 1-d line plot
     xm = xs + xo + iota(0,nx)*dx
     plg(bb[:nx+1],xm,**kw)
-
     if titles:
-      ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),
-              'B%s%s'%(component,units))
+      ptitles('BGRD element #%d'%ib,'%s (m)'%ax[0].upper(),'B%s%s'%(component,units))
 
   elif len(ax) == 2:
     if iz is None:
@@ -3916,51 +3924,62 @@ such as contours, and cellarray.
       bb = bb.T
 
     # --- Make 2-d plot
-    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
-    xx = xm + xo
-    yy = ym + yo
-
     # --- Note that this still needs to account for the bgrdlb flag
+    # --- and rotations
 
     if withbends and iy is not None and top.bends:
       # --- Apply coordinate transformations in any bends
+      xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+      xx = xm + xo
+      yy = ym + yo
       tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+      kw['xmesh'] = xx
+      kw['ymesh'] = yy
+    else:
+      # --- Only the grid extrema are needed
+      kw['xmin'] = xs + xo
+      kw['xmax'] = xs + xo + nx*dx
+      kw['ymin'] = ys + yo
+      kw['ymax'] = ys + yo + ny*dy
 
-    kw['xmesh'] = xx
-    kw['ymesh'] = yy
     kw['titles'] = titles
-    kw.setdefault('titlet','BGRD element #%d B%s%s'%(ib,component,units))
-    kw.setdefault('titleb','%s (m)'%ax[0].upper())
-    kw.setdefault('titlel','%s (m)'%ax[1].upper())
+    if titles:
+      kw.setdefault('titlet','BGRD element #%d B%s%s'%(ib,component,units))
+      kw.setdefault('titleb','%s (m)'%ax[0].upper())
+      kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
     ppgeneric(grid=bb[:nx+1,:ny+1],kwdict=kw)
 
     if top.bgrdrz[id] and iz is None:
-      xx = xm + xo
-      yy = -ym + yo
 
       # --- Note that this still needs to account for the bgrdlb flag
+      # --- and rotations
 
       if withbends and iy is not None and top.bends:
         # --- Apply coordinate transformations in any bends
+        xx = xm + xo
+        yy = -ym + yo
         tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+        kw['xmesh'] = xx
+        kw['ymesh'] = yy
+      else:
+        # --- Only the grid extrema are needed
+        kw['xmin'] = xs + xo
+        kw['xmax'] = xs + xo + nx*dx
+        kw['ymin'] = -ys + yo
+        kw['ymax'] = -ys + yo - ny*dy
 
-      kw['xmesh'] = xx
-      kw['ymesh'] = yy
       kw['titles'] = False
-
       ppgeneric(grid=bb[:nx+1,:ny+1],kwdict=kw)
 
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
     raise Exception('3-d plot Not yet implemented')
 
-def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=True,
+def plotpgrd(ip=0,ix=None,iy=None,iz=None,withbends=True,
              zlatstrt=None,withscaling=True,titles=True,**kw):
   """
 Plots the one of the field components in one of the planes
- - component: Component to plot, one of 'x', 'y', or 'z'.
-              If not specified, will plot the potential.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
                Each is an integer between 0 and pgrdnx, pgrdny, or pgrdnz.
@@ -3973,8 +3992,6 @@ such as contours, and cellarray.
   """
   assert 0 <= ip <= top.npgrd,\
          "No such pgrd element, %d, defined"%ip
-  assert component in [None,'x','y','z'],\
-         "component to plot must be None or one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
   if top.lresetlat: resetlat()
@@ -4034,28 +4051,38 @@ such as contours, and cellarray.
     # --- Make 1-d line plot
     xm = xs + iota(0,nx)*dx
     plg(pp[:nx+1],xm,**kw)
-
     if titles:
       ptitles('PGRD element #%d'%ip,'%s (m)'%ax[0].upper(),'phi%s'%units)
 
   elif len(ax) == 2:
-    # --- Make 2-d plot
-    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
-
-    if withbends and iy is not None and top.bends:
-      # --- Apply coordinate transformations in any bends
-      tolabfrm(0.,(1+nx)*(1+ny),ravel(ym),ravel(xm))
-
-    kw['xmesh'] = xm
-    kw['ymesh'] = ym
-    kw['titles'] = titles
-    kw.setdefault('titlet','PGRD element #%d phi%s'%(ip,units))
-    kw.setdefault('titleb','%s (m)'%ax[0].upper())
-    kw.setdefault('titlel','%s (m)'%ax[1].upper())
-
     if iz is None:
       # --- Take the transpose so that z will be along the horizontal axis.
       pp = pp.T
+
+    # --- Make 2-d plot
+    # --- Note that this still needs to account for the pgrdlb flag
+    # --- and rotations
+
+    if withbends and iy is not None and top.bends:
+      # --- Apply coordinate transformations in any bends
+      xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+      xx = xm + xo
+      yy = ym + yo
+      tolabfrm(0.,(1+nx)*(1+ny),ravel(yy),ravel(xx))
+      kw['xmesh'] = xx
+      kw['ymesh'] = yy
+    else:
+      # --- Only the grid extrema are needed
+      kw['xmin'] = xs + xo
+      kw['xmax'] = xs + xo + nx*dx
+      kw['ymin'] = ys + yo
+      kw['ymax'] = ys + yo + ny*dy
+
+    kw['titles'] = titles
+    if titles:
+      kw.setdefault('titlet','PGRD element #%d phi%s'%(ip,units))
+      kw.setdefault('titleb','%s (m)'%ax[0].upper())
+      kw.setdefault('titlel','%s (m)'%ax[1].upper())
 
     ppgeneric(grid=pp[:nx+1,:ny+1],kwdict=kw)
 
