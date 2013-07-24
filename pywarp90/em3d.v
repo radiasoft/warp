@@ -336,6 +336,8 @@ em3d_exchange_rho(b:EM3D_BLOCKtype) subroutine
 add_current_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 add_rho_slice_3d(f:EM3D_YEEFIELDtype,i:integer) subroutine
 set_incond(f:EM3D_YEEFIELDtype,n:integer,indx(3,n):integer) subroutine
+set_macroscopic_coefs_on_yee(f:EM3D_YEEFIELDtype,n:integer,indx(3,n):integer,
+                             sigma:real,epsi:real,mu:real) subroutine
 em3d_applybc_rho(f:EM3D_YEEFIELDtype,xlbnd:integer,xrbnd:integer,
                                      ylbnd:integer,yrbnd:integer,
                                      zlbnd:integer,zrbnd:integer) subroutine
@@ -516,6 +518,7 @@ fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 spectral logical /.false./
 l_nodecentered logical /.false./
+l_macroscopic logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
 nz integer /0/ # nb of mesh cells of grid interior in the z direction
@@ -607,9 +610,15 @@ Ez(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 By(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 Bz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
-Sigmax(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
-Sigmay(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
-Sigmaz(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real
+Sigmax(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # conductivity at Ex grid location
+Sigmay(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # conductivity at Ey grid location
+Sigmaz(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # conductivity at Ez grid location
+Epsix(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permittivity at Ex grid location
+Epsiy(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permittivity at Ey grid location
+Epsiz(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permittivity at Ez grid location
+Mux(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permeability at Ex grid location
+Muy(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permeability at Ey grid location
+Muz(-nxguard:nxs+nxguard,-nyguard:nys+nyguard,-nzguard:nzs+nzguard) _real # permeability at Ez grid location
 Exp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Eyp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
 Ezp(-nxguard:nxp+nxguard,-nyguard:nyp+nyguard,-nzguard:nzp+nzguard) _real
