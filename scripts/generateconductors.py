@@ -63,7 +63,8 @@ Special:
 
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid='next',
-name=None,material='SS',laccuimagecharge=0,neumann=0,conductivity=None
+name=None,material='SS',laccuimagecharge=0,neumann=0,
+conductivity=None,permittivity=None,permeability=None,
 
 installconductor(a,...): generates the data needed for the fieldsolve
                          See its documentation for the additional arguments.
@@ -244,6 +245,10 @@ Should never be directly created by the user.
  - material='SS': conductor material
  - conductivity=None: Conductivity of the conductor. Currently only used
                       by the Electromagnetic field solver.
+ - permittivity=None: Permittivity of the object. Currently only used
+                      by the Electromagnetic field solver.
+ - permeability=None: Permeability of the object. Currently only used
+                      by the Electromagnetic field solver.                      
  - laccuimagecharge=0: Flags accumulation of image charges
   """
 
@@ -254,7 +259,7 @@ Should never be directly created by the user.
   nextcondid = 1
 
   __inputs__ = {'name':'','material':'SS','laccuimagecharge':0,'neumann':0,
-                'conductivity':None}
+                'conductivity':None,'permittivity':None,'permeability':None}
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid='next',kwlist=[],
                     generatorf=None,generatord=None,generatori=None,
@@ -845,7 +850,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
   def __init__(self,l):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
                       kw={'material':l.material,'name':l.name,
-                          'neumann':l.neumann,'conductivity':l.conductivity})
+                          'neumann':l.neumann,'conductivity':l.conductivity,
+                          'permittivity':l.permittivity,'permeability':l.permeability})
     self.left = l
   def getextent(self):
     return (-self.left.getextent())
@@ -879,7 +885,8 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
                       kw={'material':l.material,'name':(l.name or r.name),
-                          'neumann':l.neumann,'conductivity':l.conductivity})
+                          'neumann':l.neumann,'conductivity':l.conductivity,
+                          'permittivity':l.permittivity,'permeability':l.permeability})
     self.left = l
     self.right = r
   def getextent(self):
@@ -925,7 +932,8 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
                       kw={'material':l.material,'name':(l.name or r.name),
-                          'neumann':l.neumann,'conductivity':l.conductivity})
+                          'neumann':l.neumann,'conductivity':l.conductivity,
+                          'permittivity':l.permittivity,'permeability':l.permeability})
     self.left = l
     self.right = r
   def getextent(self):
@@ -971,7 +979,8 @@ AssemblyMinus class.
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
                       kw={'material':l.material,'name':(l.name or r.name),
-                          'neumann':l.neumann,'conductivity':l.conductivity})
+                          'neumann':l.neumann,'conductivity':l.conductivity,
+                          'permittivity':l.permittivity,'permeability':l.permeability})
     self.left = l
     self.right = r
   def getextent(self):
