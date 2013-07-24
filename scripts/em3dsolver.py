@@ -1624,12 +1624,34 @@ class EM3D(SubcycledPoissonSolver):
     # --- installed when it is needed, during a call to getconductorobject.
     self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
 
+  def init_macroscopic_coefs(self):
+        if self.fields.l_macroscopic:return 
+        
+        self.fields.nxs = self.fields.nx
+        self.fields.nys = self.fields.ny
+        self.fields.nzs = self.fields.nz
+        self.fields.gchange()
+        self.fields.Sigmax=0.
+        self.fields.Sigmay=0.
+        self.fields.Sigmaz=0.
+        self.fields.Epsix=1.
+        self.fields.Epsiy=1.
+        self.fields.Epsiz=1.
+        self.fields.Mux=1.
+        self.fields.Muy=1.
+        self.fields.Muz=1.
+        self.fields.l_macroscopic=True
+
   def _installconductor(self,conductorobject,installedlist,conductordata,fselfb):
     # --- This does that actual installation of the conductor into the
     # --- conductor object
 
     # --- Extract the data from conductordata (the arguments to installconductor)
     conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
+
+    self.co = conductorobject
+    self.c = conductor
+    self.cd = conductordata
 
     if conductor in installedlist: return
     installedlist.append(conductor)
@@ -1671,13 +1693,38 @@ class EM3D(SubcycledPoissonSolver):
     self.fields.gchange()
     self.fields.incond=False
     if self.fields.nconds>0:
-      set_incond(self.fields,self.fields.nconds,int(conductorobject.interior.indx[:,:self.fields.nconds]))
-    if self.block.xlbnd==openbc:self.fields.incond[:3,:,:]=False
-    if self.block.xrbnd==openbc:self.fields.incond[-3:,:,:]=False
-    if self.block.ylbnd==openbc:self.fields.incond[:,:3,:]=False
-    if self.block.yrbnd==openbc:self.fields.incond[:,-3:,:]=False
-    if self.block.zlbnd==openbc:self.fields.incond[:,:,:3]=False
-    if self.block.zrbnd==openbc:self.fields.incond[:,:,-3:]=False
+      self.init_macroscopic_coefs()
+      if conductor.conductivity is not None or \
+         conductor.permittivity is not None or \
+         conductor.permeability is not None:
+         if conductor.conductivity is not None:
+           conductivity = conductor.conductivity
+         else:
+           conductivity = 0.
+         if conductor.permittivity is not None:
+           permittivity = conductor.permittivity
+         else:
+           permittivity = 1.
+         if conductor.permeability is not None:
+           permeability = conductor.permeability
+         else:
+           permeability = 1.
+         set_macroscopic_coefs_on_yee(self.fields, \
+                                      self.fields.nconds, \
+                                      int(conductorobject.interior.indx[:,:self.fields.nconds]), \
+                                      conductivity, \
+                                      permittivity, \
+                                      permeability)
+      else:
+         set_incond(self.fields, \
+                    self.fields.nconds, \
+                    int(conductorobject.interior.indx[:,:self.fields.nconds]))
+         if self.block.xlbnd==openbc:self.fields.incond[:3,:,:]=False
+         if self.block.xrbnd==openbc:self.fields.incond[-3:,:,:]=False
+         if self.block.ylbnd==openbc:self.fields.incond[:,:3,:]=False
+         if self.block.yrbnd==openbc:self.fields.incond[:,-3:,:]=False
+         if self.block.zlbnd==openbc:self.fields.incond[:,:,:3]=False
+         if self.block.zrbnd==openbc:self.fields.incond[:,:,-3:]=False
     
   def hasconductors(self):
     return len(self.conductordatalist) > 0
@@ -3728,6 +3775,7 @@ def pyinit_3dem_block(nx, ny, nz,
   b.zrbnd = zrb
 
   f=b.core.yf
+  f.l_macroscopic = False
   f.nx = nx
   f.ny = ny
   f.nz = nz
