@@ -434,6 +434,29 @@ the diagnostic is of interest and is meaningfull.
       self.l2symtry = false
       self.l4symtry = false
 
+    self.setupbounds(**kw)
+    self.setuppbounds(**kw)
+    self.setupmeshextent(**kw)
+    self.setupparallelneighbors()
+
+    # --- Some flags
+    self.sourcepfinalized = 1
+
+  def processdefaultsfrompackage(self,defaults,package,kw):
+    for name in defaults:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(package,name))
+      if name in kw: del kw[name]
+
+  def processdefaultsfromdict(self,dict,kw):
+    for name,defvalue in dict.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+      if name in kw: del kw[name]
+
+  def setupbounds(self,**kw):
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
     if 'bounds' not in self.__dict__:
@@ -468,6 +491,7 @@ the diagnostic is of interest and is meaningfull.
           self.bounds[2] = neumann
           self.bounds[3] = neumann
 
+  def setuppbounds(self,**kw):
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
     if 'pbounds' not in self.__dict__:
@@ -498,6 +522,7 @@ the diagnostic is of interest and is meaningfull.
           self.pbounds[2] = reflect
           self.pbounds[3] = reflect
 
+  def setupmeshextent(self,**kw):
     # --- Check for zero length dimensions
     if self.nx == 0:
       self.xmmin = 0.
@@ -555,6 +580,7 @@ the diagnostic is of interest and is meaningfull.
     else:
       self.iz_axis = nint(-self.zmmin/self.dz)
 
+  def setupparallelneighbors(self):
     # --- Generate a list of the neighboring processors.
     self.neighborpes = [self.convertindextoproc(ix=self.ixproc-1),
                         self.convertindextoproc(ix=self.ixproc+1),
@@ -568,23 +594,6 @@ the diagnostic is of interest and is meaningfull.
     for pe in self.neighborpes:
       if pe >= 0 and pe not in self.neighborpeslist:
         self.neighborpeslist.append(pe)
-
-    # --- Some flags
-    self.sourcepfinalized = 1
-
-  def processdefaultsfrompackage(self,defaults,package,kw):
-    for name in defaults:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(package,name))
-      if name in kw: del kw[name]
-
-  def processdefaultsfromdict(self,dict,kw):
-    for name,defvalue in dict.iteritems():
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,defvalue)
-      if name in kw: del kw[name]
 
   def setupdecompserial(self):
     self.my_index = 0
