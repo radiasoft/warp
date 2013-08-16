@@ -22,6 +22,7 @@ class EM3D(SubcycledPoissonSolver):
                     'nxguard':1,'nyguard':1,'nzguard':1,
                     'l_particles_weight':false,'l_usecoeffs':false,
                     'l_pushf':false,'l_pushpot':false,'l_verbose':false,
+                    'l_deposit_rho':false,
                     'laser_func':None,
                     'laser_amplitude':1.,'laser_profile':None,'laser_phase':0.,
                     'laser_gauss_widthx':None,'laser_gauss_centerx':0.,
@@ -404,7 +405,7 @@ class EM3D(SubcycledPoissonSolver):
                                    int(self.bounds[5]),
                                    self.deposit_energy_density,
                                    self.refinement,
-                                   self.l_pushf,
+                                   self.l_pushf or self.l_deposit_rho,
                                    self.stencil,
                                    self.npass_smooth,
                                    self.l_smooth_particle_fields,
@@ -1191,7 +1192,7 @@ class EM3D(SubcycledPoissonSolver):
                                             f.nxguard,f.nyguard,f.nzguard,
                                             l_particles_weight,
                                             top.lrelativ)
-    if self.l_pushf:
+    if self.l_pushf or self.l_deposit_rho:
       if self.l_2dxz:
         depose_rho_n_2dxz(self.fields.Rho,n,
                                x,y,z,
@@ -1227,7 +1228,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_verbose:print 'zerosourcep',self
 
     # --- copy rho to rhoold if needed
-    if self.l_pushf and self.ncyclesperstep>1:
+    if (self.l_pushf or self.l_deposit_rho) and self.ncyclesperstep>1:
       self.fields.Rhoold = self.fields.Rho.copy()
       if self.refinement is not None:
         self.field_coarse.fields.Rhoold = self.field_coarse.fields.Rho.copy()
@@ -1238,7 +1239,7 @@ class EM3D(SubcycledPoissonSolver):
         self.fields.Jarray[...,indts] = 0.
 #        if self.refinement is not None:
 #          self.field_coarse.fields.Jarray[...,indts] = 0.
-        if self.l_pushf:
+        if self.l_pushf or self.l_deposit_rho:
           self.fields.Rhoarray[...,indts] = 0.
 #          if self.refinement is not None:
 #            self.field_coarse.fields.Rho[...,indts] = 0.
@@ -1249,7 +1250,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_verbose:print 'setsourcepforparticles'
     # --- point J array to proper Jarray slice
     self.fields.J = self.fields.Jarray[:,:,:,:,indts]
-    if self.l_pushf: self.fields.Rho = self.fields.Rhoarray[:,:,:,indts]
+    if self.l_pushf or self.l_deposit_rho: self.fields.Rho = self.fields.Rhoarray[:,:,:,indts]
 
   def add_source_ndts_slices(self):  
     # --- add slices
@@ -1258,7 +1259,7 @@ class EM3D(SubcycledPoissonSolver):
       for indts in range(top.nsndts-2,-1,-1):
         if top.ldts[indts]:
           add_current_slice_3d(self.fields,indts+1)
-          if self.l_pushf:add_rho_slice_3d(self.fields,indts+1)
+          if self.l_pushf or self.l_deposit_rho:add_rho_slice_3d(self.fields,indts+1)
 
   def finalizesourcep(self):
     if self.sourcepfinalized: return
@@ -1303,7 +1304,7 @@ class EM3D(SubcycledPoissonSolver):
     self.apply_current_bc(self.block)
     if self.refinement is not None:
       self.apply_current_bc(self.block_coarse)
-    if self.l_pushf:
+    if self.l_pushf or self.l_deposit_rho:
       self.apply_rho_bc(self.block)
       if self.refinement is not None:
         self.apply_rho_bc(self.block_coarse)
@@ -1317,7 +1318,7 @@ class EM3D(SubcycledPoissonSolver):
         
     # --- point J to first slice of Jarray
     self.fields.J = self.fields.Jarray[:,:,:,:,0]
-    if self.l_pushf:self.fields.Rho = self.fields.Rhoarray[:,:,:,0]
+    if self.l_pushf or self.l_deposit_rho:self.fields.Rho = self.fields.Rhoarray[:,:,:,0]
     
   def smoothdensity(self):
     if all(self.npass_smooth==0):return
@@ -1330,26 +1331,26 @@ class EM3D(SubcycledPoissonSolver):
         self.mask_smooth.append(None)
     if l_mask_method==2:
       Jcopy = self.fields.J.copy()
-      if self.l_pushf:
+      if self.l_pushf or self.l_deposit_rho:
         Rhocopy = self.fields.Rho.copy()
     for js in range(nsm):
       if self.mask_smooth[js] is None or l_mask_method==2:
         smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
         smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
         smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        if self.l_pushf:
+        if self.l_pushf or self.l_deposit_rho:
           smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
       else:
         smooth3d_121_stride_mask(self.fields.J[...,0],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
         smooth3d_121_stride_mask(self.fields.J[...,1],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
         smooth3d_121_stride_mask(self.fields.J[...,2],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        if self.l_pushf:
+        if self.l_pushf or self.l_deposit_rho:
           smooth3d_121_stride_mask(self.fields.Rho[...],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
     if l_mask_method==2:
         for i in range(3):
           self.fields.J[...,i] *= self.mask_smooth
           self.fields.J[...,i] += Jcopy[...,i]*(1.-self.mask_smooth)
-        if self.l_pushf:
+        if self.l_pushf or self.l_deposit_rho:
           self.fields.Rho *= self.mask_smooth
           self.fields.Rho += Rhocopy*(1.-self.mask_smooth)
           
@@ -1408,7 +1409,7 @@ class EM3D(SubcycledPoissonSolver):
         self.smootharray(self.fields.Bx,js)
         self.smootharray(self.fields.By,js)
         self.smootharray(self.fields.Bz,js)
-        if self.l_pushf:
+        if self.l_pushf or self.l_deposit_rho:
           smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
        
   def getsmoothx(self):
@@ -2023,7 +2024,7 @@ class EM3D(SubcycledPoissonSolver):
 
   def push_e_full(self,i):  
     dt = top.dt/self.ncyclesperstep
-    if self.l_pushf:
+    if self.l_pushf or self.l_deposit_rho:
       w = float(i+2)/self.ncyclesperstep
       self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
     if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
