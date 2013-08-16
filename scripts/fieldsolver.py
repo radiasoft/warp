@@ -1027,6 +1027,7 @@ the diagnostic is of interest and is meaningfull.
       w3d.ny = self.ny
       w3d.nz = self.nz
       setupdecompositionw3d()
+      gchange("Fields3d")
       setupgridextent()
       w3d.ix_axis = self.ix_axis
       w3d.iy_axis = self.iy_axis
