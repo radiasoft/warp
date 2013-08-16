@@ -9,8 +9,8 @@ from em2dsolver import EM2D
 
 particleinjection_version = "$Id: particleinjection.py,v 1.17 2011/11/11 21:52:26 rcohen Exp $"
 def particleinjection_doc():
-  import particleinjection
-  print particleinjection.__doc__
+    import particleinjection
+    print particleinjection.__doc__
 
 class InjectionGaussLaw(object):
     """Sets up injection using Gauss's law to determine the amount of charge to
@@ -61,8 +61,8 @@ conductors are an argument.
         # --- register any initial conductors
         self.conductors = []
         if conductors is None:
-           # --- Grab a copy of the list of all conductors created so far.
-           conductors = copy.copy(generateconductors.listofallconductors)
+            # --- Grab a copy of the list of all conductors created so far.
+            conductors = copy.copy(generateconductors.listofallconductors)
         self.registerconductors(conductors)
 
         # --- If the user specified the grid, then add the conductors
@@ -122,47 +122,47 @@ The sizes of the E arrays will be:
         # --- Test to see if solver is EM
         # --- If so, just copy the fields and return
         if isinstance(solver,EM3D):
-          # --- We need the fields 1/2 cell displaced from each node on
-          # --- either side of node.
-          # --- So we need values in ghost cells.
-          # --- The EM solver has solver.nxguard guard cells, uppper and lower, in x,
-          # ---  solver.nyguard guard cells in y, etc.
-          # --- All fields have nj+2*ngj+1 values in direction j
-          # --- So for Ex there are values starting 1/2 cell above the first computational guard cell and ending
-          # ---  1/2 cell above the upper end of the compuational grid (last guard-cell node).
-          # --- This last row of Ex is not used.
-          # ---  Hence the index of Ex corresponding to the one just below the first PHYSICAL cell
-          # ---  is nxguard-1, and we use Ex values running from index nxguard-1 up to but not including
-          # ---  index -nxguard, hence in Python slicing language, slicing  nxguard-1:-nxguard
-          # ---  In the z direction we need Ex from index nzguard to but not including -nzguard, i.e.
-          # ---  slicing nzguard:-nzguard.   Similar permutations for other field components.
-          Exraw = solver.fields.Ex
-          Eyraw = solver.fields.Ey
-          Ezraw = solver.fields.Ez
-          # --- Test to see if fields are staggered; if yes do nothing;
-          # --- if no, stagger them, do calculation, and then convert back.
-          convertback = 0
-          if solver.fields.l_nodecentered:
-            solver.node2yee3d()
-            convertback = 1
-          nxguard=solver.nxguard
-          nyguard=solver.nyguard
-          nzguard=solver.nzguard
-          if shape(Exraw)[1]==1:
-            # --- x-z or r-z
-            Ex = Exraw[nxguard-1:-nxguard,:,nzguard:-nzguard]
-            Ez = Ezraw[nxguard:-nxguard,:,nzguard-1:-nzguard]
-            Ey = zeros((shape(Ez)[0],2,shape(Ex)[2]),'d')
-            # --- formerly assumed node centered so did averaging, e.g.
-            #          Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
-          else:
-            # --- 3D
-            Ex = Exraw[nxguard-1:-nxguard,nyguard:-nyguard,nzguard:-nzguard]
-            Ey = Eyraw[nxguard:-nxguard,nyguard-1:-nyguard,nzguard:-nzguard]            
-            Ez = Ezraw[nzguard:-nzguard,nyguard:-nyguard,nzguard-1:-nzguard]
-          if convertback:
-            solver.yee2node3d()
-          return Ex,Ey,Ez
+            # --- We need the fields 1/2 cell displaced from each node on
+            # --- either side of node.
+            # --- So we need values in ghost cells.
+            # --- The EM solver has solver.nxguard guard cells, uppper and lower, in x,
+            # ---  solver.nyguard guard cells in y, etc.
+            # --- All fields have nj+2*ngj+1 values in direction j
+            # --- So for Ex there are values starting 1/2 cell above the first computational guard cell and ending
+            # ---  1/2 cell above the upper end of the compuational grid (last guard-cell node).
+            # --- This last row of Ex is not used.
+            # ---  Hence the index of Ex corresponding to the one just below the first PHYSICAL cell
+            # ---  is nxguard-1, and we use Ex values running from index nxguard-1 up to but not including
+            # ---  index -nxguard, hence in Python slicing language, slicing  nxguard-1:-nxguard
+            # ---  In the z direction we need Ex from index nzguard to but not including -nzguard, i.e.
+            # ---  slicing nzguard:-nzguard.   Similar permutations for other field components.
+            Exraw = solver.fields.Ex
+            Eyraw = solver.fields.Ey
+            Ezraw = solver.fields.Ez
+            # --- Test to see if fields are staggered; if yes do nothing;
+            # --- if no, stagger them, do calculation, and then convert back.
+            convertback = 0
+            if solver.fields.l_nodecentered:
+                solver.node2yee3d()
+                convertback = 1
+            nxguard = solver.nxguard
+            nyguard = solver.nyguard
+            nzguard = solver.nzguard
+            if shape(Exraw)[1]==1:
+                # --- x-z or r-z
+                Ex = Exraw[nxguard-1:-nxguard,:,nzguard:-nzguard]
+                Ez = Ezraw[nxguard:-nxguard,:,nzguard-1:-nzguard]
+                Ey = zeros((shape(Ez)[0],2,shape(Ex)[2]),'d')
+                # --- formerly assumed node centered so did averaging, e.g.
+                #          Ex = .5*(Exraw[2:-3,:,3:-3]+Exraw[3:-2,:,3:-3])
+            else:
+                # --- 3D
+                Ex = Exraw[nxguard-1:-nxguard,nyguard:-nyguard,nzguard:-nzguard]
+                Ey = Eyraw[nxguard:-nxguard,nyguard-1:-nyguard,nzguard:-nzguard]
+                Ez = Ezraw[nxguard:-nxguard,nyguard:-nyguard,nzguard-1:-nzguard]
+            if convertback:
+                solver.yee2node3d()
+            return Ex,Ey,Ez
 
         # --- Electrostatic field solvers
         if solver is w3d: phip = solver.phip
@@ -232,11 +232,19 @@ The sizes of the E arrays will be:
 the charge density at the grid point at the center of the dual cell times
 the area of the dual cell.
         """
+        nxguard = solver.nxguard
+        nyguard = solver.nyguard
+        nzguard = solver.nzguard
+        if isinstance(solver,EM3D):
+            if not solver.l_deposit_rho:
+                raise Exception("The l_deposit_rho flag must be true for the EM solver")
+            rhop = solver.fields.Rho[nxguard:-nxguard,nyguard:-nyguard,nzguard:-nzguard]
+        else:
+            if solver is w3d: rhop = solver.rhop
+            else:             rhop = solver.sourcep
         dx = solver.dx
         dy = solver.dy
         dz = solver.dz
-        if solver is w3d: rhop = solver.rhop
-        else:             rhop = solver.sourcep
         Irho = rhop*dx*dy*dz
 
         return Irho
@@ -266,8 +274,8 @@ the area of the dual cell.
         Enorm  = Ex[1:,:,:]*dy*dz
         Enorm -= Ex[:-1,:,:]*dy*dz
         if not self.l_2d:
-          Enorm += Ey[:,1:,:]*dx*dz
-          Enorm -= Ey[:,:-1,:]*dx*dz
+            Enorm += Ey[:,1:,:]*dx*dz
+            Enorm -= Ey[:,:-1,:]*dx*dz
         Enorm += Ez[:,:,1:]*dx*dy
         Enorm -= Ez[:,:,:-1]*dx*dy
         Enorm *= eps0
@@ -287,17 +295,17 @@ the area of the dual cell.
 
         # --- If the user has specified a non-zero upper bound to the number of particles, impose it here
         if self.rnnmax:
-          rnn = minimum(rnn,self.rnnmax)
+            rnn = minimum(rnn,self.rnnmax)
 
         # --- Scale appropriately for cylindrical coordinates
         # --- This accounts the difference in area of a grid cell in
         # --- Cartesian (dx*dy) and cylindrical (2 pi*r*dx).
         if self.lcylindrical:
-          if solver.xmmin == 0:
-            rnn[0,...] *= 0.25*pi*solver.dx/solver.dy
-          else:
-            rnn[0,...] *= 2.0*pi*solver.xmmin/solver.dy
-          rnn[1:,...] *= 2.0*pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
+            if solver.xmmin == 0:
+                rnn[0,...] *= 0.25*pi*solver.dx/solver.dy
+            else:
+                rnn[0,...] *= 2.0*pi*solver.xmmin/solver.dy
+            rnn[1:,...] *= 2.0*pi*solver.xmesh[1:,newaxis,newaxis]/solver.dy
 
         # --- Add a random number to the number of particles injected
         # --- so that the average number of particles injected is
@@ -310,8 +318,8 @@ the area of the dual cell.
 
         relax = self.getrelax()
         if relax != 1.:
-          # self.inj_np holds the previous timestep's rnn data
-          rnn = relax*rnn + (1. - relax)*self.inj_np
+            # self.inj_np holds the previous timestep's rnn data
+            rnn = relax*rnn + (1. - relax)*self.inj_np
 
         # --- Save the number for diagnostics
         self.inj_np = rnn.copy()
@@ -335,20 +343,20 @@ the area of the dual cell.
                                dx,dy,dz,nn,xx,yy,zz,ex,ey,ez,pp)
         xx += solver.xmminp
         if not self.l_2d:
-          yy += solver.ymminp
+            yy += solver.ymminp
         zz += solver.zmminp
 
         # --- Give particles a thermal velocity.
         # --- This now ignores the fact the roughly half the particles will be
         # --- headed back into the conductor.
         if self.vthermal > 0.:
-          vx = random.normal(0.,self.vthermal,nn)
-          vy = random.normal(0.,self.vthermal,nn)
-          vz = random.normal(0.,self.vthermal,nn)
+            vx = random.normal(0.,self.vthermal,nn)
+            vy = random.normal(0.,self.vthermal,nn)
+            vz = random.normal(0.,self.vthermal,nn)
         else:
-          vx = zeros(nn)
-          vy = zeros(nn)
-          vz = zeros(nn)
+            vx = zeros(nn)
+            vy = zeros(nn)
+            vz = zeros(nn)
 
         # --- The location of the virtual surface, for each particle
         xv,yv,zv = zeros((3,nn),'d')
@@ -680,5 +688,4 @@ for example after load balancing.
                                         Q[1:-1,1:-1,:-2] + Q[1:-1,1:-1,2:]) +
                                       ( Q[1:-1,1:-1,1:-1]))*0.125
         '''
-
 
