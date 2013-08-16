@@ -992,6 +992,52 @@ the diagnostic is of interest and is meaningfull.
     self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
     self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
 
+  def resizemesh(self,xmmin=None,xmmax=None,ymmin=None,ymmax=None,zmmin=None,zmmax=None,
+                 nx=None,ny=None,nz=None,resizew3d=True):
+    """Change the size of the domain and/or the number of grid cells. Only the modified values need to be specified.
+      - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: New grid extent.
+      - nx,ny,nz: New numbers of grid cells.
+    The grid cells sizes are automatically recalculated.
+    """
+    if xmmin is not None: self.xmmin = xmmin
+    if xmmax is not None: self.xmmax = xmmax
+    if ymmin is not None: self.ymmin = ymmin
+    if ymmax is not None: self.ymmax = ymmax
+    if zmmin is not None: self.zmmin = zmmin
+    if zmmax is not None: self.zmmax = zmmax
+    if nx is not None: self.nx = nx
+    if ny is not None: self.ny = ny
+    if nz is not None: self.nz = nz
+    self.dx = 0.
+    self.dy = 0.
+    self.dz = 0.
+    self.setupmeshextent()
+    self.clearconductors()
+    self.conductorobjects = {}
+    # --- Note that the sizes of the arrays will be adjusted when they are needed.
+
+    if resizew3d:
+      w3d.xmmin = self.xmmin
+      w3d.xmmax = self.xmmax
+      w3d.ymmin = self.ymmin
+      w3d.ymmax = self.ymmax
+      w3d.zmmin = self.zmmin
+      w3d.zmmax = self.zmmax
+      w3d.nx = self.nx
+      w3d.ny = self.ny
+      w3d.nz = self.nz
+      setupdecompositionw3d()
+      setupgridextent()
+      w3d.ix_axis = self.ix_axis
+      w3d.iy_axis = self.iy_axis
+      w3d.iz_axis = self.iz_axis
+      top.xpmin = self.xmmin
+      top.xpmax = top.xpmin + w3d.nx*w3d.dx
+      top.ypmin = self.ymmin
+      top.ypmax = top.ypmin + w3d.ny*w3d.dy
+      top.zpmin = self.zmmin
+      top.zpmax = top.zpmin + w3d.nz*w3d.dz
+
   # --- Diagnostic routines
   def rhodia(self):
     pass
