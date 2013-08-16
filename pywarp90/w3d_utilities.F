@@ -690,7 +690,7 @@ c       --- is 2.
 
 c       --- bestnz is zperproc rounded down.
         bestnz = int(zperproc)
-     
+
 c       --- First processor is easy
         nzdecomp(0) = nint(zperproc)
         izdecomp(0) = 0
@@ -1134,12 +1134,21 @@ c     --- has caught up (and then they can be deleted).
       zpslmin =  ppdecomp%zmin
       zpslmax =  ppdecomp%zmax
 
+c     --- These are only set for backwards compatibility, but should not
+c     --- be used.
+      xmminglobal = xmmin
+      xmmaxglobal = xmmin + nx*dx
+      ymminglobal = ymmin
+      ymmaxglobal = ymmin + ny*dy
+      zmminglobal = zmmin
+      zmmaxglobal = zmmin + nz*dz
+
       return
       end
 c===========================================================================
       subroutine smooth3d_121(q,nx,ny,nz,npass,alpha)
-c     --- performs a smoothing sequence of n passes of a three points stencil 
-c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.      
+c     --- performs a smoothing sequence of n passes of a three points stencil
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.
        implicit none
 
        integer(ISZ) :: nx,ny,nz,i,j,k,l,npass(3)
@@ -1212,8 +1221,8 @@ c===========================================================================
       real(kind=8):: alpha(3)
       integer(ISZ):: bounds(0:5)
 
-c     --- performs a smoothing sequence of n passes of a three points stencil 
-c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.      
+c     --- performs a smoothing sequence of n passes of a three points stencil
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z.
 
       integer(ISZ):: j1,j2,k1,k2,l1,l2
       integer(ISZ):: i,j,k,l
@@ -1350,7 +1359,7 @@ c     --- z smoothing
       end subroutine smooth3d_121withbounds
 c===========================================================================
       subroutine smooth3d_121_stride(q,nx,ny,nz,npass,alpha,stride)
-c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- performs a smoothing sequence of n passes of a three points stencil
 c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
 c     --- with a stride.
        implicit none
@@ -1424,7 +1433,7 @@ c     --- with a stride.
       end subroutine smooth3d_121_stride
 c===========================================================================
       subroutine smooth3d_121_stride_mask(q,mask,nx,ny,nz,npass,alpha,stride)
-c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- performs a smoothing sequence of n passes of a three points stencil
 c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
 c     --- with a stride.
        implicit none
