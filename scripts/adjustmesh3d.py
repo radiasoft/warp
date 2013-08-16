@@ -11,10 +11,46 @@ def adjustmesh3ddoc():
   import adjustmesh3d
   print adjustmesh3d.__doc__
 
+def resizeZ_arrays(zzmin=None,zzmax=None,nzzarr=None):
+  if zzmin is not None: top.zmmin = zzmin
+  if zzmax is not None: top.zmmax = zzmax
+  if nzzarr is not None: top.nzzarr = nzzarr
+  top.dzz = (top.zzmax - top.zzmin)/top.nzzarr
+  top.dzzi = 1./top.dzz
+  gchange('Z_arrays')
+  top.zplmesh = span(top.zzmin,top.zzmax,top.nzzarr+1)
+
+def resizeLatticeInternal(zlmin=None,zlmax=None,nzlmax=None):
+  if zlmin is not None: top.zlmin = zlmin
+  if zlmax is not None: top.zlmax = zlmax
+  if nzlmax is not None: top.nzlmax = nzlmax
+  top.nzl = top.nzlmax
+  top.dzl = (top.zlmax - top.zlmin)/top.nzlmax
+  top.dzli = 1./top.dzl
+  gchange("InternalLattice")
+  top.zlmesh = span(top.zlmin,top.zlmax,top.nzlmax+1)
+  setlatt()
+
+def resizeZ_Momments(zmmntmin=None,zmmntmax=None,nzmmnt=None):
+  if zmmntmin is not None: top.zmmntmin = zmmntmin
+  if zmmntmax is not None: top.zmmntmax = zmmntmax
+  if nzmmnt is not None: top.nzmmnt = nzmmnt
+  top.dzm = (top.zmmntmax - top.zmmntmin)/top.nzmmnt
+  top.dzmi = 1./top.dzm
+  gchange("Z_Moments")
+  top.zmntmesh = span(top.zmmntmin,top.zmmntmax,top.nzmmnt+1)
+
+def resizetopmeshes(zmmin=None,zmmax=None,nz=None):
+  if zmmin is None: zmmin = w3d.zmmin
+  if zmmax is None: zmmax = w3d.zmmax
+  if nz is None: nz = w3d.nz
+  resizeZ_arrays(zmmin,zmmax,nz)
+  resizeLatticeInternal(zmmin,zmmax,nz)
+  resizeZ_Momments(zmmin,zmmax,nz)
 
 # -------------------------------------------------------------------------
-def resizemesh(nx=None,ny=None,nz=None,lloadrho=1,lfieldsol=1,
-               linj=0,lzmom=0,lzarray=0,conductors=None):
+def resizemesh(nx=None,ny=None,nz=None,lloadrho=True,lfieldsol=True,
+               linj=False,lzmom=False,lzarray=False,llattice=False,conductors=None):
   """
 Changes the number of grid points in the mesh.
 Warning - this does not yet work in parallel
@@ -86,27 +122,10 @@ Warning - this does not yet work in parallel
     w3d.inj_dz = w3d.inj_dz/rz 
     injctint()
 
-  # --- if requested, resize Z_Moments arrays accordingly 
-  if(lzmom):
-    top.nzmmnt = nint(top.nzmmnt*rz)
-    gchange('Z_Moments')
-    top.dzm = top.dzm/rz
-    top.dzmi = 1./top.dzm
-    for k in range(0,top.nzmmnt+1):
-        top.zmntmesh[k] = top.zmmntmin + k*top.dzm
-
-  # --- if requested, resize Z_arrays accordingly
-  if(lzarray):
-    top.nzzarr = nint(top.nzzarr*rz)
-    gchange('Z_arrays')
-    top.dzz = top.dzz/rz
-    top.dzzi = 1./top.dzz
-    for k in range(0,top.nzzarr+1):
-        top.zplmesh[k] = top.zzmin + k*top.dzz
-        top.prwallz[k] = top.prwall
-        top.prwallxz[k] = top.prwallx
-        top.prwallyz[k] = top.prwally
-        top.prwelipz[k] = 1.
+  # --- resize various things if requested
+  if lzmom: resizeZ_Momments(zmmntmin=w3d.zmmin,zmmntmax=w3d.zmmax,nzmmnt=w3d.nz)
+  if lzarray: resizeZ_arrays(zzmin=w3d.zmmin,zzmax=w3d.zmmax,nzzarr=w3d.nz)
+  if llattice: resizeLatticeInternal(zlmin=w3d.zmmin,zlmax=w3d.zmmax,nzlmax=w3d.nz)
 
   # --- Re-initialize any field solve parameters
   fieldsol(1)
