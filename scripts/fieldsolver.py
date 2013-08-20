@@ -2264,10 +2264,6 @@ the upper edge.
     Ex = solver.getex()
     Ey = solver.getey()
     Ez = solver.getez()
-    if solver.ny == 0:
-      Ex = Ex[:,0,:]
-      Ey = Ey[:,0,:]
-      Ez = Ez[:,0,:]
 
   elif ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
         not w3d.allocated('selfe')):
