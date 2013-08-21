@@ -1610,7 +1610,7 @@ class EM3D(SubcycledPoissonSolver):
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
-                            dfill=top.largepos):
+                            dfill=None):
     # --- This only adds the conductor to the list. The data is only actually
     # --- installed when it is needed, during a call to getconductorobject.
     self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
@@ -1621,6 +1621,11 @@ class EM3D(SubcycledPoissonSolver):
 
     # --- Extract the data from conductordata (the arguments to installconductor)
     conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
+
+    # --- Set dfill to be a large number so that the entire interior of the conductor
+    # --- gets filled in. This ensures that the field is forced to zero everywhere
+    # --- inside the conductor, but does not introduce a performance penalty.
+    if dfill is None: dfill = largepos
 
     if conductor in installedlist: return
     installedlist.append(conductor)

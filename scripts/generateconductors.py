@@ -132,7 +132,7 @@ def useoldconductorgeneration():
 ##############################################################################
 installedconductors = []
 def installconductor(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                     zmin=None,zmax=None,dfill=2.,
+                     zmin=None,zmax=None,dfill=None,
                      zbeam=None,
                      nx=None,ny=None,nz=None,
                      nxlocal=None,nylocal=None,nzlocal=None,
@@ -180,6 +180,8 @@ generate).
     elif "AMRtree" in __main__.__dict__:
       __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
       return
+
+  if dfill is None: dfill = 2.0
 
   # --- Use whatever conductors object was specified, or
   # --- if no special solver is being used, use f3d.conductors.

@@ -233,7 +233,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
-                            dfill=top.largepos):
+                            dfill=None):
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
