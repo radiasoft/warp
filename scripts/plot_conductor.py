@@ -1384,7 +1384,7 @@ in X-Y plane
 def pfzxbox(iy=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
             plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
             phicolor=blue,rhocolor=red,selfecolor=green,
-            condcolor='fg',conductors=f3d.conductors,solver=w3d,
+            condcolor='fg',conductors=None,solver=None,
             kwdict=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
@@ -1485,7 +1485,7 @@ in Z-X plane
 def pfzybox(ix=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
             plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
             phicolor=blue,rhocolor=red,selfecolor=green,
-            condcolor='fg',conductors=f3d.conductors,solver=w3d,
+            condcolor='fg',conductors=None,solver=None,
             kwdict=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
@@ -1586,7 +1586,7 @@ in Z-Y plane
 def pfzxboxi(iy=None,contours=8,plotsg=1,scale=1,signz=1,
              plotphi=1,plotrho=0,plotselfe=0,comp='z',
              filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
-             condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
+             condcolor='fg',conductors=None,solver=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
@@ -1617,7 +1617,7 @@ in Z-(-X) plane
 def pfzyboxi(ix=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
              plotphi=1,plotrho=0,plotselfe=0,comp='z',
              filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
-             condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
+             condcolor='fg',conductors=None,solver=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
