@@ -118,11 +118,11 @@ class EM3D(SubcycledPoissonSolver):
 #      self.npass_smooth = where(self.npass_smooth==0,1,self.npass_smooth)
     if self.l_2drz:self.l_2dxz=True
     if self.l_2dxz:
-      self.nyguard=self.nylocal=self.ny=0
+      self.nyguard=self.nylocal=self.ny=self.nyp=0
     if self.l_1dz:
       self.l_2dxz = True
-      self.nxguard=self.nxlocal=self.nx=0
-      self.nyguard=self.nylocal=self.ny=0
+      self.nxguard=self.nxlocal=self.nx=self.nxp=0
+      self.nyguard=self.nylocal=self.ny=self.nyp=0
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
@@ -163,26 +163,16 @@ class EM3D(SubcycledPoissonSolver):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
-    # --- Calculate mesh sizes
+    # --- Set grid cell sizes for unused dimensions
     if self.l_1dz:
       self.dx = 1.e36
-      self.xmesh = array([0.])
-      self.xmeshlocal = array([0.])
-    else:
-      self.dx = (self.xmmax - self.xmmin)/self.nx
-      self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
-      self.xmeshlocal = self.xmminlocal + arange(0,self.nxlocal+1)*self.dx
     if self.l_2dxz:
       self.dy = 1.e36
-      self.ymesh = array([0.])
-      self.ymeshlocal = array([0.])
-    else:
-      self.dy = (self.ymmax - self.ymmin)/self.ny
-      self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-      self.ymeshlocal = self.ymminlocal + arange(0,self.nylocal+1)*self.dy
-    self.dz = (self.zmmax - self.zmmin)/self.nz
-    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
+
+    # --- This needs to be called again since some mesh values may have changed
+    # --- since it was previously called in FieldSolver.__init__.
+    # --- For instance, if using RZ geometry, ny will be set to zero.
+    self.setupmeshextent()
 
     # --- sets coefficients of Cole solver
     if self.l_setcowancoefs:
