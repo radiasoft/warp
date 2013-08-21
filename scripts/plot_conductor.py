@@ -871,6 +871,8 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       conductors = f3d.conductors
     elif hasattr(solver,'conductors'):
       conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -1013,6 +1015,8 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       conductors = f3d.conductors
     elif hasattr(solver,'conductors'):
       conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -1142,6 +1146,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
       conductors = f3d.conductors
     elif hasattr(solver,'conductors'):
       conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -1305,6 +1311,31 @@ in X-Y plane
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
 
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      if hasattr(solver,'pfxybox'):
+        # --- If the solver has pfxybox defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfxybox(**kw)
+        return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
+
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
@@ -1377,6 +1408,31 @@ in Z-X plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      if hasattr(solver,'pfzxbox'):
+        # --- If the solver has pfzxbox defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfzxbox(**kw)
+        return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
@@ -1453,6 +1509,31 @@ in Z-Y plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      if hasattr(solver,'pfzybox'):
+        # --- If the solver has pfzybox defined, call that instead.
+        # --- Note that kw is not a valid keyword and so must be removed. Its
+        # --- contents have been put into kwdict.
+        kw = copy.copy(locals())
+        kw.update(kwdict)
+        del kw['kw']
+        del kw['kwdict']
+        solver.pfzybox(**kw)
+        return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d:
+      conductors = f3d.conductors
+    elif hasattr(solver,'conductors'):
+      conductors = solver.conductors
+    elif hasattr(solver,'getconductorobject'):
+      conductors = solver.getconductorobject()
 
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
