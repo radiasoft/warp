@@ -3584,6 +3584,7 @@ Plots the field of the emlt element
          "No such emlt element, %d, defined"%ie
   if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
+  if top.emitid[ie] == 0: return
   id = top.emltid[ie] - 1
   dz = top.dzemlt[id]
   nz = top.nzemlt[id]
@@ -3616,6 +3617,7 @@ Plots the field of the emlt element
          "No such mmlt element, %d, defined"%im
   if top.lresetlat: resetlat()
   if zoffset is None: zoffset = top.zlatstrt
+  if top.mmitid[im] == 0: return
   id = top.mmltid[im] - 1
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
@@ -3709,6 +3711,7 @@ such as contours, and cellarray.
          "One of ix, iy, iz must be specified"
   if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
+  if top.egrdid[ie] == 0: return
   id = top.egrdid[ie] - 1
   if component == 'phi':
     assert top.egrdnp > 0,'If phi component is specified, the egrdpp data must have been setup.'
@@ -3860,6 +3863,7 @@ such as contours, and cellarray.
          "One of ix, iy, iz must be specified"
   if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
+  if top.bgrdid[ib] == 0: return
   id = top.bgrdid[ib] - 1
   bb = getattr(top,'bgrdb'+component)
 
@@ -3996,6 +4000,7 @@ such as contours, and cellarray.
          "One of ix, iy, iz must be specified"
   if top.lresetlat: resetlat()
   if zlatstrt is None: zlatstrt = top.zlatstrt
+  if top.pgrdid[ip] == 0: return
   id = top.pgrdid[ip] - 1
   pp = top.pgrd
 
