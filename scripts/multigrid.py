@@ -726,7 +726,7 @@ most of which get there default values from one of the fortran packages.
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
-                            dfill=top.largepos):
+                            dfill=None):
     'Install the conductor into the field solver'
     # --- This only adds the conductor to the list. The data is only actually
     # --- installed when it is needed, during a call to getconductorobject.

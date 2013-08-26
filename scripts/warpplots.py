@@ -4397,7 +4397,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     if me > 0 and not local: eee = zeros((solver.nx+1,solver.nz+1),'d')
     setcmincmaxfromarray(eee.T,kw)
     ppgeneric(gridt=eee,kwdict=kw,local=1)
-    if fullplane and solver.l4symtry:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       ppgeneric(gridt=eee,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
@@ -4568,7 +4568,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     if me > 0 and not local: j = zeros((solver.nx+1,solver.nz+1),'d')
     setcmincmaxfromarray(j.T,kw)
     ppgeneric(gridt=j,kwdict=kw,local=1)
-    if fullplane and solver.l4symtry:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       ppgeneric(gridt=j,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
@@ -4723,7 +4723,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     if me > 0 and not local: b = zeros((solver.nx+1,solver.nz+1),'d')
     setcmincmaxfromarray(b.T,kw)
     ppgeneric(gridt=b,kwdict=kw,local=1)
-    if fullplane and solver.l4symtry:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       ppgeneric(gridt=b,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
@@ -4878,7 +4878,7 @@ For plotting options, see :py:func:`ppgeneric` or :py:func:`ppvector`.
     if me > 0 and not local: a = zeros((solver.nx+1,solver.nz+1),'d')
     setcmincmaxfromarray(a.T,kw)
     ppgeneric(gridt=a,kwdict=kw,local=1)
-    if fullplane and solver.l4symtry:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       ppgeneric(gridt=a,kwdict=kw,local=1,flipyaxis=1)
   else:
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):

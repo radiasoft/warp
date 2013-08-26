@@ -237,15 +237,6 @@ c        ymmin = 0.
         ymmin = 0.
       endif
 
-c     --- These are only set for backwards compatibility, but should not
-c     --- be used.
-      xmminglobal = xmmin
-      xmmaxglobal = xmmin + nx*dx
-      ymminglobal = ymmin
-      ymmaxglobal = ymmin + ny*dy
-      zmminglobal = zmmin
-      zmmaxglobal = zmmin + nz*dz
-
 #ifdef MPIPARALLEL
       call init_w3d_parallel()
 #endif
@@ -290,42 +281,8 @@ c  Setup the initial location and velocity of the beam frame.
       zgridndts = zbeam
       zgridprv = zbeam
 
-c  Calculate mesh dimensioning quantities
-
-      if (nx .ne. 0) dx = (xmmax - xmmin) / nx
-      if (ny .ne. 0) dy = (ymmax - ymmin) / ny
-      if (nz .ne. 0) dz = (zmmax - zmmin) / nz
-      if(solvergeom==RZgeom) then
-        dy = dx
-      elseif(solvergeom==XZgeom) then
-        dy = 1.
-      elseif(solvergeom==XYgeom) then
-        dz = 1.
-      elseif(solvergeom==Zgeom) then
-        dx = 1.
-        dy = 1.
-      elseif(solvergeom==Rgeom) then
-        dy = 1.
-        dz = 1.
-      end if
-      do i = 0, nx
-         xmesh(i) = i*dx + xmmin
-      enddo
-      do j = 0, ny
-         ymesh(j) = j*dy + ymmin
-      enddo
-      do k = 0, nz
-         zmesh(k) = k*dz + zmmin
-      enddo
-      do i = 0, nxlocal
-         xmeshlocal(i) = i*dx + xmminlocal
-      enddo
-      do j = 0, nylocal
-         ymeshlocal(j) = j*dy + ymminlocal
-      enddo
-      do k = 0, nzlocal
-         zmeshlocal(k) = k*dz + zmminlocal
-      enddo
+c  Setup grid cells sizes and mesh arrays
+      call setupgridextent()
 
       if (dx == 0.) call kaboom("w3dgen: dx is zero!")
       if (dy == 0.) call kaboom("w3dgen: dy is zero!")
@@ -341,7 +298,6 @@ c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       iz_axis = nint(-zmminlocal/dz)
 
 c  Setup arrays for potential and charge density for the particles.
-
       xpmin = xmmin
       xpmax = xmmin + nx*dx
       ypmin = ymmin
@@ -4018,7 +3974,7 @@ c===========================================================================
 c Gets self electric field for particles
 c The field is obtained from directly finite differencing phi for each
 c particle, using linear weighting.
- 
+
 c Note that the phi1d passed in is assumed to start at phi(-1,-1,-1).
 
 c Algorithm notes: phi array is dimensioned (-1:nx+1,-1:ny+1,-1:nz+1) outside,
@@ -11613,6 +11569,54 @@ c goes from -xmmax to xmmax. In XZ geometry, the extent in y is infinite.
         ymin = -LARGEPOS
         ymax =  LARGEPOS
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine setupgridextent()
+      use Picglb3d,Only: dx,dy,dz
+      use InMesh3d
+      use InGen3d
+      use Fields3d,Only: xmesh,ymesh,zmesh,xmeshlocal,ymeshlocal,zmeshlocal
+
+c  Calculate mesh dimensioning quantities
+
+      integer(ISZ):: i,j,k
+
+      if (nx .ne. 0) dx = (xmmax - xmmin) / nx
+      if (ny .ne. 0) dy = (ymmax - ymmin) / ny
+      if (nz .ne. 0) dz = (zmmax - zmmin) / nz
+      if(solvergeom==RZgeom) then
+        dy = dx
+      elseif(solvergeom==XZgeom) then
+        dy = 1.
+      elseif(solvergeom==XYgeom) then
+        dz = 1.
+      elseif(solvergeom==Zgeom) then
+        dx = 1.
+        dy = 1.
+      elseif(solvergeom==Rgeom) then
+        dy = 1.
+        dz = 1.
+      end if
+      do i = 0, nx
+         xmesh(i) = i*dx + xmmin
+      enddo
+      do j = 0, ny
+         ymesh(j) = j*dy + ymmin
+      enddo
+      do k = 0, nz
+         zmesh(k) = k*dz + zmmin
+      enddo
+      do i = 0, nxlocal
+         xmeshlocal(i) = i*dx + xmminlocal
+      enddo
+      do j = 0, nylocal
+         ymeshlocal(j) = j*dy + ymminlocal
+      enddo
+      do k = 0, nzlocal
+         zmeshlocal(k) = k*dz + zmminlocal
+      enddo
 
       return
       end

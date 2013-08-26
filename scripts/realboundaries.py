@@ -574,7 +574,7 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
                     scrapemethod=2,scraperargs={},
-                    dfill=2,lclearconductors=1,pipethickness=largepos,
+                    dfill=None,lclearconductors=1,pipethickness=largepos,
                     conductors=[]):
     global _realboundarycount
     # --- Only allow one instance of this class.

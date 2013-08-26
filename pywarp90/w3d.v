@@ -11,7 +11,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** W3Dversion:
-# Quantities associated with version control 
+# Quantities associated with version control
 versw3d character*19 /"$Revision: 3.324 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
@@ -23,7 +23,7 @@ icrhozy(0:NWINDOWS) integer  # rho contours xwindows
 icphixy(0:NWINDOWS) integer  # phi contours zwindows
 icphizx(0:NWINDOWS) integer  # phi contours ywindows
 icphizy(0:NWINDOWS) integer  # phi contours xwindows
-icrhoxy4            integer  # rho contours 4 zwindows / page 
+icrhoxy4            integer  # rho contours 4 zwindows / page
 icrhozx4            integer  # rho contours 4 ywindows / page
 icrhozy4            integer  # rho contours 4 xwindows / page
 icphixy4            integer  # phi contours 4 zwindows / page
@@ -65,7 +65,7 @@ XYgeom     integer    /4/  # 2-D planar geometry
 Zgeom      integer    /5/  # 1-D planar geometry
 Rgeom      integer    /6/  # 1-D radial geometry
 Ygeom      integer    /7/  # 1-D planar geometry
- 
+
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
                            # the product of rho and phi.
@@ -93,19 +93,19 @@ lsetcurr             logical /.true./ # Sets wether the current on axis is calcu
 zjig                      real  [1]    /0./
    # Controls "jiggling" of initial positions in z, for grid loading
 distrbtn                  character*20  /"none"/
-   # transvese particle distribution: 
-   #  "none"  = no distribution (user must define in interpreter)  
+   # transvese particle distribution:
+   #  "none"  = no distribution (user must define in interpreter)
    #  "semigaus" or "SG" or "SemiGaussian" = semi-Gaussian
    #  "K-V" or "KV" = Kapchinskij-Vladimirskij
-   #  "KV0" = alternative Kapchinskij-Vladimirskij 
-   #  Based on transformations of Hamiltonian defined equilibria in continuous 
+   #  "KV0" = alternative Kapchinskij-Vladimirskij
+   #  Based on transformations of Hamiltonian defined equilibria in continuous
    #  applied focusing channels (not presently implemented, future addition):
    #    "WB" or "Waterbag" = water-bag
-   #    "PA" or "Parabolic" = parabolic  
+   #    "PA" or "Parabolic" = parabolic
    #    "TE" or "ThermalEquilibrium" = thermal equilibrium
-   #  Based on zero-space-charge Courant-Snyder invariants of lattices with  
-   #  axially varying linear applied focusing: 
-   #    "WB0" or "Waterbag0" = water-bag  
+   #  Based on zero-space-charge Courant-Snyder invariants of lattices with
+   #  axially varying linear applied focusing:
+   #    "WB0" or "Waterbag0" = water-bag
    #    "PA0" or "Parabolic0" = parabolic
    #    "GA0" or "Gaussian0" = Gaussian
    #  "preload" = User preloaded distribution - in this case, the species
@@ -249,16 +249,16 @@ vthzofz(0:nvthzofz)        _real
    # Data is assumed to be uniformly spaced from zimin to zimax.
    # Data is assumed to have units of meter/second.
 nemitofz                   integer
-   # Number of data points for axially varying transverse emittances 
-   # emitxofz and emityofz. 
+   # Number of data points for axially varying transverse emittances
+   # emitxofz and emityofz.
 emitxofz(0:nemitofz)       _real
    # User specified axially varying transverse x-emittances
    # Data is assumed to be uniformly spaced in a normalized range from 0 to 1
    # with 0 being at zimin and 1 being at zimax.
 emityofz(0:nemitofz)       _real
    # User specified axially varying transverse y-emittances
-   # with same mesh as emitxofz.  
-			  # 
+   # with same mesh as emitxofz.
+   #
 
 *********** InMesh3d dump:
 # Mesh specifications (input qtys)
@@ -314,7 +314,7 @@ lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
 
 *********** Damped_eom dump:
 # All quantities associated with the damped mover algorithm
-eomdamp     real  [1] /0./ # EOM Damping param and switch 
+eomdamp     real  [1] /0./ # EOM Damping param and switch
 itdamp      integer   /5/  # Timestep when damping starts
 exeomoldpid integer        # Electric field pid index at particle one step back
 eyeomoldpid integer        # Electric field pid index at particle one step back
@@ -349,7 +349,7 @@ kysq(0:ny-1)            _real [1/m**2]  # Discrete analog to ky^2/4Pi
 kzsq(0:nz)              _real [1/m**2]  # Discrete analog to kz^2/4Pi
 rstar(-1:nzlocal+1)     _real [m]       # Radius of curv of refrnce orbit
 phiprv(0:nx,0:nzlocal)  _real [V]       # Prev phi at y_mid, for error test
-phisav(0:nx,-1:nzlocal) _real [V]       # Phi at current y slice (scratch) 
+phisav(0:nx,-1:nzlocal) _real [V]       # Phi at current y slice (scratch)
 xywork3d(2,0:nx,0:ny)   _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 
@@ -430,7 +430,7 @@ nzc  integer /0/ # Number of grid cells in z axis for isnearbycond
 isnearbycond(0:nxc,0:nyc,0:nzc) _integer
 
 *********** FieldSolveAPI:
-jmin   integer    /0/  # index start of current particle chunk in top.pgroup 
+jmin   integer    /0/  # index start of current particle chunk in top.pgroup
                        # (PYTHON indexed: based 0)
 jmax   integer    /0/  # index end of current particle chunk in top.pgroup
                        # (PYTHON indexed: based 0)
@@ -499,19 +499,19 @@ grid(-nxguard:nx+nxguard,
 # Parameters controlling the Boltzmann-Electrons.
 nberegions       integer /1/
      # Number of regions where Boltzmann-Electrons are
-iondensity(nberegions)  /0./    _real  
+iondensity(nberegions)  /0./    _real
      # Base ion charge density, multiplier on Boltzmann
      # exponential for field solvers including Boltzmann electrons
 electrontemperature(nberegions) _real /0./ [eV]
      # Electron temperature in units of eV
      # for field solvers including Boltzmann electrons
-plasmapotential(nberegions) /0./     _real     
+plasmapotential(nberegions) /0./     _real
      # Potential of plasma for field solvers including Boltzmann electrons
 electrondensitymaxscale(nberegions) _real /2./
      # Limit of electron density relative to iondensity. This should be large
      # enough to not affect the solution, but small enough to prevent
      # divergences during field solve.
-logelecdenmaxscale(nberegions)  _real # Log of electrondensitymaxscale, 
+logelecdenmaxscale(nberegions)  _real # Log of electrondensitymaxscale,
        # calculated by code
 xbemin(nberegions) _real /-LARGEPOS/ [m]
      # Minimum of the extent in x over which Boltzmann electrons are included
@@ -579,7 +579,7 @@ inj_js               integer  # Current speices being injected. Useful for
                               # generateuserparticlesforinjection.
 inj_nx               integer  /0/  # size injection arrays in x
 inj_ny               integer  /0/  # size injection arrays in y
-inj_nz               integer  /0/  # size injection arrays in z 
+inj_nz               integer  /0/  # size injection arrays in z
 inj_dx               real [m] /0./ # mesh spacing in x for injection
 inj_dy               real [m] /0./ # mesh spacing in y for injection
 inj_dz               real [m] /0./ # mesh spacing in z for injection
@@ -622,17 +622,17 @@ l_inj_user_particles logical /.false./ # When true, user specified particles
                                        # will be injected using arrays from
                                        # Setpwork3d. Only works with
                                        # inject=1.
-l_inj_user_particles_z logical /.false./ # When true, the user also provides 
+l_inj_user_particles_z logical /.false./ # When true, the user also provides
                                          # the z-position of specified injected
                                          # particles. They are set
                                          # automatically otherwise
                                          # from zinject and rinject (default).
-l_inj_user_particles_v logical /.false./ # When true, the user also provides 
+l_inj_user_particles_v logical /.false./ # When true, the user also provides
                                          # the velocity of specified injected
                                          # particles. They are set
                                          # automatically otherwise (default).
 l_inj_user_particles_dt logical /.false./ # When true, the user also provides
-                                          # the fractional time steps 
+                                          # the fractional time steps
                                           # of specified injected particles.
                                           # They are set automatically
                                           # otherwise (default).
@@ -699,13 +699,13 @@ pidt(npgrp,npidgrp)  _real
 
 *********** Multipole dump:
 # Electrostatic multipole moments of the electrostatic potential
-nmom                  integer  /1/  # number of terms in multipole expansion  
+nmom                  integer  /1/  # number of terms in multipole expansion
 nzmom                 integer  /0/  # Number of z grid points in the
                                     # multipolar decomposition, should be the
                                     # same as w3d.nz
-lazi(nmom)            _integer      # azimuthal mode numbers of moments 
-irpow(nmom)           _integer      # radial powers of moments 
-rmomcex(nmom,0:nzmom) _real    [1]  # multipoles, cos(theta) expansion terms 
+lazi(nmom)            _integer      # azimuthal mode numbers of moments
+irpow(nmom)           _integer      # radial powers of moments
+rmomcex(nmom,0:nzmom) _real    [1]  # multipoles, cos(theta) expansion terms
 rmomsex(nmom,0:nzmom) _real    [1]  # multipoles, sin(theta) expansion terms
 
 *********** Apertures dump:
@@ -731,7 +731,7 @@ aper_ey(0:nx,0:ny,-1:aper_zmax,napertures) _real [V/m]
 # Note several species dependent quantities; assume max of ns is 1000
 m_over_q(1000)  _real [mks] /0./ # mass over charge, calc. by code
 qovermsq(1000)  _real [mks] /0./ # (charge/mass)**2, calc. by code
-alpha0(1000)     _real     /0./ 
+alpha0(1000)     _real     /0./
                 # Interpolation parameter if not to be automatically set
                 # Note alpha0=0 for pure drift kinetics
 acntr(1000)      _real /.5/    # centering parameter for predictor-corrector
@@ -749,13 +749,13 @@ impinterp     integer   /0/  # set to 1 for implicit version of interpolated
 alphcoef      real    /0.25/ # coefficient multiplying (omegac dt)**2
                              # in setting alpha
 ipalpha       integer /1/   # power of sqrt(1+omegadt) in setting alpha.
-                            # allowed values for now are  1 or 2.  
-                            # If any other value, then uses the arbitrary 
+                            # allowed values for now are  1 or 2.
+                            # If any other value, then uses the arbitrary
                             # (real) power palpha in a slower calculation
                             # Note, only absolute value matters for alpha.
                             # Sign of ipalpha determines whether omegadt
-                            # is multiplied by 2 (2x as long dt) for 
-                            # ipredcor = 0.  (Done for ipalpha>0, not 
+                            # is multiplied by 2 (2x as long dt) for
+                            # ipredcor = 0.  (Done for ipalpha>0, not
                             # for ipalpha < 0.)
 palpha        real  /0.5/    # power of (1+omegadt) in setting alpha
                             # used only if ipalpha != 1 or 2.
@@ -765,12 +765,12 @@ npcmax         integer /-1/  # maximum number of corrector steps for
                             # global predictor-corrector. If it is negative,
                             # do old-style prediction from step 0 to 1; number
                             # of iterations is then -npcmax - 1.
-ipcmax         integer      # max number of predictor-corrector iterations 
-                            # used (0 if no interpolated species, npcmax if 
+ipcmax         integer      # max number of predictor-corrector iterations
+                            # used (0 if no interpolated species, npcmax if
                             # there IS an interpolated species and npcmax>0).
                             # Calculated by code.
 ipredcor       integer /0/  # flag to designate predictor/corrector for step3d
-icalceps       integer /0/  # flag to calculate polarization 
+icalceps       integer /0/  # flag to calculate polarization
                             # correction to Poisson solver if interpolating
 iusing2deps    integer      # flag set by code if 2D polarization is calcluated
 polfac               /1./   # multiplier on polarization term
@@ -845,15 +845,15 @@ AMRthreshold_gradient      real    /0.8/ # threshold above which to refine for
                                          # automatic refinement based on
                                          # gradient
 AMRmaxsize_isolated_blocks integer /0/   # maximum size of isolated blocks.
-                                         # Blocks which contain 
+                                         # Blocks which contain
                                          # AMRmaxsize_isolated_blocks^dim
-                                         # (where dim=2 in 2D and dim=3 in 3D) 
+                                         # (where dim=2 in 2D and dim=3 in 3D)
                                          # cells or less are removed. The goal
-                                         # is to prevent the creation of 
+                                         # is to prevent the creation of
                                          # refinement blocks due to statistical
-                                         # noise. 
+                                         # noise.
                                          # THIS IS EXPERIMENTAL: this might be
-                                         # partially implemented or not 
+                                         # partially implemented or not
                                          # implemented at all. There is no
                                          # guaranty at this stage that this
                                          # would effectively remove all
@@ -873,27 +873,27 @@ AMRuse_inactive_regions logical /.false./# When true, the fields in inactive
 
 *********** W3D_interpsubs:
 # Subroutines in file W3d_interp.F
-#setptrs(bx:real,by:real,bz:real,ex:real,ey:real,ez:real) 
+#setptrs(bx:real,by:real,bz:real,ex:real,ey:real,ez:real)
 #            subroutine # sets database B and E arrays
 #                      # equal to bx, by, bz, ex, ey, ez
 mugrdbpush(pgroup:ParticleGroup,np,is,ipmin,dtb:real,needcalcgradb)
-            subroutine #  does the mu grad B parallel acceleration 
+            subroutine #  does the mu grad B parallel acceleration
                        #  and corresponding change to vperp
 xpush3dintrp(pgroup:ParticleGroup,np,is,ipmin,dt:real)
               subroutine #  does the interpolated x push
-getvperpparsq(pgroup:ParticleGroup,np,ipmin) 
+getvperpparsq(pgroup:ParticleGroup,np,ipmin)
               subroutine #  finds v_perp^2, v_parallel^2, vparallel/B,v^2
                          #  of particles
 getveff(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,
         ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real,
-        predcor:string,dt:real) 
+        predcor:string,dt:real)
     subroutine #  gets components of interpolated velocity used in x push
 getvdrift(np,is,x(np):real,y(np):real,z(np):real,gaminv(np):real,
-          ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real) 
+          ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real)
     subroutine #  calculates vdrift from ExB and gradB
 setfields(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,
           ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real,
-          dt:real) 
+          dt:real)
     subroutine #  sets E,B at particle arrays; determines interpolation
                #  parameter alpha and its complement alphabar
 $setfields2(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
@@ -905,7 +905,7 @@ getgradbsq(np,is,x(np):real,y(np):real,z(np):real,
          subroutine    #  calculates or fetches grad B^2 components
 getalphas(np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real)
           subroutine   # calculate interpolation parameter alpha
-geteb(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
+geteb(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real)
           subroutine   #  fetch E and B fields
 set_polarization(rho(0:nx,0:nz),nx,nz,dx:real,dz:real,xmin:real,zmin:real)
           subroutine   # calculates x polarization and ratio of z to x polarization
@@ -936,7 +936,7 @@ othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
          straight:real,ifeears,eears:real,eearsofz(0:nzzarr):real,
          dzzi:real,nzzarr,
          zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
-	 dbxdy:real,dbydx:real,
+         dbxdy:real,dbydx:real,
          ex(np):real,ey(np):real,ez(np):real,
          bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field
@@ -1155,7 +1155,7 @@ stckxy3d(pgroup:ParticleGroup,js:integer,zbeam:real,lcountaslost:logical)
              subroutine # Enforces transverse absorbing boundaries
 stptcl3d(pgroup:ParticleGroup)   subroutine # Particle initializer
 setrstar(rstar(-1:nz+1):real,nz:integer,dz:real,zmmin:real,zgrid:real)
-             subroutine # Loads radius of reference orbit into rstar array 
+             subroutine # Loads radius of reference orbit into rstar array
 fieldsol3d(iwhich) subroutine # Bent-self-field iterative solver
 vp3d(iwhich) subroutine # The 3d Poisson solver
 
@@ -1164,7 +1164,7 @@ pltfld3d(fld:string,freqflag:integer)
 
 multpole(lmod:integer,nlmod:integer,irpowmx:integer,
          lcosex:logical,lsinex:logical,aper:real,xcen:real,ycen:real,
-         nmult:integer,nres:integer,tol:real) 
+         nmult:integer,nres:integer,tol:real)
             subroutine # calculate the multipole moments of the potential
 inj_smoother(nx:integer,ny:integer,inj_phi(0:nx,0:ny):real,
              dx:real,dy:real,xmmin:real,ymmin:real,
@@ -1206,8 +1206,8 @@ pdiag2d(x2:real,y2:real,ux2:real,uy2:real,uz2:real,pdmy2:real,np2:integer,
         lx:real,ly:real,nxp:integer,nyp:integer,s0:real,
         svx:real,svy:real,svz:real,se:real,ixbc:integer,izbc:integer)
          subroutine     # Computes grid deposition of moments
+setupgridextent() subroutine # Sets up grid cell sizes and mesh arrays
 
-     
 *********** W3Dutilities:
 sortparticlesbyindex1(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
                       uz(n):real,nw:integer,wfact(nw):real,nblocks:integer,
@@ -1297,78 +1297,78 @@ transferarray1toarray23d(nx1:integer,ny1:integer,nz1:integer,
 
 
 *********** W3Dload:
-r_b      real [m]     /0./ # Code set: CFE rms equivalent beam radius 
-emit_b   real [m-rad] /0./ # Code set: CFE rms equivalent beam emittance  
-q_perv   real [1]     /0./ # Code set: CFE rms equivalent beam perveance 
+r_b      real [m]     /0./ # Code set: CFE rms equivalent beam radius
+emit_b   real [m-rad] /0./ # Code set: CFE rms equivalent beam emittance
+q_perv   real [1]     /0./ # Code set: CFE rms equivalent beam perveance
 k_beta0  real [m^-1]  /0./ # Code set: CFE rms equivalent beam foc. wavenumber
-k1re     real [1]     /0./ # Code set: CFE WB distribution k_1*r_e 
-f_2      real [m^-2]  /0./ # Code set: CFE WB distribution norm f_2 
-r_e      real [m]     /0./ # Code set: CFE WB distribution edge radius 
+k1re     real [1]     /0./ # Code set: CFE WB distribution k_1*r_e
+f_2      real [m^-2]  /0./ # Code set: CFE WB distribution norm f_2
+r_e      real [m]     /0./ # Code set: CFE WB distribution edge radius
 delta    real [1]     /0./ # Code set: CFE TE distribution delta parameter
-logdeltarad real [1] /3.0/   # Bracket radius in log(delta) for delta sol 
-                             #   in TE root find: default: logdeltarad = 3.0 
+logdeltarad real [1] /3.0/   # Bracket radius in log(delta) for delta sol
+                             #   in TE root find: default: logdeltarad = 3.0
 logdeltatol real [1] /1.e-4/ # Tolerance to calculate log(delta) for delta sol
                              #   in TE root find: default: logdeltarad = 1.e-4
-glambdad real [1]     /0./ # Code set: CFE TE distribution gamma*lambda_Debye 
+glambdad real [1]     /0./ # Code set: CFE TE distribution gamma*lambda_Debye
 tscaled  real [1]     /0./ # Code set: CFE TE distribution scaled temperature
 den0     real [m^-3]  /0./ # Code set: CFE TE distribuiton on-axis density
-hl_rmax   real  [m] # maximum radius of continuous focusing (CF) equivalent 
-                    #  Hamiltonian equilibrium density and angle spreads  
-hl_nrdist integer   # number of radial data points of CF Hamiltonian eq 
-                    #  ranging from [0:hl_nrdist] -> [0,hl_rmax]. 
+hl_rmax   real  [m] # maximum radius of continuous focusing (CF) equivalent
+                    #  Hamiltonian equilibrium density and angle spreads
+hl_nrdist integer   # number of radial data points of CF Hamiltonian eq
+                    #  ranging from [0:hl_nrdist] -> [0,hl_rmax].
 hl_rdist(0:hl_nrdist)    _real
-   # Code set: particle density in r calculated for CF Hamiltonian eq load 
+   # Code set: particle density in r calculated for CF Hamiltonian eq load
 hl_nrmrdist(0:hl_nrdist) _real
-   # Code set: normalized hl_rdist with sum(hl_nrmrdist)=1. 
+   # Code set: normalized hl_rdist with sum(hl_nrmrdist)=1.
 hl_intrdist(0:hl_nrdist) _real
    # Code set: integral of r*rdist from r=0 to r where r is a scaled radius.
-perp_cfe_den() subroutine # Calculates the CFE density profile 
+perp_cfe_den() subroutine # Calculates the CFE density profile
 bessi0(x:real) real function # Modified Bessel function I_0(x) for real x
 bessi1(x:real) real function # Modified Bessel function I_1(x) for real x
-bessi(n:integer,x:real) real function # Modified Bessel function I_n(x) 
+bessi(n:integer,x:real) real function # Modified Bessel function I_n(x)
                                       #  for real x and integer n >= 2
 
 *********** W3DloadTE:
 te_rhomax    real  [1] # Code set: max value of norm radius rho to use for TE
 te_rhotrans  real  [1] # Code set: transition value of rho in norm density calc
-te_denptrans real  [1] /1.e-3/  
+te_denptrans real  [1] /1.e-3/
                        # Value of d den/d rho at transition in TE density calc
-te_rhodenint real  [1] /0./ # Code set: integral of rho*den(rho) on rho grid  
-te_nrho integer       # number of radial grid points in rho to use for TE 
-te_rho(0:te_nrho)    _real 
-   # Code set: normalized radial coordinate grid ranging from 0 to te_rhomax 
+te_rhodenint real  [1] /0./ # Code set: integral of rho*den(rho) on rho grid
+te_nrho integer       # number of radial grid points in rho to use for TE
+te_rho(0:te_nrho)    _real
+   # Code set: normalized radial coordinate grid ranging from 0 to te_rhomax
 te_den(2,0:te_nrho)  _real
-   # Code set: TE radial density profile on te_rho grid: 
-   #   te_den(1,:) = normalized density 
-   #   te_den(2,:) = derivative of normalized density wrt rho 
-te_exp_nterm integer  # max number of terms to use in series expansion for 
+   # Code set: TE radial density profile on te_rho grid:
+   #   te_den(1,:) = normalized density
+   #   te_den(2,:) = derivative of normalized density wrt rho
+te_exp_nterm integer  # max number of terms to use in series expansion for
                       #   TE density.  Should set this to at least 100.
-te_exp_alpha(0:te_exp_nterm) _real 
+te_exp_alpha(0:te_exp_nterm) _real
    # Code set: Coefficients of series expansion for TE density profile
-te_den_exp_coeff(delta:real,nterm:integer,alpha(0:nterm):real) subroutine 
+te_den_exp_coeff(delta:real,nterm:integer,alpha(0:nterm):real) subroutine
    # Calculate expansion coefficients for CF TE density profile
-te_den_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real) 
-   real function 
+te_den_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real)
+   real function
    # Calculate the density of a CF TE using a series expansion
-te_denp_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real) 
-   real function 
-   # Calculate the derivative with respect of rho of the density of a 
+te_denp_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real)
+   real function
+   # Calculate the derivative with respect of rho of the density of a
    #   CF TE using a series expansion
-te_rho_max(delta:real,frac:real) real function 
+te_rho_max(delta:real,frac:real) real function
    # Estimate max value of norm radius rho where norm density = frac for CF TE
-te_delta_est(sc_param:real) real function 
-   # Estimate the value of delta needed for an rms equiv TE 
-te_radial_den(delta:real) subroutine 
-   # Calculate the normalized radial density profile of TE for dimensionless 
-   #   space-charge parameter delta 
+te_delta_est(sc_param:real) real function
+   # Estimate the value of delta needed for an rms equiv TE
+te_radial_den(delta:real) subroutine
+   # Calculate the normalized radial density profile of TE for dimensionless
+   #   space-charge parameter delta
 integrate_test(y(nvar,nstep):real,nvar:integer,nstep:integer,x1:real,x2:real)
-   subroutine 
-   # temp routine link for debugging 
-te_constr_test(sc_param:real,delta:real) real function 
-   # temp routine link for debugging 
-te_delta_root_test(sc_param:real,delta_1:real,delta_2:real,tol:real) 
-  real function 
-   # temp routine link for debugging    
+   subroutine
+   # temp routine link for debugging
+te_constr_test(sc_param:real,delta:real) real function
+   # temp routine link for debugging
+te_delta_root_test(sc_param:real,delta_1:real,delta_2:real,tol:real)
+  real function
+   # temp routine link for debugging
 smooth3d_121(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
                npass(3):integer,alpha(3):real) subroutine
    # three points linear smoothing

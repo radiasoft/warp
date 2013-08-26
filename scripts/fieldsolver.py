@@ -434,6 +434,29 @@ the diagnostic is of interest and is meaningfull.
       self.l2symtry = false
       self.l4symtry = false
 
+    self.setupbounds(**kw)
+    self.setuppbounds(**kw)
+    self.setupmeshextent(**kw)
+    self.setupparallelneighbors()
+
+    # --- Some flags
+    self.sourcepfinalized = 1
+
+  def processdefaultsfrompackage(self,defaults,package,kw):
+    for name in defaults:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(package,name))
+      if name in kw: del kw[name]
+
+  def processdefaultsfromdict(self,dict,kw):
+    for name,defvalue in dict.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+      if name in kw: del kw[name]
+
+  def setupbounds(self,**kw):
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
     if 'bounds' not in self.__dict__:
@@ -468,6 +491,7 @@ the diagnostic is of interest and is meaningfull.
           self.bounds[2] = neumann
           self.bounds[3] = neumann
 
+  def setuppbounds(self,**kw):
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
     if 'pbounds' not in self.__dict__:
@@ -498,6 +522,7 @@ the diagnostic is of interest and is meaningfull.
           self.pbounds[2] = reflect
           self.pbounds[3] = reflect
 
+  def setupmeshextent(self,**kw):
     # --- Check for zero length dimensions
     if self.nx == 0:
       self.xmmin = 0.
@@ -555,6 +580,7 @@ the diagnostic is of interest and is meaningfull.
     else:
       self.iz_axis = nint(-self.zmmin/self.dz)
 
+  def setupparallelneighbors(self):
     # --- Generate a list of the neighboring processors.
     self.neighborpes = [self.convertindextoproc(ix=self.ixproc-1),
                         self.convertindextoproc(ix=self.ixproc+1),
@@ -568,23 +594,6 @@ the diagnostic is of interest and is meaningfull.
     for pe in self.neighborpes:
       if pe >= 0 and pe not in self.neighborpeslist:
         self.neighborpeslist.append(pe)
-
-    # --- Some flags
-    self.sourcepfinalized = 1
-
-  def processdefaultsfrompackage(self,defaults,package,kw):
-    for name in defaults:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(package,name))
-      if name in kw: del kw[name]
-
-  def processdefaultsfromdict(self,dict,kw):
-    for name,defvalue in dict.iteritems():
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,defvalue)
-      if name in kw: del kw[name]
 
   def setupdecompserial(self):
     self.my_index = 0
@@ -982,6 +991,53 @@ the diagnostic is of interest and is meaningfull.
     self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
     self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
     self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
+
+  def resizemesh(self,xmmin=None,xmmax=None,ymmin=None,ymmax=None,zmmin=None,zmmax=None,
+                 nx=None,ny=None,nz=None,resizew3d=True):
+    """Change the size of the domain and/or the number of grid cells. Only the modified values need to be specified.
+      - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: New grid extent.
+      - nx,ny,nz: New numbers of grid cells.
+    The grid cells sizes are automatically recalculated.
+    """
+    if xmmin is not None: self.xmmin = xmmin
+    if xmmax is not None: self.xmmax = xmmax
+    if ymmin is not None: self.ymmin = ymmin
+    if ymmax is not None: self.ymmax = ymmax
+    if zmmin is not None: self.zmmin = zmmin
+    if zmmax is not None: self.zmmax = zmmax
+    if nx is not None: self.nx = nx
+    if ny is not None: self.ny = ny
+    if nz is not None: self.nz = nz
+    self.dx = 0.
+    self.dy = 0.
+    self.dz = 0.
+    self.setupmeshextent()
+    self.clearconductors()
+    self.conductorobjects = {}
+    # --- Note that the sizes of the arrays will be adjusted when they are needed.
+
+    if resizew3d:
+      w3d.xmmin = self.xmmin
+      w3d.xmmax = self.xmmax
+      w3d.ymmin = self.ymmin
+      w3d.ymmax = self.ymmax
+      w3d.zmmin = self.zmmin
+      w3d.zmmax = self.zmmax
+      w3d.nx = self.nx
+      w3d.ny = self.ny
+      w3d.nz = self.nz
+      setupdecompositionw3d()
+      gchange("Fields3d")
+      setupgridextent()
+      w3d.ix_axis = self.ix_axis
+      w3d.iy_axis = self.iy_axis
+      w3d.iz_axis = self.iz_axis
+      top.xpmin = self.xmmin
+      top.xpmax = top.xpmin + w3d.nx*w3d.dx
+      top.ypmin = self.ymmin
+      top.ypmax = top.ypmin + w3d.ny*w3d.dy
+      top.zpmin = self.zmmin
+      top.zpmax = top.zpmin + w3d.nz*w3d.dz
 
   # --- Diagnostic routines
   def rhodia(self):
@@ -2208,10 +2264,6 @@ the upper edge.
     Ex = solver.getex()
     Ey = solver.getey()
     Ez = solver.getez()
-    if solver.ny == 0:
-      Ex = Ex[:,0,:]
-      Ey = Ey[:,0,:]
-      Ez = Ez[:,0,:]
 
   elif ((alltrue(top.efetch != 3) and maxnd(top.depos_order) == 1) or
         not w3d.allocated('selfe')):
