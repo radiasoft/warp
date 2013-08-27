@@ -2412,7 +2412,7 @@ class EM3D(SubcycledPoissonSolver):
               doautocolormap=False
               color = transpose(array([rp,gp,bp])/255.)
               ncolor = shape(color)[0]
-              colormap,opacities = DXColormap(data=colordata,ncolors=ncolor,
+              colormap,opacity = DXColormap(data=colordata,ncolors=ncolor,
                                               colors=color,min=cmin,max=cmax,
                                               opacitystart=opacitystart,
                                               opacityend=opacityend,
