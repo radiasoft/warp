@@ -1165,22 +1165,22 @@ color = ["red","green","blue","cyan","magenta","yellow"]
 ########################################################################
 # Note: Subtracted off 0.0337 from X position of titlel (10/21/99)
 ptitle_placement = [
-  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
-  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
-  [[0.2634, 0.8880], [0.2634, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]],
-  [[0.5266, 0.8880], [0.5266, 0.6590], [0.3932, 0.7760], [0.3950, 0.3750]],
-  [[0.2634, 0.6230], [0.2634, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]],
-  [[0.5266, 0.6230], [0.5266, 0.3970], [0.3932, 0.5160], [0.3950, 0.3750]],
-  [[0.2634, 0.8880], [0.2634, 0.3970], [0.1300, 0.6500], [0.3950, 0.3750]],
-  [[0.5266, 0.8880], [0.5266, 0.3970], [0.3932, 0.6500], [0.3950, 0.3750]],
-  [[0.3950, 0.8880], [0.3950, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]],
-  [[0.3950, 0.6230], [0.3950, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]],
-  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
-  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
-  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]],
-  [[0.3950, 0.9053], [0.3950, 0.7486], [0.1300, 0.7975], [0.3950, 0.3780]],
-  [[0.3950, 0.7298], [0.3950, 0.5731], [0.1300, 0.6220], [0.3950, 0.3780]],
-  [[0.3950, 0.5544], [0.3950, 0.3977], [0.1300, 0.4465], [0.3950, 0.3780]]]
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]], #  1
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]], #  2
+  [[0.2634, 0.8880], [0.2634, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]], #  3
+  [[0.5266, 0.8880], [0.5266, 0.6590], [0.3932, 0.7760], [0.3950, 0.3750]], #  4
+  [[0.2634, 0.6230], [0.2634, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]], #  5
+  [[0.5266, 0.6230], [0.5266, 0.3970], [0.3932, 0.5160], [0.3950, 0.3750]], #  6
+  [[0.2634, 0.8880], [0.2634, 0.3970], [0.1300, 0.6500], [0.3950, 0.3750]], #  7
+  [[0.5266, 0.8880], [0.5266, 0.3970], [0.3932, 0.6500], [0.3950, 0.3750]], #  8
+  [[0.3950, 0.8880], [0.3950, 0.6590], [0.1300, 0.7760], [0.3950, 0.3750]], #  9
+  [[0.3950, 0.6230], [0.3950, 0.3970], [0.1300, 0.5160], [0.3950, 0.3750]], # 10
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]], # 11
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]], # 12
+  [[0.3950, 0.9070], [0.3950, 0.4080], [0.1200, 0.6575], [0.3950, 0.3780]], # 13
+  [[0.3950, 0.9053], [0.3950, 0.7486], [0.1300, 0.7975], [0.3950, 0.3780]], # 14
+  [[0.3950, 0.7298], [0.3950, 0.5731], [0.1300, 0.6220], [0.3950, 0.3780]], # 15
+  [[0.3950, 0.5544], [0.3950, 0.3977], [0.1300, 0.4465], [0.3950, 0.3780]]] # 16
 ptitle_heights = [20.,20.,15.,15.,15.,15.,15.,15.,15.,15.,20.,20.,20.,15.,15.,15.]
   
 default_titlet=""
@@ -2826,6 +2826,23 @@ def ppzrp(iw=0,**kw):
   settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getrp(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
+
+##########################################################################
+def ppzke(iw=0,**kw):
+  "Plots Z-KE"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzke,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Kinetic Energy vs Z","Z","KE",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getke(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
 ##########################################################################
 def ppxex(iw=0,**kw):
   "Plots X-Ex. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
@@ -3219,6 +3236,28 @@ def ppxpyp(iw=0,**kw):
   return ppgeneric(ypms,xpms,kwdict=kw)
 
 ##########################################################################
+def ppxux(iw=0,**kw):
+  "Plots X-Ux. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxux,(iw,),kw): return
+  if type(kw.get('slope',0.)) == type(''):
+    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    kw['slope'] = slope*vz
+    kw['yoffset'] = xpoffset*vz
+    kw['xoffset'] = xoffset
+  if 'pplimits' in kw:
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xplmin,top.xplmax,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ux vs X","X","Ux",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getux(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+
+##########################################################################
 def ppxvx(iw=0,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
@@ -3238,6 +3277,28 @@ def ppxvx(iw=0,**kw):
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvx(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+
+##########################################################################
+def ppyuy(iw=0,**kw):
+  "Plots Y-Uy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyuy,(iw,),kw): return
+  if isinstance(kw.get('slope',0.),type('')):
+    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    kw['slope'] = slope*vz
+    kw['yoffset'] = ypoffset*vz
+    kw['xoffset'] = yoffset
+  if 'pplimits' in kw:
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.yplmin,top.yplmax,
+                      top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Uy vs Y","Y","Uy",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getuy(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
                    kwdict=kw)
 
 ##########################################################################
@@ -5486,4 +5547,37 @@ def plellipse(l,h,np=100,thetamin=0.,thetamax=2.*pi,xcent=0.,ycent=0.,**kw):
   x = 0.5*l*cos(theta) + xcent
   y = 0.5*h*sin(theta) + ycent
   pla(y,x,**kw)
+
+def scale_labels(scale):
+  """Scale the label sizes. This changes the sizes of the lables and shifts them
+to make space for the changed font size.
+  - scale: scale factor.
+  """
+  set_label(0.0182*scale)
+
+  colorbar_fontsize = array([14.,14.,8.,8.,8.,8.,8.,8.,8.,8.])*scale
+
+  for i in range(1):
+    # --- This numbers only work for the systems with plots covering the full
+    # --- page.
+    ptitle_placement[i][0][1] += (0.9 - 0.895)*scale
+    ptitle_placement[i][1][1] -= (0.4 - 0.3927)*scale
+    ptitle_placement[i][2][0] -= (0.14 - 0.12)*scale
+    ptitle_placement[i][3][1] -= (0.403 - 0.3927)*scale
+
+  # --- Change the default value of the height argument.
+  d = list(ptitles.func_defaults)
+  d[-1] = 20.*scale
+  ptitles.func_defaults = tuple(d)
+
+# --- create aliases
+ppg = ppgeneric
+
+def pdf(name='test',l_crop=1):
+  eps(name)
+  if l_crop:
+    os.system('ps2pdf -dEPSCrop '+name+'.epsi '+name+'.pdf')
+  else:
+    os.system('ps2pdf '+name+'.epsi '+name+'.pdf')
+  os.system('rm -f '+name+'.epsi')
 
