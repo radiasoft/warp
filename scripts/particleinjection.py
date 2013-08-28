@@ -232,12 +232,12 @@ The sizes of the E arrays will be:
 the charge density at the grid point at the center of the dual cell times
 the area of the dual cell.
         """
-        nxguard = solver.nxguard
-        nyguard = solver.nyguard
-        nzguard = solver.nzguard
         if isinstance(solver,EM3D):
             if not solver.l_deposit_rho:
                 raise Exception("The l_deposit_rho flag must be true for the EM solver")
+            nxguard = solver.nxguard
+            nyguard = solver.nyguard
+            nzguard = solver.nzguard
             rhop = solver.fields.Rho[nxguard:-nxguard,nyguard:-nyguard,nzguard:-nzguard]
         else:
             if solver is w3d: rhop = solver.rhop
