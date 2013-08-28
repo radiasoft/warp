@@ -693,7 +693,7 @@ c                   --- delmy
                     dels(idel) = delz
                     volt(idel) = zvoltages((ii+1)/2,ix,iy)
                     numb(idel) = zcondids((ii+1)/2,ix,iy)
- 
+
                     if (mod(ix+ixlocal+iy+iylocal+iz+izlocal,2) == 0) then
                       ne = ne + 1
                       conductors%evensubgrid%indx(:,ne) = indx
@@ -911,12 +911,8 @@ c     --- Make sure that the intercepts have the same grid information
               i0right = i0right + 2
               i0result = i0result + 2
             enddo
-            do while (i0result < nicpt)
-              intercepts(i0result,i1,i2) = LARGEPOS
-              intercepts(i0result+1,i1,i2) = LARGEPOS
-              i0result = i0result + 2
-            enddo
-            
+            intercepts(i0result:,i1,i2) = LARGEPOS
+
           enddo
         enddo
 
@@ -969,9 +965,15 @@ c     --- Make sure that the intercepts have the same grid information
       iresult%iy = ileft%iy
       iresult%iz = ileft%iz
 
-      iresult%nxicpt = max(ileft%nxicpt,iright%nxicpt)
-      iresult%nyicpt = max(ileft%nyicpt,iright%nyicpt)
-      iresult%nzicpt = max(ileft%nzicpt,iright%nzicpt)
+c     --- This will almost always be an overestimate, but this is the
+c     --- most amount of intercepts that could be needed. This is the
+c     --- number of intercepts needed when the two objects fill all of space
+c     --- except for holes which do not line up with each other. All of the
+c     --- intercepts will be included, except only the greater and lesser of the
+c     --- first and last (hence the -2).
+      iresult%nxicpt = ileft%nxicpt + iright%nxicpt - 2
+      iresult%nyicpt = ileft%nyicpt + iright%nyicpt - 2
+      iresult%nzicpt = ileft%nzicpt + iright%nzicpt - 2
       call ConductorInterceptTypechange(iresult)
 
       lnicpt = ileft%nxicpt
@@ -1056,12 +1058,8 @@ c     --- Make sure that the intercepts have the same grid information
               endif
 
             enddo
-            do while (i0result < nicpt)
-              intercepts(i0result,i1,i2) = LARGEPOS
-              intercepts(i0result+1,i1,i2) = LARGEPOS
-              i0result = i0result + 2
-            enddo
-            
+            intercepts(i0result:,i1,i2) = LARGEPOS
+
           enddo
         enddo
 
@@ -1165,12 +1163,8 @@ c           --- copy the rest of the data over
               i0result = i0result + 1
             enddo
 c           --- fill in any remainder with LARGEPOS
-            do while (i0result <= nicpt)
-              intercepts(i0result,i1,i2) = LARGEPOS
-              intercepts(i0result+1,i1,i2) = LARGEPOS
-              i0result = i0result + 1
-            enddo
-            
+            intercepts(i0result:,i1,i2) = LARGEPOS
+
           enddo
         enddo
 
@@ -3063,7 +3057,7 @@ c       --- adjust position
         yi(i) = yi(i) - dr*sin(iphi(i))
         zi(i) = zi(i) - (zz - cos(itheta(i))*rad2)
       enddo
- 
+
       return
       end
 c=======================================================================
@@ -4608,8 +4602,8 @@ c           --- Get the point where the x-line intersects the end planes
             xuend = max(x1,x2)
 c           --- Now, get distances to surface
             if (xl <= xuend .and. xlend <= xu) then
-              xintercepts(1,iy,iz) = max(xl,xlend)
-              xintercepts(2,iy,iz) = min(xu,xuend)
+              xintercepts(1,iy,iz) = max(xl,xlend) + xcent
+              xintercepts(2,iy,iz) = min(xu,xuend) + xcent
             else
               xintercepts(1,iy,iz) = LARGEPOS
               xintercepts(2,iy,iz) = LARGEPOS
@@ -4649,8 +4643,8 @@ c           --- Get the point where the z-line intersects the end planes
             yuend = max(y1,y2)
 c           --- Now, get distances to surface
             if (yl <= yuend .and. ylend <= yu) then
-              yintercepts(1,ix,iz) = max(yl,ylend)
-              yintercepts(2,ix,iz) = min(yu,yuend)
+              yintercepts(1,ix,iz) = max(yl,ylend) + ycent
+              yintercepts(2,ix,iz) = min(yu,yuend) + ycent
             else
               yintercepts(1,ix,iz) = LARGEPOS
               yintercepts(2,ix,iz) = LARGEPOS
@@ -4692,8 +4686,8 @@ c           --- Get the point where the z-line intersects the end planes
             zuend = max(z1,z2)
 c           --- Now, get intersections to surface
             if (zl <= zuend .and. zlend <= zu) then
-              zintercepts(1,ix,iy) = max(zl,zlend)
-              zintercepts(2,ix,iy) = min(zu,zuend)
+              zintercepts(1,ix,iy) = max(zl,zlend) + zcent
+              zintercepts(2,ix,iy) = min(zu,zuend) + zcent
             else
               zintercepts(1,ix,iy) = LARGEPOS
               zintercepts(2,ix,iy) = LARGEPOS
@@ -5422,8 +5416,8 @@ c           --- Now, get distances to surface
               xi2 = min(xu,xuend)
             endif
 
-            xintercepts(1,iy,iz) = xi1
-            xintercepts(2,iy,iz) = xi2
+            xintercepts(1,iy,iz) = xi1 + xcent
+            xintercepts(2,iy,iz) = xi2 + xcent
           else
             xintercepts(1,iy,iz) = LARGEPOS
             xintercepts(2,iy,iz) = LARGEPOS
@@ -5500,8 +5494,8 @@ c           --- Now, get distances to surface
               yi2 = min(yu,yuend)
             endif
 
-            yintercepts(1,ix,iz) = yi1
-            yintercepts(2,ix,iz) = yi2
+            yintercepts(1,ix,iz) = yi1 + ycent
+            yintercepts(2,ix,iz) = yi2 + ycent
           else
             yintercepts(1,ix,iz) = LARGEPOS
             yintercepts(2,ix,iz) = LARGEPOS
@@ -5581,8 +5575,8 @@ c           --- Now, get distances to surface
               zi2 = min(zu,zuend)
             endif
 
-            zintercepts(1,ix,iy) = zi1
-            zintercepts(2,ix,iy) = zi2
+            zintercepts(1,ix,iy) = zi1 + zcent
+            zintercepts(2,ix,iy) = zi2 + zcent
           else
             zintercepts(1,ix,iy) = LARGEPOS
             zintercepts(2,ix,iy) = LARGEPOS
@@ -6127,7 +6121,7 @@ c       --- cylinder
             if (zuend >= zuout .and. zuout >= zlend) delmz = zz - zuout
           endif
         endif
-              
+
       endif
 
       return
@@ -7744,7 +7738,7 @@ c               --- is included, whereas the ending point, th2, is not.
 c                 nzicpt = nzicpt + 1
 c                 zintercepts(nzicpt,ix,iy) = zc(ii) - z1 + zcent
                 endif
-                
+
                 tt = atan2(rr - rc(ii),+z1)
                 if (tt < thmin(ii)) tt = tt + 2*pi
                 if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
@@ -8038,7 +8032,7 @@ c               --- get the number of intercepts correct, but doesn't
 c               --- consistently make the line inside the object.
 c               --- For the distance calculation though, this doesn't
 c               --- matter since the distance would be zero if the
-c               --- point is on the line segment. 
+c               --- point is on the line segment.
                 iim1 = ii - 1
                 if (iim1 == 0) iim1 = nn-1
                 iip1 = ii + 1
@@ -8081,7 +8075,7 @@ c             --- is included, whereas the ending point, th2, is not.
               if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
                 call intsertzicpt(zc(ii) - z1 + zcent)
               endif
-                
+
               tt = atan2(rr - rc(ii),+z1)
               if (tt < thmin(ii)) tt = tt + 2*pi
               if (thmin(ii) < tt .and. tt < thmax(ii) .or. tt == th1(ii)) then
@@ -8340,7 +8334,7 @@ c         --- the case when the little bit crosses a small gap in
 c         --- the object and the point ends up inside the object
 c         --- even though the normal is pointing in the correct
 c         --- direction. This won't be fixed since it is very unlikely.
-          s = 1.e-10*sqrt((maxval(rmax)-minval(rmin))**2 + 
+          s = 1.e-10*sqrt((maxval(rmax)-minval(rmin))**2 +
      &                    (maxval(zmax)-minval(zmin))**2)
           xxa(1) = xi(i) + s*sin(itheta(i))*cos(iphi(i))
           yya(1) = yi(i) + s*sin(itheta(i))*sin(iphi(i))
