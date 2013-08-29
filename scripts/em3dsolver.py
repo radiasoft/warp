@@ -1478,95 +1478,6 @@ class EM3D(SubcycledPoissonSolver):
           if (i+j)<o:
             f[i+j] += y[i]*x[j]
     return f
-
-  def get_binomial_filter_factors(self,n,o):
-    # set costheta as order n expansion of cos(theta)
-    costheta = zeros(o,'d')
-    costheta[0] = 1.
-    s = -1.
-    f = 2.
-    for i in range(2,o,2):
-      costheta[i] = s / f
-      f = f * (f+1.) * (f+2.)
-      s*=-1.
-      
-    # get ((1 + cos(theta))/2)^n
-    cf = self.binomial_expansion(1.,costheta,n)/(2.**n)
-
-    # get coeffs for 1 pass compensation
-    a = cf[2]
-    wcomp1 = -a/(2*a-1.)
-    coefsm1 = 1./(1.+2.*wcomp1)
-
-    # get coeffs for 2 pass compensation
-    a = cf[0]*2**n
-    b = cf[2]*2**n
-    c = cf[4]*2**n
-    A = a**2-4.*a*c-7.*a*b/3.+4.*b**2
-    B = a*b/12.+a*c-b**2
-    alpha = -a+2*b
-    beta = b-4.*(B/A)*(b-a)
-    gamma = (a-2.*b)*B/A
-    delta = sqrt(beta**2-4.*alpha*gamma)
-    print a,b,c,A,B,alpha,beta,gamma,delta
-    
-    print '&&&', beta**2-4.*alpha*gamma,beta**2,4.*alpha*gamma
-    w1 = (-beta+delta)/(2.*alpha)
-    w2 = -B/(w1*A)
-    
-    coefsm2_1 = 1./(1.+2.*w1)
-    coefsm2_2 = 1./(1.+2.*w2)
-
-    return cf,wcomp1,coefsm1,w1,w2,coefsm2_1,coefsm2_2
-    
-    
-    
-    
-    
-    
-  def get_binomial_filter_factorsold(self,n,o):
-    # set costheta as order n expansion of cos(theta)
-    costheta = zeros(o,'d')
-    costheta[0] = 1.
-    s = -1.
-    f = 2.
-    for i in range(2,o,2):
-      costheta[i] = s / f
-      f = f * (f+1.) * (f+2.)
-      s*=-1.
-      
-    # get ((1 + cos(theta))/2)^n
-    cf = self.binomial_expansion(1.,costheta,n)/(2.**n)
-
-    # get coeffs for 1 pass compensation
-    a = cf[2]
-    wcomp1 = -a/(2*a-1.)
-    coefsm1 = 1./(1.+2.*wcomp1)
-
-    # get coeffs for 2 pass compensation
-    alpha = cf[2]
-    beta  = cf[4]
-    a1 = b1 = -1.-2.*alpha
-    c1 = -4.*(1.+alpha)
-    d1 = -alpha
-    a2 = b2 = 1./12.-2.*beta
-    c2 = 4.*(1./3.-beta)
-    d2 = -beta
-    A = (c1*b2-c2*b1)/(c2*a1-c1*a2)
-    B = (c1*d2-c2*d1)/(c2*a1-c1*a2)
-    a = c1*A
-    b = a1*A+b1+c1*B
-    c = a1*B+d1
-    delta = sqrt(b**2-4.*a*c)
-    print a1,b1,c1,a2,b2,c2
-    print '***',delta,b**2-4.*a*c,b,a,c,A,B
-    w2 = (-b+delta)/(2.*a)
-    w1 = A*w2+B
-    
-    coefsm2_1 = 1./(1.+2.*w1)
-    coefsm2_2 = 1./(1.+2.*w2)
-
-    return cf,wcomp1,coefsm1,w1,w2,coefsm2_1,coefsm2_2
     
   def fetche(self,*args,**kw):
 #    import traceback as tb
@@ -2298,7 +2209,7 @@ class EM3D(SubcycledPoissonSolver):
           data=transpose(data[:,:,selfslice])
         else:
           data=data[:,:,selfslice]
-    if gridscale is not None:
+    if gridscale is not None and data is not None:
       data=data.copy()*gridscale
       kw['gridscale']=None
     if l_abs and data is not None:data=abs(data)
