@@ -1596,10 +1596,10 @@ class EM3D(SubcycledPoissonSolver):
     self.fields.gchange()
     self.fields.incond=False
     if self.fields.nconds>0:
-      self.init_macroscopic_coefs()
       if conductor.conductivity is not None or \
          conductor.permittivity is not None or \
          conductor.permeability is not None:
+         self.init_macroscopic_coefs()
          if conductor.conductivity is not None:
            conductivity = conductor.conductivity
          else:
