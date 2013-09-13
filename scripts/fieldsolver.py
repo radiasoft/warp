@@ -1500,6 +1500,18 @@ class SubcycledPoissonSolver(FieldSolver):
     self.setfieldpforparticles(None,indts,iselfb)
     self.fetchfieldfrompositions(*args)
 
+  def fetchfieldforspecies(self,species):
+    w3d.pgroupfsapi = species.pgroup
+    w3d.jsfsapi = species.sid
+    w3d.ndtsfsapi = species.ndts
+    w3d.ipminfsapi = species.ins
+    w3d.npfsapi = species.nps
+    self.fetchfield()
+    w3d.pgroupfsapi = None
+    w3d.jsfsapi = -1
+    w3d.npfsapi = 0
+    w3d.ndtsfsapi = 0
+
   def fetchpotential(self,*args,**kw):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
     if w3d.npfsapi == 0: return
