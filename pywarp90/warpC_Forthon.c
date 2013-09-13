@@ -4,11 +4,15 @@
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
 /* object file.                                                              */
-#include "Forthon.h"
+/* #include "Forthon.h" */
+#include <Python.h>
+#include <numpy/arrayobject.h>
 
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
 #endif
+
+static PyObject *ErrorObject;
 
 extern PyMODINIT_FUNC inittoppy(void);
 extern PyMODINIT_FUNC initenvpy(void);
