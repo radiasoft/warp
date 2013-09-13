@@ -710,9 +710,12 @@ start of padvnc3d. Note, that the following must be done in this install functio
  - the E and/or B of the particles must be zeroed if they are otherwise unset
 """
   userappliedfields.installfuncinlist(f)
+  w3d.luserappliedfields = true
 def uninstalluserappliedfields(f):
   "Removes the function installed by installuserappliedfields"
   userappliedfields.uninstallfuncinlist(f)
+  if not userappliedfields.hasfuncsinstalled():
+      w3d.luserappliedfields = false
 def isinstalleduserappliedfields(f):
   "Checks if the function is called when which applies fields"
   return userappliedfields.isinstalledfuncinlist(f)
