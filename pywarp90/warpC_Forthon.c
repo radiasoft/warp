@@ -42,7 +42,7 @@ void initwarpC(void)
 #endif
 {
   PyObject *m, *d;
-  PyObject *pystdout;
+  /* PyObject *pystdout; */
   PyObject *date;
 #ifdef MPIPARALLEL
   m = Py_InitModule("warpCparallel", warpC_methods);
@@ -72,7 +72,7 @@ void initwarpC(void)
   if (PyErr_Occurred())
     Py_FatalError("can not initialize module warpC");
 
-  pystdout = PySys_GetObject("stdout");
+  /* pystdout = PySys_GetObject("stdout"); */
   /* PyFile_WriteString("Forthon edition\n",pystdout); */
 
   import_array();
