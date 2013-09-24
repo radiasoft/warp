@@ -12,8 +12,8 @@ def adjustmesh3ddoc():
   print adjustmesh3d.__doc__
 
 def resizeZ_arrays(zzmin=None,zzmax=None,nzzarr=None):
-  if zzmin is not None: top.zmmin = zzmin
-  if zzmax is not None: top.zmmax = zzmax
+  if zzmin is not None: top.zzmin = zzmin
+  if zzmax is not None: top.zzmax = zzmax
   if nzzarr is not None: top.nzzarr = nzzarr
   top.dzz = (top.zzmax - top.zzmin)/top.nzzarr
   top.dzzi = 1./top.dzz
@@ -27,7 +27,7 @@ def resizeLatticeInternal(zlmin=None,zlmax=None,nzlmax=None):
   top.nzl = top.nzlmax
   top.dzl = (top.zlmax - top.zlmin)/top.nzlmax
   top.dzli = 1./top.dzl
-  gchange("InternalLattice")
+  gchange("LatticeInternal")
   top.zlmesh = span(top.zlmin,top.zlmax,top.nzlmax+1)
   setlatt()
 
