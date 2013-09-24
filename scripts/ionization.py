@@ -175,6 +175,16 @@ a value given a velocity. This returns the Appropriate value.
       # --- the default energy of the emitted particles is zero.
       emitted_energy0 = 0.
       emitted_energy_sigma = 0.
+    try:
+      len(emitted_energy0)
+    except TypeError:
+      # --- Make sure the emitted_energy0 has the same length as e_species
+      emitted_energy0 = len(e_species)*[emitted_energy0]
+    try:
+      len(emitted_energy_sigma)
+    except TypeError:
+      # --- Make sure the emitted_energy_sigma has the same length as e_species
+      emitted_energy_sigma = len(e_species)*[emitted_energy_sigma]
     self.inter[incident_species]['emitted_energy0']   +=[emitted_energy0]
     self.inter[incident_species]['emitted_energy_sigma']   +=[emitted_energy_sigma]
     self.inter[incident_species]['emitted_tag']   +=[emitted_tag]
@@ -675,12 +685,12 @@ velocity of the incident particle.
           io=compress(ncoli>0,arange(ni))
           nnew = len(io)
 
-          if self.inter[incident_species]['emitted_energy0'][it] is None:
+          if None in self.inter[incident_species]['emitted_energy0'][it]:
             # --- When emitted_energy0 is not specified, use the velocity of
             # --- the incident particles for the emitted particles.
-            uxnew = uxi
-            uynew = uyi
-            uznew = uzi
+            uxnewsave = uxi
+            uynewsave = uyi
+            uznewsave = uzi
 
           if self.inter[incident_species]['remove_incident'][it]:
             # --- if projectile is modified, then need to delete it
@@ -713,17 +723,17 @@ velocity of the incident particle.
 
             # --- If the emitted energy was not specified, the emitted particle will be
             # --- given the same velocity of the incident particle.
-            if self.inter[incident_species]['emitted_energy0'][it] is None:
-              uxnew = uxnew[io]
-              uynew = uynew[io]
-              uznew = uznew[io]
+            if None in self.inter[incident_species]['emitted_energy0'][it]:
+              uxnewsave = uxnewsave[io]
+              uynewsave = uynewsave[io]
+              uznewsave = uznewsave[io]
 
-            for emitted_species in self.inter[incident_species]['emitted_species'][it]:
+            for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][it]):
 
-              if self.inter[incident_species]['emitted_energy0'][it] is not None:
+              if self.inter[incident_species]['emitted_energy0'][it][ie] is not None:
                 # --- Create new velocities for the emitted particles.
-                ek0ionel = self.inter[incident_species]['emitted_energy0'][it]
-                esigionel = self.inter[incident_species]['emitted_energy_sigma'][it]
+                ek0ionel = self.inter[incident_species]['emitted_energy0'][it][ie]
+                esigionel = self.inter[incident_species]['emitted_energy_sigma'][it][ie]
                 if esigionel==0.:
                   ek = zeros(nnew)
                 else:
@@ -743,6 +753,10 @@ velocity of the incident particle.
                 uxnew=u*vx
                 uynew=u*vy
                 uznew=u*vz
+              else:
+                uxnew = uxnewsave
+                uynew = uynewsave
+                uznew = uznewsave
 
               ginew = 1./sqrt(1.+(uxnew**2+uynew**2+uznew**2)/clight**2)
               # --- get velocity in boosted frame if using a boosted frame of reference
