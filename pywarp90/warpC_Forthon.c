@@ -6,6 +6,7 @@
 /* object file.                                                              */
 /* #include "Forthon.h" */
 #include <Python.h>
+#define NPY_NO_DEPRECATED_API 8
 #include <numpy/arrayobject.h>
 
 #ifndef PyMODINIT_FUNC
