@@ -4,7 +4,7 @@ from wx import *
 from wx.lib.anchors import LayoutAnchors
 from warp import *
 
-[wxID_CONSOLECLASS, wxID_CONSOLECLASSCONSOLE, 
+[wxID_CONSOLECLASS, wxID_CONSOLECLASSCONSOLE,
 ] = map(lambda _init_ctrls: wx.NewId(), range(2))
 
 class ConsoleClass(wx.Panel):
@@ -47,23 +47,23 @@ class ConsoleClass(wx.Panel):
 
     def send_command_line(self):
         self.NoEntry = 0
-        nline = self.Console.GetNumberOfLines()       
+        nline = self.Console.GetNumberOfLines()
         line = self.Console.GetLineText(nline-1)
         self.Console.WriteText('\n')
         nl = len(line)
         r=self.sendcommand(line[4:nl])
         if(r==0):
-          self.Console.WriteText('>>> ')
+            self.Console.WriteText('>>> ')
         else:
-          self.Console.WriteText('... ')
+            self.Console.WriteText('... ')
         self.CursorMin = self.Console.GetLastPosition()
         self.ins_point = self.CursorMin
-       
+
     def sendcommand(self,c,addlist=1):
         r = self.inter.push(c)
         if(addlist and c<>""):
-          self.listcommands = self.listcommands + [c]
-          self.numcommand = len(self.listcommands)
+            self.listcommands = self.listcommands + [c]
+            self.numcommand = len(self.listcommands)
         return r
 
     def OnconsoleChar(self, event):
@@ -71,7 +71,7 @@ class ConsoleClass(wx.Panel):
 #        print ascii_code
         if(ascii_code == 317): # arrow up
             if(self.numcommand==len(self.listcommands)):
-                nline = self.Console.GetNumberOfLines()       
+                nline = self.Console.GetNumberOfLines()
                 line = self.Console.GetLineText(nline-1)
                 nl = len(line)
                 self.LineBuffer = line[4:nl]
@@ -83,9 +83,9 @@ class ConsoleClass(wx.Panel):
             self.numcommand = min(self.numcommand+1,len(self.listcommands))
             self.Console.Remove(self.CursorMin,self.Console.GetLastPosition())
             if(self.numcommand<len(self.listcommands)):
-              self.Console.WriteText(self.listcommands[self.numcommand])
+                self.Console.WriteText(self.listcommands[self.numcommand])
             else:
-              self.Console.WriteText(self.LineBuffer)
+                self.Console.WriteText(self.LineBuffer)
             self.Reset_ins_point()
         elif(ascii_code == 316): # arrow left
             self.Set_ins_point()
@@ -107,7 +107,7 @@ class ConsoleClass(wx.Panel):
         elif(ascii_code == 13): # return
             self.Console.SetInsertionPoint(self.Console.GetLastPosition())
             self.send_command_line()
-        elif(ascii_code>=32 and ascii_code<255): # character       
+        elif(ascii_code>=32 and ascii_code<255): # character
             self.Set_ins_point()
             self.Console.SetInsertionPoint(self.ins_point)
             self.Console.WriteText(chr(ascii_code))
@@ -118,15 +118,15 @@ class ConsoleClass(wx.Panel):
     def Set_ins_point(self):
         newins_point = self.Console.GetInsertionPoint()
         if(self.ins_point<>newins_point and newins_point>=self.CursorMin):
-           self.ins_point = newins_point
-        
+            self.ins_point = newins_point
+
     def Reset_ins_point(self):
         self.ins_point = self.Console.GetInsertionPoint()
-        
+
     def OnConsoleLeftUp(self, event):
         newins_point = self.Console.GetInsertionPoint()
         if(self.ins_point<>newins_point and newins_point>=self.CursorMin):
-           self.ins_point = newins_point
+            self.ins_point = newins_point
         event.Skip()
 
     def OnConsoleRightDown(self, event):
@@ -134,5 +134,3 @@ class ConsoleClass(wx.Panel):
         print doc(self.Console.GetStringSelection(),printit=0)
         self.GetParent().GetParent().GetParent().OutToConsole()
         event.Skip()
-
-

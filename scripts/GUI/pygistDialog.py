@@ -5,17 +5,17 @@ from wx.lib.anchors import LayoutAnchors
 from wx.grid import *
 from warp import *
 
-[wxID_PANEL, wxID_PANELBOLDLABEL, wxID_PANELCOLOR, wxID_PANELELEMENT_SPIN, 
- wxID_PANELFILENAME, wxID_PANELFONTLABEL, wxID_PANELFORMAT, 
- wxID_PANELHEIGHTLABEL, wxID_PANELHIDE, wxID_PANELITALICLABEL, 
- wxID_PANELLABELAXIS, wxID_PANELMARKER_LETTER, wxID_PANELMARKS, 
- wxID_PANELMPHASE, wxID_PANELMSIZE, wxID_PANELMSPACE, wxID_PANELSAVE, 
- wxID_PANELSTATICBOX1, wxID_PANELSTATICBOX2, wxID_PANELSTATICBOX3, 
- wxID_PANELSTATICTEXT1, wxID_PANELSTATICTEXT10, wxID_PANELSTATICTEXT11, 
- wxID_PANELSTATICTEXT12, wxID_PANELSTATICTEXT2, wxID_PANELSTATICTEXT3, 
- wxID_PANELSTATICTEXT3, wxID_PANELSTATICTEXT4, wxID_PANELSTATICTEXT5, 
- wxID_PANELSTATICTEXT6, wxID_PANELSTATICTEXT7, wxID_PANELSTATICTEXT8, 
- wxID_PANELSTATICTEXT9, wxID_PANELTYPE, wxID_PANELWIDTH_SLIDER, 
+[wxID_PANEL, wxID_PANELBOLDLABEL, wxID_PANELCOLOR, wxID_PANELELEMENT_SPIN,
+ wxID_PANELFILENAME, wxID_PANELFONTLABEL, wxID_PANELFORMAT,
+ wxID_PANELHEIGHTLABEL, wxID_PANELHIDE, wxID_PANELITALICLABEL,
+ wxID_PANELLABELAXIS, wxID_PANELMARKER_LETTER, wxID_PANELMARKS,
+ wxID_PANELMPHASE, wxID_PANELMSIZE, wxID_PANELMSPACE, wxID_PANELSAVE,
+ wxID_PANELSTATICBOX1, wxID_PANELSTATICBOX2, wxID_PANELSTATICBOX3,
+ wxID_PANELSTATICTEXT1, wxID_PANELSTATICTEXT10, wxID_PANELSTATICTEXT11,
+ wxID_PANELSTATICTEXT12, wxID_PANELSTATICTEXT2, wxID_PANELSTATICTEXT3,
+ wxID_PANELSTATICTEXT3, wxID_PANELSTATICTEXT4, wxID_PANELSTATICTEXT5,
+ wxID_PANELSTATICTEXT6, wxID_PANELSTATICTEXT7, wxID_PANELSTATICTEXT8,
+ wxID_PANELSTATICTEXT9, wxID_PANELTYPE, wxID_PANELWIDTH_SLIDER,
 ] = map(lambda _init_ctrls: wx.NewId(), range(35))
 
 class panel(wx.Panel):
@@ -229,58 +229,58 @@ class panel(wx.Panel):
         self.setitaliclabel = 0
         self.getlist()
         self.initoptions()
-      
+
     def getlist(self):
         self.list = aplq()
-        self.nelements = len(self.list)    
-            
+        self.nelements = len(self.list)
+
     def initoptions(self):
         self.element_spin.SetRange(1,max(1,self.nelements))
         if(self.nelements==0): return
         plist = self.list[self.element-1]
         try:
-          icolor = int(plist['color'])
-          if icolor>=246:
-            self.Color.SetStringSelection(['bg','fg','black','white','red','green','blue','cyan','magenta','yellow'][255-icolor])
+            icolor = int(plist['color'])
+            if icolor>=246:
+                self.Color.SetStringSelection(['bg','fg','black','white','red','green','blue','cyan','magenta','yellow'][255-icolor])
         except:
-          pass
+            pass
         try:
-          self.width_slider.SetValue(int(plist['width']))
+            self.width_slider.SetValue(int(plist['width']))
         except:
-          pass
+            pass
         try:
-          self.Type.SetStringSelection(plist['type'])  
+            self.Type.SetStringSelection(plist['type'])
         except:
-          pass
+            pass
         try:
-          self.Marks.SetValue(int(plist['marks']))
+            self.Marks.SetValue(int(plist['marks']))
         except:
-          pass
+            pass
         try:
-	  marker = plist['marker']
-	  if marker=='\\':marker='.'
-          self.marker_letter.SetValue(marker)
+            marker = plist['marker']
+            if marker=='\\':marker='.'
+            self.marker_letter.SetValue(marker)
         except:
-          pass
+            pass
         try:
-          self.msize.SetValue(int(plist['msize']))
+            self.msize.SetValue(int(plist['msize']))
         except:
-          pass
+            pass
         try:
-          self.mspace.SetValue(int(plist['mspace']*100))
+            self.mspace.SetValue(int(plist['mspace']*100))
         except:
-          pass
+            pass
         try:
-          self.mphase.SetValue(int(plist['mphase']*100))
+            self.mphase.SetValue(int(plist['mphase']*100))
         except:
-          pass
+            pass
         self.Hide.SetValue(int(plist['hide']))
         isys = plsys(plsys())
         font = get_style()['systems'][isys-1]['ticks']['horizontal']['textStyle']['font']
         bold = font%4%2
         italic = (font%4-bold)/2
         font = (font-2*italic-bold)/4
-        font = ['Courier','Times','Helvetica','Symbol','New Century'][font]        
+        font = ['Courier','Times','Helvetica','Symbol','New Century'][font]
         self.FontLabel.SetStringSelection(font)
         self.BoldLabel.SetValue(bold)
         self.ItalicLabel.SetValue(italic)
@@ -289,42 +289,42 @@ class panel(wx.Panel):
 
     def OnUpdateButton(self, event):
         if(self.nelements<1):return
-        if(self.setcolor): 
-	    pledit(self.element,color=str(self.Color.GetStringSelection()))
+        if(self.setcolor):
+            pledit(self.element,color=str(self.Color.GetStringSelection()))
             self.setcolor=0
-        if(self.setwidth): 
+        if(self.setwidth):
             pledit(self.element,width=self.width_slider.GetValue())
-            self.setwidth=0  
-        if(self.settype):  
+            self.setwidth=0
+        if(self.settype):
             pledit(self.element,type =str(self.Type.GetStringSelection()))
-            self.settype=0  
-        if(self.setmarker): 
+            self.settype=0
+        if(self.setmarker):
             pledit(self.element,marker=str(self.marker_letter.GetValue()))
             self.setmarker=0
-        if(self.setmarks): 
+        if(self.setmarks):
             pledit(self.element,marks=self.Marks.GetValue())
-            self.setmarks=0  
-        if(self.setmsize): 
+            self.setmarks=0
+        if(self.setmsize):
             pledit(self.element,msize=self.msize.GetValue())
-            self.setmsize=0  
-        if(self.setmphase): 
+            self.setmsize=0
+        if(self.setmphase):
             pledit(self.element,mphase=self.mphase.GetValue()*0.01)
-            self.setmphase=0  
-        if(self.setmspace): 
+            self.setmphase=0
+        if(self.setmspace):
             pledit(self.element,mspace=self.mspace.GetValue()*0.01)
-            self.setmspace=0  
+            self.setmspace=0
         if(self.setfontlabel or self.setboldlabel or self.setitaliclabel):
             set_label(font=str(self.FontLabel.GetStringSelection()), \
                       bold=self.BoldLabel.GetValue() , \
                       italic=self.ItalicLabel.GetValue(),\
-                      axis=str(self.LabelAxis.GetStringSelection())) 
-            self.setfontlabel=0  
-            self.setboldlabel=0  
-            self.setitaliclabel=0  
+                      axis=str(self.LabelAxis.GetStringSelection()))
+            self.setfontlabel=0
+            self.setboldlabel=0
+            self.setitaliclabel=0
         if(self.setheightlabel):
             set_label(height=self.HeightLabel.GetValue()*0.0003, \
-                      axis=str(self.LabelAxis.GetStringSelection())) 
-            self.setheightlabel=0  
+                      axis=str(self.LabelAxis.GetStringSelection()))
+            self.setheightlabel=0
         event.Skip()
 
     def OnImmediateCheckbox(self, event):
@@ -417,5 +417,3 @@ class panel(wx.Panel):
         hcp()
         hcp_finish()
         event.Skip()
-       
-            

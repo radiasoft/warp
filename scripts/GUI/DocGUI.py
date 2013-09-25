@@ -39,4 +39,3 @@ class DocGUI(wx.MiniFrame):
         self.GetName.SetValue('')
         d = doc(text,printit=0)
         self.DocText.SetValue(d)
-        

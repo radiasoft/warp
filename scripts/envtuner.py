@@ -64,7 +64,7 @@ Right mouse button exits.
     while ieleme < nelem and elemzs[ieleme]+top.zlatstrt < zu:
         ieleme = ieleme + 1
     qz = zeros(ieleme - ielems + 1,'d')
-    qz[1:] = (top.zlatstrt + 
+    qz[1:] = (top.zlatstrt +
               0.5*(elemze[ielems:ieleme] + elemzs[ielems+1:ieleme+1]))
     if qz[-1] > zu: qz[-1] = zu
     if ielems == 0:
@@ -107,15 +107,15 @@ Right mouse button exits.
             for iq in range(len(qz)-1):
                 if qz[iq] < z and z < qz[iq+1]: break
             if z > qz[iq+1]: iq += 1
-    
+
             if m[10] == 0:
                 # --- Get value of delta requested.
                 delta = (m[3] - m[1])/(p[3] - p[2])
                 if delta == 0:
                     if m[1] < 0.5*(p[2]+p[3]):
-	                delta = -mindelta
+                        delta = -mindelta
                     else:
-	                delta = +mindelta
+                        delta = +mindelta
             elif m[10] == 4:
                 # --- With the control key, change the sign of the quantity
                 delta = -2./scale
@@ -127,4 +127,3 @@ Right mouse button exits.
         # --- Recalculate envelope and redo the plot.
         step()
         p = makeenvtuneplot(zl,zu,qz)
-

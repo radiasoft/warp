@@ -274,21 +274,21 @@ class ParticlePlotsGUI(wx.Panel):
     def OnPlotchoiceChoice(self, event):
         plotchoice = self.plotchoice.GetStringSelection()
         if plotchoice == 'iw':
-          self.izslider.SetRange(0,top.nzwind)
-          self.izslider.SetValue(self.iw)
-          self.plotchoicekw = 'iw'
+            self.izslider.SetRange(0,top.nzwind)
+            self.izslider.SetValue(self.iw)
+            self.plotchoicekw = 'iw'
         elif plotchoice == 'iz':
-          self.izslider.SetRange(0,w3d.nz)
-          self.izslider.SetValue(self.iz)
-          self.plotchoicekw = 'iz'
+            self.izslider.SetRange(0,w3d.nz)
+            self.izslider.SetValue(self.iz)
+            self.plotchoicekw = 'iz'
         elif plotchoice == 'ix':
-          self.izslider.SetRange(0,w3d.nx)
-          self.izslider.SetValue(self.ix)
-          self.plotchoicekw = 'ix'
+            self.izslider.SetRange(0,w3d.nx)
+            self.izslider.SetValue(self.ix)
+            self.plotchoicekw = 'ix'
         elif plotchoice == 'iy':
-          self.izslider.SetRange(0,w3d.ny)
-          self.izslider.SetValue(self.iy)
-          self.plotchoicekw = 'iy'
+            self.izslider.SetRange(0,w3d.ny)
+            self.izslider.SetValue(self.iy)
+            self.plotchoicekw = 'iy'
         self.MakeParticlePlot(self.doplotrefreshonchange,1)
 
     def OnParticlesRadiobutton(self, event):
@@ -314,10 +314,10 @@ class ParticlePlotsGUI(wx.Panel):
     def OnPaletteChoice(self, event):
         newpalette = self.Palette.GetStringSelection()
         try:
-          palette(newpalette+".gp")
+            palette(newpalette+".gp")
         except gist.error:
-          pass
-
+            pass
+  
     def OnFmaButton(self, event):
         fma()
 

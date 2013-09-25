@@ -6,10 +6,10 @@ from warp import *
 def create(parent):
     return wxDialog1(parent)
 
-[wxID_WXDIALOG1, wxID_WXDIALOG1BROWSER, wxID_WXDIALOG1FILENAME, 
- wxID_WXDIALOG1RESTORE, wxID_WXDIALOG1SKIP, wxID_WXDIALOG1STATICTEXT1, 
- wxID_WXDIALOG1STATICTEXT2, wxID_WXDIALOG1TEXT3, wxID_WXDIALOG1VARSUFFIX, 
- wxID_WXDIALOG1VERBOSE, 
+[wxID_WXDIALOG1, wxID_WXDIALOG1BROWSER, wxID_WXDIALOG1FILENAME,
+ wxID_WXDIALOG1RESTORE, wxID_WXDIALOG1SKIP, wxID_WXDIALOG1STATICTEXT1,
+ wxID_WXDIALOG1STATICTEXT2, wxID_WXDIALOG1TEXT3, wxID_WXDIALOG1VARSUFFIX,
+ wxID_WXDIALOG1VERBOSE,
 ] = map(lambda _init_ctrls: wxNewId(), range(10))
 
 class wxDialog1(wxDialog):
@@ -77,7 +77,7 @@ class wxDialog1(wxDialog):
         self.skip = []
 
     def OnBrowserButton(self, event):
-        dlg = wxFileDialog(self, "Choose a file", ".", "", 
+        dlg = wxFileDialog(self, "Choose a file", ".", "",
               "DUMP files (*.dump)|*.dump|PDB files (*.pdb)|*.pdb|ALL files (*.*)|*.*", wxOPEN)
         try:
             if dlg.ShowModal() == wxID_OK:

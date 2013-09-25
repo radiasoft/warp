@@ -196,31 +196,31 @@ class panel(wx.Panel):
         self.Move(wx.Point(0,0))
 
     def OnPanelEnterWindow(self, event):
-      try:
-        self.Mode.SetSelection(__main__.dxwindow.interactor)
-        self.Rendering.SetSelection(__main__.dxwindow.l_hardware_acceleration)
-        self.NewWindow.SetValue(__main__.l_dxnewwindow)
-        dxwindows = __main__.DXWindows.copy()
-        toremove=[]
-        for i in range(1,self.Window.GetCount()):
-          win_name = self.Window.GetString(i)
-          if dxwindows.has_key(win_name):
-            dxwindows.pop(win_name)
-          else:
-            toremove+=[i]
-        toremove.reverse()
-        for i in toremove:
-          self.Window.Delete(i)
-        for k in dxwindows.iterkeys():
-          self.Window.Append(k)       
-        if __main__.l_dxupdate_all_windows:
-          self.Window.SetStringSelection('All')
-        else:
-          self.Window.SetStringSelection(__main__.dxwindow.name)
-        event.Skip()
-      except:
-        event.Skip()
-
+        try:
+            self.Mode.SetSelection(__main__.dxwindow.interactor)
+            self.Rendering.SetSelection(__main__.dxwindow.l_hardware_acceleration)
+            self.NewWindow.SetValue(__main__.l_dxnewwindow)
+            dxwindows = __main__.DXWindows.copy()
+            toremove=[]
+            for i in range(1,self.Window.GetCount()):
+                win_name = self.Window.GetString(i)
+                if dxwindows.has_key(win_name):
+                    dxwindows.pop(win_name)
+                else:
+                    toremove+=[i]
+            toremove.reverse()
+            for i in toremove:
+                self.Window.Delete(i)
+            for k in dxwindows.iterkeys():
+                self.Window.Append(k)       
+            if __main__.l_dxupdate_all_windows:
+                self.Window.SetStringSelection('All')
+            else:
+                self.Window.SetStringSelection(__main__.dxwindow.name)
+            event.Skip()
+        except:
+            event.Skip()
+    
     def OnModeChoice(self, event):
         __main__.dxwindow.interactor = self.Mode.GetSelection()
         event.Skip()
@@ -234,12 +234,12 @@ class panel(wx.Panel):
 
     def OnRenderingChoice(self, event):
         if __main__.l_dxupdate_all_windows:
-          windows=__main__.DXWindows.values()
+            windows=__main__.DXWindows.values()
         else:
-          windows=[__main__.dxwindow]
+            windows=[__main__.dxwindow]
         rendering=str(self.Rendering.GetStringSelection())
         for w in windows:
-          DXRendering(w,rendering)
+            DXRendering(w,rendering)
         event.Skip()
 
     def OnXscaleScroll(self, event):
@@ -296,10 +296,10 @@ class panel(wx.Panel):
     def OnWindowChoice(self, event):
         selection=self.Window.GetStringSelection()
         if selection=='All':
-          __main__.l_dxupdate_all_windows=1
+            __main__.l_dxupdate_all_windows=1
         else:
-          __main__.l_dxupdate_all_windows=0
-          __main__.dxwindow=__main__.DXWindows[selection]
+            __main__.l_dxupdate_all_windows=0
+            __main__.dxwindow=__main__.DXWindows[selection]
         event.Skip()
 
     def OnNewwindowCheckbox(self, event):

@@ -7,9 +7,9 @@ from   string import *
 # just get the name of the project file if it's given. Simple.
 projfile = 'Unnamed'
 if len(sys.argv) > 1:
-   projfile = sys.argv[1]
-
-
+    projfile = sys.argv[1]
+ 
+ 
 def MsgBox (window, string):
     dlg=wxMessageDialog(window, string, 'wxProject', wxOK)
     dlg.ShowModal()
@@ -149,11 +149,11 @@ class main_window(wxFrame):
             iter = 0
             child = ''
             for i in range(count):
-               if i == 0:
-                  (child,iter) = self.tree.GetFirstChild(self.root,iter)
-               else:
-                  (child,iter) = self.tree.GetNextChild(self.root,iter)
-               output.write (self.tree.GetItemText(child) + "\n")
+                if i == 0:
+                    (child,iter) = self.tree.GetFirstChild(self.root,iter)
+                else:
+                    (child,iter) = self.tree.GetNextChild(self.root,iter)
+                output.write (self.tree.GetItemText(child) + "\n")
             output.close()
             self.projectdirty = False
         except IOError:
@@ -169,126 +169,126 @@ class main_window(wxFrame):
     def OnProjectOpen(self, event):
         open_it = True
         if self.projectdirty:
-           dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
-                               wxYES_NO | wxCANCEL)
-           result = dlg.ShowModal()
-           if result == wxID_YES:
-              self.project_save()
-           if result == wxID_CANCEL:
-              open_it = False
-           dlg.Destroy()
+            dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
+                                wxYES_NO | wxCANCEL)
+            result = dlg.ShowModal()
+            if result == wxID_YES:
+                self.project_save()
+            if result == wxID_CANCEL:
+                open_it = False
+            dlg.Destroy()
         if open_it:
-           dlg = wxFileDialog(self, "Choose a project to open", ".", "", "*.wxp", wxOPEN)
-           if dlg.ShowModal() == wxID_OK:
-              self.project_open(dlg.GetPath())
-           dlg.Destroy()
-
+            dlg = wxFileDialog(self, "Choose a project to open", ".", "", "*.wxp", wxOPEN)
+            if dlg.ShowModal() == wxID_OK:
+                self.project_open(dlg.GetPath())
+            dlg.Destroy()
+ 
     def OnProjectNew(self, event):
         open_it = True
         if self.projectdirty:
-           dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
-                               wxYES_NO | wxCANCEL)
-           result = dlg.ShowModal()
-           if result == wxID_YES:
-              self.project_save()
-           if result == wxID_CANCEL:
-              open_it = False
-           dlg.Destroy()
-
+            dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
+                                wxYES_NO | wxCANCEL)
+            result = dlg.ShowModal()
+            if result == wxID_YES:
+                self.project_save()
+            if result == wxID_CANCEL:
+                open_it = False
+            dlg.Destroy()
+ 
         if open_it:
-           dlg = wxTextEntryDialog (self, "Name for new project:", "New Project",
-                                    "New project", wxOK | wxCANCEL)
-           if dlg.ShowModal() == wxID_OK:
-               newproj = dlg.GetValue()
-               dlg.Destroy()
-               dlg = wxFileDialog (self, "Place to store new project", ".", "", "*.wxp",
-                                   wxSAVE)
-               if dlg.ShowModal() == wxID_OK:
-                  try:
-                     proj = open (dlg.GetPath(), 'w')
-                     proj.write (newproj + "\n")
-                     proj.close()
-                     self.project_open (dlg.GetPath())
-                  except IOError:
-                     dlg_m = wxMessageDialog (self,
-                                              'There was an error saving the new project file.',
-                                              'Error!', wxOK)
-                     dlg_m.ShowModal()
-                     dlg_m.Destroy()
+            dlg = wxTextEntryDialog (self, "Name for new project:", "New Project",
+                                     "New project", wxOK | wxCANCEL)
+            if dlg.ShowModal() == wxID_OK:
+                newproj = dlg.GetValue()
+                dlg.Destroy()
+                dlg = wxFileDialog (self, "Place to store new project", ".", "", "*.wxp",
+                                    wxSAVE)
+                if dlg.ShowModal() == wxID_OK:
+                    try:
+                        proj = open (dlg.GetPath(), 'w')
+                        proj.write (newproj + "\n")
+                        proj.close()
+                        self.project_open (dlg.GetPath())
+                    except IOError:
+                        dlg_m = wxMessageDialog (self,
+                                                 'There was an error saving the new project file.',
+                                                 'Error!', wxOK)
+                        dlg_m.ShowModal()
+                        dlg_m.Destroy()
         dlg.Destroy()
 
     def OnProjectExit(self, event):
         close = True
         if self.projectdirty:
-           dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
-                               wxYES_NO | wxCANCEL)
-           result = dlg.ShowModal()
-           if result == wxID_YES:
-              self.project_save()
-           if result == wxID_CANCEL:
-              close = False
-           dlg.Destroy()
+            dlg=wxMessageDialog(self, 'The project has been changed.  Save?', 'wxProject',
+                                wxYES_NO | wxCANCEL)
+            result = dlg.ShowModal()
+            if result == wxID_YES:
+                self.project_save()
+            if result == wxID_CANCEL:
+                close = False
+            dlg.Destroy()
         if close:
-           self.Close()
-
+            self.Close()
+ 
     def OnFileAdd(self, event):
         dlg = wxFileDialog (self, "Choose a file to add", ".", "", "*.*", wxOPEN)
         if dlg.ShowModal() == wxID_OK:
-           path = dlg.GetPath()
-           a = self.tree.AppendItem (self.root, path)
-           #self.tree.SetPyData(a, path)
-           self.tree.Expand (self.root)
-           self.project_save()
-
+            path = dlg.GetPath()
+            a = self.tree.AppendItem (self.root, path)
+            #self.tree.SetPyData(a, path)
+            self.tree.Expand (self.root)
+            self.project_save()
+ 
     def OnFileRemove(self, event):
         item = self.tree.GetSelection()
         if item != self.root:
-           self.tree.Delete (item)
-           self.project_save()
-
+            self.tree.Delete (item)
+            self.project_save()
+ 
     def OnFileOpen(self, event):
         item = self.tree.GetSelection()
 
     def OnFileSave(self, event):
         if self.activeitem != self.root:
-           self.editor.SaveFile (self.tree.GetItemText (self.activeitem))
-
+            self.editor.SaveFile (self.tree.GetItemText (self.activeitem))
+ 
     def OnTreeLabelEdit(self, event):
         item=event.GetItem()
         if item != self.root:
-           event.Veto()
-
+            event.Veto()
+ 
     def OnTreeLabelEditEnd(self, event):
         self.projectdirty = True
 
     def OnTreeItemActivated(self, event):
         go_ahead = True
         if self.activeitem != self.root:
-           if self.editor.IsModified():
-              dlg=wxMessageDialog(self, 'The edited file has changed.  Save it?',
-                                  'wxProject', wxYES_NO | wxCANCEL)
-              result = dlg.ShowModal()
-              if result == wxID_YES:
-                 self.editor.SaveFile (self.tree.GetItemText (self.activeitem))
-              if result == wxID_CANCEL:
-                 go_ahead = False
-              dlg.Destroy()
-           if go_ahead:
-              self.tree.SetItemBold (self.activeitem, 0)
-
+            if self.editor.IsModified():
+                dlg=wxMessageDialog(self, 'The edited file has changed.  Save it?',
+                                    'wxProject', wxYES_NO | wxCANCEL)
+                result = dlg.ShowModal()
+                if result == wxID_YES:
+                    self.editor.SaveFile (self.tree.GetItemText (self.activeitem))
+                if result == wxID_CANCEL:
+                    go_ahead = False
+                dlg.Destroy()
+            if go_ahead:
+                self.tree.SetItemBold (self.activeitem, 0)
+  
         if go_ahead:
-           item=event.GetItem()
-           self.activeitem = item
-           if item != self.root:
-              self.tree.SetItemBold (item, 1)
-              self.editor.Enable (1)
-              self.editor.LoadFile (self.tree.GetItemText(item))
-              self.editor.SetInsertionPoint (0)
-              self.editor.SetFocus()
-           else:
-              self.editor.Clear()
-              self.editor.Enable (0)
-
+            item=event.GetItem()
+            self.activeitem = item
+            if item != self.root:
+                self.tree.SetItemBold (item, 1)
+                self.editor.Enable (1)
+                self.editor.LoadFile (self.tree.GetItemText(item))
+                self.editor.SetInsertionPoint (0)
+                self.editor.SetFocus()
+            else:
+                self.editor.Clear()
+                self.editor.Enable (0)
+  
 class App(wxApp):
     def OnInit(self):
         frame = main_window(None, -1, "wxProject - " + projfile)

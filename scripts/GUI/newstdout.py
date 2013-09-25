@@ -8,12 +8,12 @@ class newstdout_accumulate:
     def clear(self):
         self.stdout = []
     def flush(self):
-        pass         
+        pass
 
 class newstdout_withCR:
     def __init__(self,winout):
         self.winout = winout
-        self.lastCR = false 
+        self.lastCR = false
         import curses.ascii
         self.CR = curses.ascii.ctrl('m')
     def write(self,s):
@@ -26,7 +26,7 @@ class newstdout_withCR:
         else:
             self.winout.WriteText(s)
     def flush(self):
-        pass         
+        pass
 
 class newstdout:
     def __init__(self,winout):
@@ -35,4 +35,4 @@ class newstdout:
         self.winout.SetInsertionPointEnd()
         self.winout.write(s)
     def flush(self):
-        pass         
+        pass

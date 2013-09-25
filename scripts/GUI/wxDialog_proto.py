@@ -6,7 +6,7 @@ import WarpPanel
 def create(parent):
     return wx.Dialog1(parent)
 
-[wxID_WXDIALOG1, wxID_WXDIALOG1TONOTEBOOK, wxID_WXDIALOG1WINDOW1, 
+[wxID_WXDIALOG1, wxID_WXDIALOG1TONOTEBOOK, wxID_WXDIALOG1WINDOW1,
 ] = map(lambda _init_ctrls: wx.NewId(), range(3))
 
 class wxDialog1(wx.Dialog):
@@ -48,7 +48,7 @@ class wxDialog1(wx.Dialog):
         self.parent.notebook1.GetPage(self.nbselection).Show(1)
         self.parent.notebook1.SetSelection(self.nbselection)
         self.panel.Move(wx.Point(0,0))
-#	self.panel.SetSize(self.parent.notebook1.GetSize())
+#        self.panel.SetSize(self.parent.notebook1.GetSize())
         self.panel.Refresh()
         self.Destroy()
         event.Skip()
@@ -70,7 +70,7 @@ class wxFrame1(wx.Frame):
               style=wx.DEFAULT_FRAME_STYLE, title='wx.Dialog1')
         self._init_utils()
         self.SetClientSize(wx.Size(630, 410))
-    	self.SetAutoLayout(True)
+        self.SetAutoLayout(True)
         EVT_CLOSE(self, self.OnWxframe1Close)
 
         self.window1 = wx.Window(id=wxID_WXDIALOG1WINDOW1, name='window1',

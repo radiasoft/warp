@@ -7,8 +7,8 @@ from wx.grid import *
 import os, sys, string
 import warp
 
-[wxID_PANEL, wxID_PANELBACK, wxID_PANELFORWARD, wxID_PANELHOME, 
- wxID_PANELHTMLWINDOW1, 
+[wxID_PANEL, wxID_PANELBACK, wxID_PANELFORWARD, wxID_PANELHOME,
+ wxID_PANELHTMLWINDOW1,
 ] = map(lambda _init_ctrls: wx.NewId(), range(5))
 
 class panel(wx.Panel):
@@ -45,8 +45,8 @@ class panel(wx.Panel):
     def __init__(self, parent):
         self._init_ctrls(parent)
         self.html=self.htmlWindow1
-	parent.GetParent().html=self.html
-	self.html.GoHome=self.GoHome
+        parent.GetParent().html=self.html
+        self.html.GoHome=self.GoHome
         self.Move(wx.Point(0,0))
         cs = wx.LayoutConstraints()
         ref=self.GetParent()
@@ -64,16 +64,16 @@ class panel(wx.Panel):
         cs.right.SameAs(ref,wx.Right)
         self.html.SetConstraints(cs)
         self.html.SetAutoLayout(True)
-    
+
     def GoHome(self,which=None):
-	if which is not None:self.which = which
+        if which is not None:self.which = which
         warp_path = os.path.dirname(warp.__file__)
         if sys.platform=='cygwin':
-          cpos = string.find(warp_path,'cygdrive')
-          if cpos>=0:
-            warp_path = string.upper(warp_path[cpos+9])+':'+warp_path[cpos+10:]
-          else:
-            warp_path = warp_path[1]+':'+warp_path[3:]
+            cpos = string.find(warp_path,'cygdrive')
+            if cpos>=0:
+                warp_path = string.upper(warp_path[cpos+9])+':'+warp_path[cpos+10:]
+            else:
+                warp_path = warp_path[1]+':'+warp_path[3:]
         if warp_path <> '':warp_path+='/'
         self.html.LoadPage(warp_path+'doc/html/'+self.which+'.html')
 
@@ -90,4 +90,4 @@ class panel(wx.Panel):
     def OnHomeButton(self, event):
         self.GoHome()
         event.Skip()
- 
+

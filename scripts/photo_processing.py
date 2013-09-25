@@ -4,7 +4,7 @@
 # by: Agust Valfells and Lilya Kharevych
 # created: Sep. 22, 2000
 #
-#	Last Modified: Nov. 12, 2001
+#       Last Modified: Nov. 12, 2001
 #
 # Additional photo manipulation functions to create tif montages
 # and gif animations from previously saved tif photos in WARP
@@ -26,8 +26,8 @@ import gifmaker
 
 photo_processing_version = "$Id: photo_processing.py,v 1.4 2009/01/08 19:30:23 dave Exp $"
 def photo_processingdoc():
-  import photo_processing
-  print photo_processing.__doc__
+    import photo_processing
+    print photo_processing.__doc__
 
 def make_montage(runid=None, label = "z", Rows = None, Columns = None):
     """ make_montage(runid=None, label = "z", Rows = None, Columns = None)
@@ -85,13 +85,13 @@ same name but with "montage" appended.
 
     L.sort()
     for H in L:
-    	im = Image.open(H)
-    	n = L.index(H)
-    	R = (n / Columns)
-    	C = (n - R*Columns)
-    	M0 = (D0 - im.size[0]) / 2
-    	M1 = (D1 - im.size[1]) / 2
-    	B.paste(im,(C*D1 + M1, R*D0 + M0, C*D1 + M1 + im.size[1], R*D0 + M0 + im.size[0]))
+        im = Image.open(H)
+        n = L.index(H)
+        R = (n / Columns)
+        C = (n - R*Columns)
+        M0 = (D0 - im.size[0]) / 2
+        M1 = (D1 - im.size[1]) / 2
+        B.paste(im,(C*D1 + M1, R*D0 + M0, C*D1 + M1 + im.size[1], R*D0 + M0 + im.size[0]))
 
     filename = runid + "_" + label + "_montage.tif"
     B.save(filename)
@@ -99,190 +99,190 @@ same name but with "montage" appended.
 
 
 def make_movie(runid=None, num_movie=None, tz=1,ty=0,tx=0):
-	""" make_montage(runid=None, num_movie=None, tz=1,ty=0,tx=0):
-    This function looks in the current directory, assembles all the tif files
+    """ make_montage(runid=None, num_movie=None, tz=1,ty=0,tx=0):
+This function looks in the current directory, assembles all the tif files
 prefixed by the runid provided (top.runid by default), and arranges them
 in a gif animation.  <Needs More Work (to change fps, etc)>
-	"""
-	if runid is None:
-		runid = arraytostr(top.runid)
+    """
+    if runid is None:
+        runid = arraytostr(top.runid)
 
-	if tz:
-	# ---- Reading z pictures ----
-    	# -- Looking for biggest number of picture file name --
-		max_num = '00';
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
-						if (fname[1][1:]>max_num):
-							max_num = fname[1][1:]
-			except IndexError: continue
+    if tz:
+    # ---- Reading z pictures ----
+    # -- Looking for biggest number of picture file name --
+        max_num = '00';
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
+                        if (fname[1][1:]>max_num):
+                            max_num = fname[1][1:]
+            except IndexError: continue
 
-		print "maxnum: ", max_num
+        print "maxnum: ", max_num
 
-		# -- Making movie file name --
-		m_num='00'
-		if num_movie==None:
-			for mfile in os.listdir(os.curdir):
-				mfname = mfile.split( '.')
+        # -- Making movie file name --
+        m_num='00'
+        if num_movie==None:
+            for mfile in os.listdir(os.curdir):
+                mfname = mfile.split( '.')
 
-				try:
-					if len(mfname)== 4:
-						if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
-							if (mfname[1][1:] > m_num):
-								m_num = mfname[1][1:]
-				except IndexError: continue
-        	m_num = `(int(m_num)+1)`
+                try:
+                    if len(mfname)== 4:
+                        if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
+                            if (mfname[1][1:] > m_num):
+                                m_num = mfname[1][1:]
+                except IndexError: continue
+        m_num = `(int(m_num)+1)`
 
-#	else:
-#		m_num = `num_movie`
+#       else:
+#               m_num = `num_movie`
 
-		if len(m_num) < 2:    m_num = '0'+m_num
+        if len(m_num) < 2:    m_num = '0'+m_num
 
-		filename = runid+'.'+'z'+m_num+'.'+'m'+".gif"
+        filename = runid+'.'+'z'+m_num+'.'+'m'+".gif"
 
-    	# -- Opening needed files in the directory and saving them in frames --
-		max_num = `(int(max_num)+1)`
-		sequence = []
+    # -- Opening needed files in the directory and saving them in frames --
+        max_num = `(int(max_num)+1)`
+        sequence = []
 
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
-						if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
-							try:
-								im = Image.open(file)
-								sequence.append(im)
-							except IOError:
-								print "!!Wrong input output"
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'z'):
+                        if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
+                            try:
+                                im = Image.open(file)
+                                sequence.append(im)
+                            except IOError:
+                                print "!!Wrong input output"
 
-			except IndexError: continue
+            except IndexError: continue
 
-		#write GIF animation
-		fp = open(filename, "wb")
-		gifmaker.makedelta(fp, sequence)
-		fp.close()
+        #write GIF animation
+        fp = open(filename, "wb")
+        gifmaker.makedelta(fp, sequence)
+        fp.close()
 
 
 
-	if ty:
-	# ---- Reading y pictures ----
-    	# -- Looking for biggest number of picture file name --
-		max_num = '00';
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
-						if (fname[1][1:]>max_num):
-							max_num = fname[1][1:]
-			except IndexError: continue
+    if ty:
+    # ---- Reading y pictures ----
+    # -- Looking for biggest number of picture file name --
+        max_num = '00';
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
+                        if (fname[1][1:]>max_num):
+                            max_num = fname[1][1:]
+            except IndexError: continue
 
-		print "maxnum: ", max_num
+        print "maxnum: ", max_num
 
-		# -- Making movie file name --
-		m_num='00'
-		if num_movie==None:
-			for mfile in os.listdir(os.curdir):
-				mfname = mfile.split( '.')
+        # -- Making movie file name --
+        m_num='00'
+        if num_movie==None:
+            for mfile in os.listdir(os.curdir):
+                mfname = mfile.split( '.')
 
-				try:
-					if len(mfname)== 4:
-						if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
-							if (mfname[1][1:] > m_num):
-								m_num = mfname[1][1:]
-				except IndexError: continue
-        	m_num = `(int(m_num)+1)`
+                try:
+                    if len(mfname)== 4:
+                        if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
+                            if (mfname[1][1:] > m_num):
+                                m_num = mfname[1][1:]
+                except IndexError: continue
+        m_num = `(int(m_num)+1)`
 
-#		else:
-#			m_num = `num_movie`
+#               else:
+#                       m_num = `num_movie`
 
-		if len(m_num) < 2:    m_num = '0'+m_num
+        if len(m_num) < 2:    m_num = '0'+m_num
 
-		filename = runid+'.'+'y'+m_num+'.'+'m'+".gif"
+        filename = runid+'.'+'y'+m_num+'.'+'m'+".gif"
 
-    	# -- Opening needed files in the directory and saving them in frames --
-		max_num = `(int(max_num)+1)`
-		sequence = []
+    # -- Opening needed files in the directory and saving them in frames --
+        max_num = `(int(max_num)+1)`
+        sequence = []
 
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:	
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
-						if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
-							try:
-								im = Image.open(file)
-								sequence.append(im)
-							except IOError:
-								print "!!Wrong input output"
-							
-			except IndexError: continue
-		
-		#write GIF animation
-		fp = open(filename, "wb")
-		gifmaker.makedelta(fp, sequence)
-		fp.close()
-	
-	
-	if tx:
-	# ---- Reading x pictures ----
- 	# -- Looking for biggest number of picture file name --
-		max_num = '00';
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):
-						if (fname[1][1:]>max_num):
-							max_num = fname[1][1:]
-			except IndexError: continue
-		
-		print "maxnum: ", max_num
-	
-		# -- Making movie file name --
-		m_num='00'
-		if num_movie==None:
-			for mfile in os.listdir(os.curdir):
-				mfname = mfile.split( '.')
-			
-				try:
-					if len(mfname)== 4:
-						if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
-							if (mfname[1][1:] > m_num):
-								m_num = mfname[1][1:]
-				except IndexError: continue
-        	m_num = `(int(m_num)+1)`
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'y'):
+                        if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
+                            try:
+                                im = Image.open(file)
+                                sequence.append(im)
+                            except IOError:
+                                print "!!Wrong input output"
 
-	#	else:	
-	#		m_num = `num_movie`
-		
-		if len(m_num) < 2:    m_num = '0'+m_num
+            except IndexError: continue
 
-		filename = runid+'.'+'x'+m_num+'.'+'m'+".gif"
+        #write GIF animation
+        fp = open(filename, "wb")
+        gifmaker.makedelta(fp, sequence)
+        fp.close()
 
-    	# -- Opening needed files in the directory and saving them in frames --
-		max_num = `(int(max_num)+1)`
-		sequence = []
 
-		for file in os.listdir(os.curdir):
-			fname = file.split('.')
-			try:
-				if len(fname)== 3:
-					if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):
-						if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
-							try:
-								im = Image.open(file)
-								sequence.append(im)
-							except IOError:
-								print "!!Wrong input output"
-							
-			except IndexError: continue
-		
-		#write GIF animation
-		fp = open(filename, "wb")
-		gifmaker.makedelta(fp, sequence)
-		fp.close()
+    if tx:
+    # ---- Reading x pictures ----
+    # -- Looking for biggest number of picture file name --
+        max_num = '00';
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):
+                        if (fname[1][1:]>max_num):
+                            max_num = fname[1][1:]
+            except IndexError: continue
+
+        print "maxnum: ", max_num
+
+        # -- Making movie file name --
+        m_num='00'
+        if num_movie==None:
+            for mfile in os.listdir(os.curdir):
+                mfname = mfile.split( '.')
+
+                try:
+                    if len(mfname)== 4:
+                        if (mfname[0]==runid) and (mfname[3]=='gif') and (mfname[2]=='m'):
+                            if (mfname[1][1:] > m_num):
+                                m_num = mfname[1][1:]
+                except IndexError: continue
+        m_num = `(int(m_num)+1)`
+
+    #       else:
+    #               m_num = `num_movie`
+
+        if len(m_num) < 2:    m_num = '0'+m_num
+
+        filename = runid+'.'+'x'+m_num+'.'+'m'+".gif"
+
+    # -- Opening needed files in the directory and saving them in frames --
+        max_num = `(int(max_num)+1)`
+        sequence = []
+
+        for file in os.listdir(os.curdir):
+            fname = file.split('.')
+            try:
+                if len(fname)== 3:
+                    if (fname[0]==runid) and (fname[2]=='tif') and (fname[1][0]== 'x'):
+                        if (fname[1][1:]<max_num) and (fname[1][1:]>'0'):
+                            try:
+                                im = Image.open(file)
+                                sequence.append(im)
+                            except IOError:
+                                print "!!Wrong input output"
+
+            except IndexError: continue
+
+        #write GIF animation
+        fp = open(filename, "wb")
+        gifmaker.makedelta(fp, sequence)
+        fp.close()

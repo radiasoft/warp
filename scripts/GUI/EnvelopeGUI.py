@@ -269,16 +269,7 @@ class EnvelopeGUI(wx.Frame):
                 x = env.getpyobject(x)
                 y = env.getpyobject(y)
                 if x is not None and y is not None:
-                  plg(y,x,color=self.plotcolor)
-                  redraw()
+                    plg(y,x,color=self.plotcolor)
+                    redraw()
         except AttributeError:
             pass
-
-
-
-
-
-
-
-
-

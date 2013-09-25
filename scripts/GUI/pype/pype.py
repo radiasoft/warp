@@ -307,12 +307,12 @@ if 1:
     if 1:
         cn = 'Courier New'
         if wxPlatform == '__WXMSW__':
-           faces = {'times': cn, 'mono' : cn, 'helv' : cn, 'other': cn,
-                    'size' : 10, 'size2': 9}
+            faces = {'times': cn, 'mono' : cn, 'helv' : cn, 'other': cn,
+                     'size' : 10, 'size2': 9}
         else:
-           faces = {'times': 'Courier', 'mono' : 'Courier',
-                    'helv' : 'Courier', 'other': 'Courier', 'size' : 10,
-                    'size2': 10 }
+            faces = {'times': 'Courier', 'mono' : 'Courier',
+                     'helv' : 'Courier', 'other': 'Courier', 'size' : 10,
+                     'size2': 10 }
         del cn
 
 #---------------------- Frame that contains everything -----------------------
@@ -821,9 +821,9 @@ class MainWindow(wxFrame):
     def getAbsolute(self, fn, dn):
         res = os.path.normcase(os.path.normpath(os.path.realpath(os.path.join(dn, fn))))
         if sys.platform=='cygwin':
-          cpos =  string.find(res,':')
-          if cpos>=0:
-            res = res[cpos-1:]
+            cpos =  string.find(res,':')
+            if cpos>=0:
+                res = res[cpos-1:]
         return res
     def splitAbsolute(self, path):
         return os.path.split(os.path.normcase(path))
@@ -838,10 +838,10 @@ class MainWindow(wxFrame):
         if win.dirname:
             try:
                 ofn = os.path.join(win.dirname, win.filename)
-	        if sys.platform=='cygwin':
-        	  cpos =  string.find(ofn,':')
-          	  if cpos>=0:
-            	    ofn = ofn[cpos-1:]
+                if sys.platform=='cygwin':
+                    cpos =  string.find(ofn,':')
+                    if cpos>=0:
+                        ofn = ofn[cpos-1:]
                 fil = open(ofn, 'wb')
                 txt = win.GetText()
                 fil.write(txt)
@@ -2018,8 +2018,8 @@ class MainWindow(wxFrame):
                                     if (found > -1) and\
                                        (win.GetStyleAt(win.GetLineEndPosition(linenum)-len(line)+found)==5) and\
                                        (win.GetLineIndentation(linenum) == found):
-                                           ind = win.GetLineIndentation(linenum)
-                                           break
+                                        ind = win.GetLineIndentation(linenum)
+                                        break
                                     linenum -= 1
                                     line = win.GetLine(linenum)
                         #if we were to do indentation for ()[]{}, it would be here
@@ -2743,12 +2743,12 @@ class CodeSnippet(wxPanel):
         self.lb.Set(self.displayorder)
 
     def onpaste(self, e):
-            wxTheClipboard.Open()
-            do = wxTextDataObject()
-            tmp = wxTheClipboard.GetData(do)
-            wxTheClipboard.Close()
-            if tmp:
-                self.OnDropText(do.GetText())
+        wxTheClipboard.Open()
+        do = wxTextDataObject()
+        tmp = wxTheClipboard.GetData(do)
+        wxTheClipboard.Close()
+        if tmp:
+            self.OnDropText(do.GetText())
     def OnKeyPressed(self,e):
         key = e.KeyCode()
         if key in [WXK_DELETE, WXK_BACK] and self.displayorder:
