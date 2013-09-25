@@ -64,7 +64,7 @@ c     --- Check if the convergence diagnostic should be printed.
           mgverbose = 0
         endif
       endif
-        
+
       call multigrid3dsolve(iwhich,nx,ny,nz,nxlocal,nylocal,nzlocal,
      &                      nxguardphi,nyguardphi,nzguardphi,
      &                      nxguardrho,nyguardrho,nzguardrho,
@@ -465,7 +465,7 @@ c     --- Make a print out.
   20    format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
         call remark(errline)
       endif
-      
+
 c     --- If using residual correction form, restore saved rho
       if (mgform == 2) then
         rho(0:nxlocal,0:nylocal,0:nzlocal) = rhosave
@@ -933,7 +933,7 @@ c       --- Make a print out.
   20      format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
           call remark(errline)
         endif
-      
+
         deallocate(phisave)
 
 c       --- Restore rho
@@ -1611,7 +1611,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5)
       integer(ISZ):: localboundscoarse(0:5)
       integer(ISZ):: lxoffset,lyoffset,lzoffset
-      
+
 c Restrict to a coarser grid.  The factor ff is needed since the
 c residual will be used as the source term in the next coarser grid and
 c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is
@@ -1631,7 +1631,7 @@ c too small with the current values of dxsqi etc.
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-c     --- 
+c     ---
       nw = 2*mgcoarsening
       allocate(wx(0:nw),wy(0:nw),wz(0:nw))
       allocate(ixmina(0:nxlocalcoarse),ixmaxa(0:nxlocalcoarse))
@@ -2146,7 +2146,7 @@ c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set temporary variables (these are used to increase performance)
-      if (linbend) then 
+      if (linbend) then
         dxi = sqrt(dxsqi)
         rdel = dzsqi/(dxsqi + dysqi + dzsqi)
       endif
@@ -2226,7 +2226,7 @@ c       --- grid refinement.
         endif
 
 c       --- Loop over the array. Boundary points are calculated too.
-        if (.not. linbend) then 
+        if (.not. linbend) then
 !$OMP DO
           do iz=izmin,izmax
             do iy=iymin,iymax
@@ -2310,7 +2310,7 @@ c=============================================================================
       real(kind=8):: rstar(-1:nzlocal+1),bendx(-1:nxlocal+1)
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,dxi,rdel,const
 
-c This routine provides the loops over the phi array which solves the 
+c This routine provides the loops over the phi array which solves the
 c iterative equation.
 c The case with and without bends are seperated since
 c the bends case has extra terms.
@@ -2335,14 +2335,14 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbounds(4) <= 0) izmin = 1
       if (localbounds(5) <= 0) izmax = nzlocal - 1
 
-c     --- bends, loop over z slices.  Comment: timing tests indicate that 
-c     --- use of a 1d array is faster than a 3d array.   
+c     --- bends, loop over z slices.  Comment: timing tests indicate that
+c     --- use of a 1d array is faster than a 3d array.
 !$OMP DO
       do iz=izmin,izmax
         rs  = rstar(iz+1)
         if (maxval(abs(rstar(iz-1:iz+1))) > LARGEPOS*1.e-6) then
-c         --- current z-slice not in bend or bordering a bend, do not 
-c         --- include curvature terms from Poisson's equation    
+c         --- current z-slice not in bend or bordering a bend, do not
+c         --- include curvature terms from Poisson's equation
           do iy=iymin,iymax
             ix1 = ixmin + mod(ixmin + iy + iz + parity,2)
             do ix=ix1,ixmax,2
@@ -2351,13 +2351,13 @@ c         --- include curvature terms from Poisson's equation
      &           (phi(ix  ,iy-1,iz  ) + phi(ix  ,iy+1,iz  ))*dysqic +
      &           (phi(ix  ,iy  ,iz-1) + phi(ix  ,iy  ,iz+1))*dzsqic +
      &           spm1*phi(ix,iy,iz)
-            enddo  
-          enddo  
-        else  
-c         --- current z-slice in a bend and near border of a bend, include 
-c         --- curvature terms from Poisson's equation.  Note: if bordering 
-c         --- a bend, the dh/dz "jump term" should be included.  The 
-c         --- current method of treating this jump term may be inaccurate. 
+            enddo
+          enddo
+        else
+c         --- current z-slice in a bend and near border of a bend, include
+c         --- curvature terms from Poisson's equation.  Note: if bordering
+c         --- a bend, the dh/dz "jump term" should be included.  The
+c         --- current method of treating this jump term may be inaccurate.
 c         --- r is set to 1 over (rs+x) to reduce the number of divides.
           dh = 1./rstar(iz+1) - 1./rstar(iz-1)
           if (abs(dh) > SMALLPOS .and. abs(rs) < LARGEPOS*1.e-6) then
@@ -2366,18 +2366,18 @@ c         --- r is set to 1 over (rs+x) to reduce the number of divides.
               do ix=ix1,ixmax,2
                 x = bendx(ix)
                 r = 1./(rs + x)
-                xfact = (x*r)*((x*r)-2.) 
+                xfact = (x*r)*((x*r)-2.)
                 del2bndc = 1./( 1.+xfact*rdel )
-                phi(ix,iy,iz) = rho(ix,iy,iz) + del2bndc*( 
+                phi(ix,iy,iz) = rho(ix,iy,iz) + del2bndc*(
      &           (phi(ix-1,iy  ,iz  ) + phi(ix+1,iy  ,iz  ))*dxsqic +
      &           (phi(ix  ,iy-1,iz  ) + phi(ix  ,iy+1,iz  ))*dysqic +
      &           (phi(ix  ,iy  ,iz-1) + phi(ix  ,iy  ,iz+1))*dzsqic +
-     &            .5*(phi(ix+1,iy,iz)-phi(ix-1,iy,iz))*r*const*dxi + 
-     &            xfact*(phi(ix,iy,iz+1) + phi(ix,iy,iz-1))*dzsqic - 
+     &            .5*(phi(ix+1,iy,iz)-phi(ix-1,iy,iz))*r*const*dxi +
+     &            xfact*(phi(ix,iy,iz+1) + phi(ix,iy,iz-1))*dzsqic -
      &            .25*(rs*r)**3*x*(phi(ix,iy,iz+1) - phi(ix,iy,iz-1))*dh*dzsqic) +
      &            spm1*phi(ix,iy,iz)
-              enddo 
-            enddo 
+              enddo
+            enddo
 
 c         --- current z-slice is near border of a bend only
           elseif (abs(dh) > SMALLPOS) then
@@ -2407,14 +2407,14 @@ c         --- current z-slice is in a bend only
      &           (phi(ix-1,iy  ,iz  ) + phi(ix+1,iy  ,iz  ))*dxsqic +
      &           (phi(ix  ,iy-1,iz  ) + phi(ix  ,iy+1,iz  ))*dysqic +
      &           (phi(ix  ,iy  ,iz-1) + phi(ix  ,iy  ,iz+1))*dzsqic +
-     &            .5*(phi(ix+1,iy,iz)-phi(ix-1,iy,iz))*r*const*dxi + 
+     &            .5*(phi(ix+1,iy,iz)-phi(ix-1,iy,iz))*r*const*dxi +
      &            xfact*(phi(ix,iy,iz+1) + phi(ix,iy,iz-1))*dzsqic)
      &            + spm1*phi(ix,iy,iz)
               enddo
             enddo
           endif
-        endif 
-      enddo 
+        endif
+      enddo
 !$OMP END DO
 
       if (lf3dtimesubs) timemgsor_loop_bend = timemgsor_loop_bend +
@@ -2516,7 +2516,7 @@ c=============================================================================
       real(kind=8):: rho(-nxguardrho:nxlocal+nxguardrho,
      &                   -nyguardrho:nylocal+nyguardrho,
      &                   -nzguardrho:nzlocal+nzguardrho)
- 
+
 c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
@@ -2552,7 +2552,7 @@ c=============================================================================
      &                   -nyguardrho:nylocal+nyguardrho,
      &                   -nzguardrho:nzlocal+nzguardrho)
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
- 
+
 c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
@@ -2596,7 +2596,7 @@ c=============================================================================
      &                   -nyguardrho:nylocal+nyguardrho,
      &                   -nzguardrho:nzlocal+nzguardrho)
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
- 
+
 c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
@@ -2784,7 +2784,7 @@ c=============================================================================
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,mgparam
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 c NOTE that dxsqicos and dysqicos are dxsqic and dysqic over mgparam.
 c
@@ -2994,7 +2994,7 @@ c=============================================================================
       integer(ISZ):: mglevel
       integer(ISZ):: localbounds(0:5),icndbndy
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 c NOTE that dxsqicos and dysqicos are dxsqic and dysqic over mgparam.
 c
@@ -3119,7 +3119,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 c
 c mgform is used to specify what form of operator is being used for
@@ -4043,7 +4043,7 @@ c     --- Sort even subgrid points
         call iswapconductor(na,isort,nn,1,conductors%evensubgrid%ilevel)
         deallocate(isort)
       endif
-    
+
 c     --- Sort odd subgrid points
       if (conductors%oddsubgrid%n > 0) then
         allocate(isort(conductors%oddsubgrid%n),stat=allocerror)
@@ -4637,7 +4637,6 @@ c=============================================================================
      &                                       nxguardphi,nyguardphi,nzguardphi,
      &                                       phi,bounds)
       use ConductorTypemodule
-      use Subtimersw3d
       use Conductor3d,Only:lcorrectede
       type(ConductorType):: conductors
       integer(ISZ):: nxlocal,nylocal,nzlocal
@@ -4738,7 +4737,6 @@ c=============================================================================
       subroutine fixefieldatconductorpoints(conductors,dx,dy,dz,nx,ny,nz,
      &                                      nxguarde,nyguarde,nzguarde,field)
       use ConductorTypemodule
-      use Subtimersw3d
       use Conductor3d,Only:lcorrectede
       type(ConductorType):: conductors
       integer(ISZ):: nx,ny,nz
@@ -4756,7 +4754,7 @@ c E=(phi(i) - phi(i+1))/delta.  Since in the conductor, phi(i-1) = phi(i),
 c the E can be fixed by a simple multiplication by 2. Note that this will
 c fail when a thin conductor only covers grid cell i and with cells i-1
 c and i+1 in vacuum.  In that case, two seperate finite differences would
-c need to be saved, one for each side of the conductor.  
+c need to be saved, one for each side of the conductor.
 
       integer(ISZ):: ii,ix,iy,iz
 
@@ -4772,7 +4770,7 @@ c need to be saved, one for each side of the conductor.
 
       return
       end
-c=========================================================================== 
+c===========================================================================
       subroutine sete3dwithconductor(conductors,np,xp,yp,zp,efetch,ex,ey,ez,
      &                               zgrid,xmmin,ymmin,zmmin,
      &                               dx,dy,dz,nxlocal,nylocal,nzlocal,
@@ -4781,7 +4779,6 @@ c===========================================================================
      &                               phi,selfe,
      &                               l2symtry,l4symtry,lcylindrical)
       use ConductorTypemodule
-      use Subtimersw3d
       type(ConductorType):: conductors
       integer(ISZ):: np,nxlocal,nylocal,nzlocal
       integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
@@ -4830,7 +4827,6 @@ c       + ...
       real(kind=8),pointer:: dels(:),volt(:)
 
       real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- If the icgrid is not allocated, then the conductor data is to be
 c     --- ignored, so call the base version of sete3d.
@@ -4966,7 +4962,7 @@ c     --- Calculate some temporaries.
      &              u0*v0*w1*(phi(i  ,j-1,k+1) - phi(i  ,j+1,k+1))*tdyi +
      &              u1*v0*w1*(phi(i+1,j-1,k+1) - phi(i+1,j+1,k+1))*tdyi +
      &              u0*v1*w1*(phi(i  ,j  ,k+1) - phi(i  ,j+2,k+1))*tdyi +
-     &              u1*v1*w1*(phi(i+1,j  ,k+1) - phi(i+1,j+2,k+1))*tdyi 
+     &              u1*v1*w1*(phi(i+1,j  ,k+1) - phi(i+1,j+2,k+1))*tdyi
 
               ezt = u0*v0*w0*(phi(i  ,j  ,k-1) - phi(i  ,j  ,k+1))*tdzi +
      &              u1*v0*w0*(phi(i+1,j  ,k-1) - phi(i+1,j  ,k+1))*tdzi +
@@ -5122,7 +5118,7 @@ c       --- Energy conserving
           eyt = (u0*w0*eengp(1,0,0,0) + u1*w0*eengp(1,1,0,0) +
      &           u0*w1*eengp(1,0,0,1) + u1*w1*eengp(1,1,0,1))
           if (yp(ip) < 0) eyt = sy*eyt
-              
+
           call GETEENGP(2,0,0,1,0,0,0,u0*v0,dzi)
           call GETEENGP(2,0,0,1,1,0,0,u1*v0,dzi)
           call GETEENGP(2,0,0,1,0,1,0,u0*v1,dzi)
@@ -5147,10 +5143,6 @@ c       --- Energy conserving
         enddo
 
       endif
-
-!$OMP MASTER
-c     if (lf3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
-!$OMP END MASTER
 
       return
       CONTAINS
@@ -5264,7 +5256,7 @@ c       ---------------------------------------------------------------------
 
         end subroutine GETEENGP
       end
-c=========================================================================== 
+c===========================================================================
       subroutine sete3dongridwithconductor(conductors,phi,
      &                                     dx,dy,dz,
      &                                     nxlocal,nylocal,nzlocal,ex,ey,ez,
@@ -5272,7 +5264,6 @@ c===========================================================================
      &                                     bounds)
       use GlobalVars,Only: dirichlet,neumann,periodic
       use ConductorTypemodule
-      use Subtimersw3d
       type(ConductorType):: conductors
       integer(ISZ):: nxlocal,nylocal,nzlocal
       integer(ISZ):: nxguardphi,nyguardphi,nzguardphi
@@ -5298,7 +5289,6 @@ c  Ez(i,j,k+1/2) = (phi(i,j,k) - phi(i,j,k+1))/dz
       real(kind=8),pointer:: dels(:),volt(:)
 
       real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- If the icgrid is not allocated, then the conductor data is to be
 c     --- ignored, so call the base version of sete3d.
@@ -5323,7 +5313,7 @@ c     --- Do the calculation in the bulk of the grid.
 
             call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
             ey(i,j,k) = eengp(1,0,0,0)
-              
+
             call GETEENGP(2,0,0,1,0,0,0,1.,dzi)
             ez(i,j,k) = eengp(2,0,0,0)
 
@@ -5341,7 +5331,7 @@ c     --- but not icgrid.
 
             call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
             ey(i,j,k) = eengp(1,0,0,0)
-              
+
             call GETEENGP(2,0,0,1,0,0,0,1.,dzi)
             ez(i,j,k) = eengp(2,0,0,0)
 
@@ -5370,7 +5360,7 @@ c     --- but not icgrid.
 
             call GETEENGP(1,0,1,0,0,0,0,1.,dyi)
             ey(i,j,k) = eengp(1,0,0,0)
-              
+
           enddo
         enddo
 
@@ -5427,10 +5417,6 @@ c     --- or setting.
           ez(:,:,nzlocal) = ez(:,:,0)
       end select
 
-!$OMP MASTER
-c     if (lf3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
-!$OMP END MASTER
-
       return
       CONTAINS
 
@@ -5483,7 +5469,7 @@ c       ---------------------------------------------------------------------
 
         end subroutine GETEENGP
       end
-c=========================================================================== 
+c===========================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
@@ -5707,7 +5693,7 @@ c     --- Precalculate the loop limits and weights.
                 do ixp=ixp1,ixp2
 
                   do ic=0,nc-1
-                    potential(ic,ix,iy,iz) = potential(ic,ix,iy,iz) + 
+                    potential(ic,ix,iy,iz) = potential(ic,ix,iy,iz) +
      &                wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
      &                parentpotential(ic,ixp,iyp,izp)
                   enddo
@@ -6724,7 +6710,7 @@ c=============================================================================
       logical(ISZ):: lrz,lmagnetostatic
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 
       integer(ISZ):: ic,ix,iz
@@ -6884,7 +6870,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 c
 c mgform is used to specify what form of operator is being used for
@@ -7044,7 +7030,7 @@ c       --- Correct coefficients for axisymmetric case
         if (mgform2init) ppp = 1.
         c0 = cxm + cxp + czm + czp
         res(ix,iz) = ppp*(rho(ix,iz) + cxm*pxm + cxp*pxp + czm*pzm + czp*pzp - c0*phi(ix,iz))
-        
+
         if (lmagnetostatic) then
           if (rr(ix) == 0.) then
             res(ix,iz) = 0.
@@ -7267,7 +7253,7 @@ c=============================================================================
       integer(ISZ):: localboundscoarse(0:5)
       integer(ISZ):: lxoffset,lzoffset
       logical(ISZ):: lapplydirichlet
-      
+
 c Restrict to a coarser grid.
 
       integer(ISZ):: ix,iz,nw
@@ -8110,7 +8096,7 @@ c       --- grid refinement.
           ix1 = ixmin + mod(ixmin + iz + parity,2)
           do ix=ix1,ixmax,2
 
-            phi(ix,iz) = mgparam*(rho(ix,iz) + 
+            phi(ix,iz) = mgparam*(rho(ix,iz) +
      &        0.5*(epsilon(ix  ,iz)+epsilon(ix  ,iz+1))*phi(ix-1,iz  )*dxsqi +
      &        0.5*(epsilon(ix+1,iz)+epsilon(ix+1,iz+1))*phi(ix+1,iz  )*dxsqi +
      &        0.5*(epsilon(ix,iz  )+epsilon(ix+1,iz  ))*phi(ix  ,iz-1)*dzsqi +
@@ -8319,7 +8305,7 @@ c=============================================================================
       integer(ISZ):: localbounds(0:5)
       integer(ISZ):: localboundscoarse(0:5)
       integer(ISZ):: lxoffset,lzoffset
-      
+
 c Restrict to a coarser grid.
 
       integer(ISZ):: ix,iz
@@ -8432,7 +8418,7 @@ c=============================================================================
       logical(ISZ):: lrz
       integer(ISZ):: localbounds(0:5)
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 
       integer(ISZ):: ic,ix,iz
@@ -8597,7 +8583,7 @@ c=============================================================================
       logical(ISZ):: lrz
       integer(ISZ):: localbounds(0:5)
 
-c Uses adjusted difference equation to enforce sub-grid level placement of 
+c Uses adjusted difference equation to enforce sub-grid level placement of
 c conductor boundaries for points near conductor surface.
 
       integer(ISZ):: ic,ix,iz
