@@ -306,8 +306,8 @@ Implements adaptive mesh refinement in 3d
                                  interiorbc,self.pbounds[1::2])
 
       # --- Create some temporaries for optimization
-      self.fullloweroverrefinement = self.fulllower/self.refinement
-      self.fullupperoverrefinement = self.fullupper/self.refinement
+      self.fullloweroverrefinement = aint(self.fulllower/self.refinement)
+      self.fullupperoverrefinement = aint(self.fullupper/self.refinement)
 
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.

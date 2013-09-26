@@ -2554,7 +2554,7 @@ def ppmultispecies(pp,args,kw):
     else:
       if js == -1: js = range(top.ns)
       ncolor = kw.get('ncolor',240)
-      color = kw.get('color',range(0,ncolor,ncolor/len(js)))
+      color = kw.get('color',range(0,ncolor,ncolor//len(js)))
       for i in xrange(len(js)):
         kw['js'] = js[i]
         kw['color'] = color[i]
