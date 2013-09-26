@@ -295,7 +295,7 @@ def versionstext():
   r += '# Origin date: %s\n'%warpC.origindate
   r += '# Local date: %s\n'%warpC.localdate
   r += '# Commit hash: %s\n'%warpC.commithash
-  r += '# %s\n'%warp.__file__
+  r += '# %s\n'%__file__
   try:
     r += '# %s\n'%warpC.__file__
   except AttributeError:
@@ -1374,7 +1374,12 @@ from printparametersrz import *
 
 # --- warp imports itself as a matter of convenience, so that the
 # --- name is defined.
-import warp
+try:
+  import warp
+except ImportError:
+  # --- In python3, relative imports are broken - apparently a file
+  # --- in a package cannot import itself. Ignore this for now.
+  pass
 
 # --- Try to import the GUI
 try:
