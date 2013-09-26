@@ -151,7 +151,10 @@ if machine == 'darwin':
 # --- that everything defined up to this point is available, and anything
 # --- can be redefined.
 try:
-  execfile('setup.local.py')
+  if sys.hexversion < 0x03000000:
+    execfile('setup.local.py')
+  else:
+    exec(compile(open('setup.local.py').read(), 'setup.local.py', 'exec'))
 except IOError:
   pass
 
@@ -184,3 +187,10 @@ machines that are space-charge dominated.""",
                                 #include_dirs=[builddir,'SuperLU'],
                                 #library_dirs=library_dirs+['SuperLU'],
                                 #libraries=libraries+['superlu_3.0','blas'],
+
+# --- Copy .so files to the script directory
+if sys.hexversion >= 0x03000000:
+    os.system('cp %s/*.so ../scripts'%dummybuild.build_platlib)
+else:
+    os.system('mv %s/%s.so ../scripts'%(name,dummybuild.build_platlib))
+
