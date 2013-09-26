@@ -192,5 +192,5 @@ machines that are space-charge dominated.""",
 if sys.hexversion >= 0x03000000:
     os.system('cp %s/*.so ../scripts'%dummybuild.build_platlib)
 else:
-    os.system('mv %s/%s.so ../scripts'%(name,dummybuild.build_platlib))
+    os.system('mv %s/%s.so ../scripts'%(dummybuild.build_platlib,name))
 
