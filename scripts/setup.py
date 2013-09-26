@@ -4,8 +4,8 @@
 #
 
 import os
-
-setup_version = "$Id: setup.py,v 1.7 2011/10/27 22:07:22 grote Exp $"
+import sys
+import glob
 
 try:
     import distutils
@@ -24,13 +24,21 @@ except ImportError:
 
 # --- Get around a "bug" in disutils on 64 bit systems. When there is no
 # --- extension to be installed, distutils will put the scripts in
-# --- /usr/lib/... instead of /usr/lib64. This will force the scripts
+# --- /usr/lib/... instead of /usr/lib64. This fix will force the scripts
 # --- to be installed in the same place as the .so (if an install was
 # --- done in pywarp90 - though that shouldn't be done anymore).
 if distutils.sysconfig.get_config_vars()["LIBDEST"].find('lib64') != -1:
-    import distutils.command.install
-    INSTALL_SCHEMES['unix_prefix']['purelib'] = '$base/lib64/python$py_version_short/site-packages'
-    INSTALL_SCHEMES['unix_home']['purelib'] = '$base/lib64/python$py_version_short/site-packages'
+    for scheme in INSTALL_SCHEMES.values():
+        scheme['purelib'] = scheme['platlib']
+
+# --- With this, the data_files listed in setup, the .so files from pywarp90,
+# --- will be installed in the usual place in site-packages along with the scripts.
+for scheme in INSTALL_SCHEMES.values():
+    scheme['data'] = scheme['platlib']
+
+# --- Get the list of .so files. These should have been copied into scripts
+# --- at the end of the make.
+data_files = glob.glob('*.so')
 
 # --- Hack warning:
 # --- Put warpoptions.py and parallel.py into subdirectories so that they
@@ -52,7 +60,8 @@ machines that are space-charge dominated.""",
            platforms = 'Linux, Unix, Windows (cygwin), Mac OSX',
            packages = ['warp','warp.GUI','warpoptions','parallel'],
            package_dir = {'warp': '.'},
-           package_data = {'warp':['*.gs','*.gp','*.so','aladdin_8.txt']},
+           package_data = {'warp':['*.gs','*.gp','aladdin_8.txt']},
+           data_files = [('warp',data_files)],
            cmdclass = {'build_py':build_py}
            )
 
