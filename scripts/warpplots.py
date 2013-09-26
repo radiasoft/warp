@@ -1101,7 +1101,7 @@ Simple interface to contour plotting, same arguments as plc
   if levs is not None: contours = levs
   if isinstance(contours,list): contours = array(contours)
   if isinstance(contours,tuple): contours = array(contours)
-  if isinstance(contours,type(1)):
+  if isinstance(contours,int):
     # --- cmin and cmax are multiplied by 1. to force them to be standard
     # --- python floats, instead of zero length numpy arrays.
     if cmin is None: cmin = minnd(zz)*1.
@@ -1591,7 +1591,7 @@ Note that either the x and y coordinates or the grid must be passed in.
          "both x and y must be of the same length"
   assert (zz is None) or (isinstance(zz,ndarray) and zz.size == x.size),\
          "zz must be the same length as x"
-  assert (not isinstance(slope,type(''))),"slope must be a number"
+  assert (not isinstance(slope,basestring)),"slope must be a number"
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
@@ -2231,8 +2231,8 @@ values from zmin to zmax.
     # --- matches the uniform spacing of the contours. If levs is specified,
     # --- each equal sized block represents one contour level, independent of
     # --- the range of the level relative to other levels.
-    if type(zmin) == type(zmax) == type(1) and \
-       zmin >= 0 and zmax <=199:
+    if (isinstance(zmin,int) and isinstance(zmax,int) and
+        zmin >= 0 and zmax <=199):
        plotval = arange(zmin,zmax+1,typecode=ubyte)[:,newaxis]*ones(2)
     else:
        plotval = (arange(ncolor)/(ncolor-1.))[:,newaxis]*ones(2)
@@ -3169,7 +3169,7 @@ def ppxxp(iw=0,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxxp,(iw,),kw): return
-  if isinstance(kw.get('slope',0.),type('')):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = xpoffset
@@ -3190,7 +3190,7 @@ def ppyyp(iw=0,**kw):
   "Plots Y-Y'. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyyp,(iw,),kw): return
-  if isinstance(kw.get('slope',0.),type('')):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = ypoffset
@@ -3212,7 +3212,7 @@ def ppxpyp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxpyp,(iw,),kw): return
   slope = kw.get('slope',0.)
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = 0.
@@ -3240,7 +3240,7 @@ def ppxux(iw=0,**kw):
   "Plots X-Ux. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxux,(iw,),kw): return
-  if type(kw.get('slope',0.)) == type(''):
+  if isinstance(kw.get('slope',0.,basestring):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz
@@ -3262,7 +3262,7 @@ def ppxvx(iw=0,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvx,(iw,),kw): return
-  if isinstance(kw.get('slope',0.),type('')):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz
@@ -3284,7 +3284,7 @@ def ppyuy(iw=0,**kw):
   "Plots Y-Uy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyuy,(iw,),kw): return
-  if isinstance(kw.get('slope',0.),type('')):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = ypoffset*vz
@@ -3306,7 +3306,7 @@ def ppyvy(iw=0,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvy,(iw,),kw): return
-  if isinstance(kw.get('slope',0.),type('')):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = ypoffset*vz
@@ -3364,7 +3364,7 @@ def ppvxvy(iw=0,**kw):
   if ppmultispecies(ppvxvy,(iw,),kw): return
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vxslope = xslope*vz
@@ -3399,7 +3399,7 @@ def ppvxvz(iw=0,**kw):
   (vzmin,vzmax) = getvzrange(kwdict=kw)
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vxslope = xslope*vz
     vxoffset = xpoffset*vz
@@ -3427,7 +3427,7 @@ def ppvyvz(iw=0,**kw):
   (vzmin,vzmax) = getvzrange(kwdict=kw)
   slope = kw.get('slope',0.)
   kw['slope'] = 0.
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     vyslope = yslope*vz
     vyoffset = ypoffset*vz
@@ -3497,7 +3497,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   rp = xp*cos(tt) + yp*sin(tt)
   slope = kw.get('slope',0.)
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     aversq = globalave(rr**2)
     averrp = globalave(rr*rp)
     if aversq > 0.:
@@ -3544,7 +3544,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   tp = -xp*sin(tt) + yp*cos(tt)
   slope = kw.get('slope',0.)
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     aversq = globalave(rr**2)
     avertp = globalave(rr*tp)
     if aversq > 0.:
@@ -3591,7 +3591,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   tt = arctan2(yy,xx)
   vr = vx*cos(tt) + vy*sin(tt)
   slope = kw.get('slope',0.)
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     aversq = globalave(rr**2)
     avervr = globalave(rr*vr)
     if aversq > 0.:
@@ -3646,7 +3646,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
   yp = getyp(ii=ii,gather=0,**kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   slope = kw.get('slope',0.)
-  if isinstance(slope,type('')):
+  if isinstance(slope,basestring):
     del kw['slope']
     iz = kw.get('iz',None)
     (xxpslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=iz,kwdict=kw)
@@ -5323,7 +5323,7 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
       gstyle()
 
     if font is not None:
-      if isinstance(font,type('')):
+      if isinstance(font,basestring):
         if font == 'Courier':     font = 0
         if font == 'Times':       font = 1
         if font == 'Helvetica':   font = 2

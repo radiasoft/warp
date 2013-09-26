@@ -1,10 +1,11 @@
 """This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
 plarr3d_version = "$Id: plarr3d.py,v 1.7 2009/07/08 00:02:05 rcohen Exp $"
 def plarr3ddoc():
-   import plarr3d
-   print plarr3d.__doc__
+    import plarr3d
+    print plarr3d.__doc__
 from numpy import *
 from gist import *
+import collections
 true=1; false=0
 defaultxoffset=0.
 defaultyoffset=0.
@@ -12,8 +13,6 @@ defaultstereooffset=.1
 # label offsets as fraction of total frame size
 xlabeloffset = -0.05
 yzlabeloffset = -0.03
-# a dummy array for type testing:
-dumarr=arange(2.)
 lcolor4blk=[200,0,0]
 rcolor4blk=[0,0,255]
 
@@ -171,10 +170,10 @@ phi is rotation of local coord. about local y axis, relative
     def makelabframe(self):
         "convert frame to lab coordinates"
         for i in range(12):
-          (self.framelab[i,:,0],self.framelab[i,:,1],
-                 self.framelab[i,:,2])=self.convertolab(self.frame[i,:,0],
-                 self.frame[i,:,1],self.frame[i,:,2])
-        
+            (self.framelab[i,:,0],self.framelab[i,:,1],
+                   self.framelab[i,:,2])=self.convertolab(self.frame[i,:,0],
+                   self.frame[i,:,1],self.frame[i,:,2])
+
     def getlablims(self,xmin,xmax,ymin,ymax,zmin,zmax):
         "get extrema of laboratory coordinates of frame"
         self.xlmin=min(min(self.framelab[0,:,0]),min(self.framelab[1,:,0]),
@@ -227,7 +226,7 @@ phi is rotation of local coord. about local y axis, relative
         outside, if possible, in the projection onto the window,  to the bottom
         or left of the box for x and y axes.   To avoid possible label collision,
         pick z boundary on max x side, top or bottom.
-        Depending on orienation, the outside x boundary is frame edge 8 or 0; 
+        Depending on orienation, the outside x boundary is frame edge 8 or 0;
         the outside y boundary is 1 or 7 if z increases toward viewer, otherwise
         4 or 6; and the outside z boundary is 5 or 9 or neither
         (e.g. if we are looking directly into the high-z
@@ -238,144 +237,144 @@ phi is rotation of local coord. about local y axis, relative
         x0 = self.frame[0,0,0];y0=self.frame[0,0,1];z0 = self.frame[0,0,2]
         x8 = self.frame[8,0,0];y8=self.frame[8,0,1];z8=self.frame[8,0,2]
         if (self.project(x0,y0,z0)[1] < self.project(x8,y8,z8)[1]):
-           self.xlabelside = 0
+            self.xlabelside = 0
         else:
-           self.xlabelside = 8
+            self.xlabelside = 8
 
         # Test to see if z is increasing toward the observer or not
         self.zincr_tord_obs = (sign(self.cosphi)+1)/2.
         if self.zincr_tord_obs:
-           # Test to see if side 1 appears to left of  side 7
-           x1 = self.frame[1,0,0];y1=self.frame[1,0,1];z1 = self.frame[1,0,2]
-           x7 = self.frame[7,0,0];y7=self.frame[7,0,1];z7=self.frame[7,0,2]
-           if (self.project(x1,y1,z1)[0] < self.project(x7,y7,z7)[0]):
-              self.ylabelside = 1
-           else:
-              self.ylabelside = 7
+            # Test to see if side 1 appears to left of  side 7
+            x1 = self.frame[1,0,0];y1=self.frame[1,0,1];z1 = self.frame[1,0,2]
+            x7 = self.frame[7,0,0];y7=self.frame[7,0,1];z7=self.frame[7,0,2]
+            if (self.project(x1,y1,z1)[0] < self.project(x7,y7,z7)[0]):
+                self.ylabelside = 1
+            else:
+                self.ylabelside = 7
         else:
-           # Test to see if side 4 appears to left of  side 6
-           x4 = self.frame[4,0,0];y4=self.frame[4,0,1];z4 = self.frame[4,0,2]
-           x6 = self.frame[6,0,0];y6=self.frame[6,0,1];z6=self.frame[6,0,2]
-           if (self.project(x4,y4,z4)[0] < self.project(x6,y6,z6)[0]):
-              self.ylabelside = 4
-           else:
-              self.ylabelside = 6
+            # Test to see if side 4 appears to left of  side 6
+            x4 = self.frame[4,0,0];y4=self.frame[4,0,1];z4 = self.frame[4,0,2]
+            x6 = self.frame[6,0,0];y6=self.frame[6,0,1];z6=self.frame[6,0,2]
+            if (self.project(x4,y4,z4)[0] < self.project(x6,y6,z6)[0]):
+                self.ylabelside = 4
+            else:
+                self.ylabelside = 6
 
         if self.zincr_tord_obs:
-           # Test to see if upper end of side 10 appears above and to right, or below and
-           # to left, of lower end.
-           x10u = self.frame[10,1,0];y10u =self.frame[10,1,1];z10u = self.frame[10,1,2]
-           x10l = self.frame[10,0,0];y10l =self.frame[10,0,1];z10l = self.frame[10,0,2]
-           if ((self.project(x10u,y10u,z10u)[0] < self.project(x10l,y10l,z10l)[0]) and \
-               (self.project(x10u,y10u,z10u)[1] < self.project(x10l,y10l,z10l)[1])) or \
-               ((self.project(x10u,y10u,z10u)[0] > self.project(x10l,y10l,z10l)[0]) and \
-                (self.project(x10u,y10u,z10u)[1] > self.project(x10l,y10l,z10l)[1])):
-                  self.zlabelside = 10
-           else:
-              self.zlabelside = 2
+            # Test to see if upper end of side 10 appears above and to right, or below and
+            # to left, of lower end.
+            x10u = self.frame[10,1,0];y10u =self.frame[10,1,1];z10u = self.frame[10,1,2]
+            x10l = self.frame[10,0,0];y10l =self.frame[10,0,1];z10l = self.frame[10,0,2]
+            if ((self.project(x10u,y10u,z10u)[0] < self.project(x10l,y10l,z10l)[0]) and \
+                (self.project(x10u,y10u,z10u)[1] < self.project(x10l,y10l,z10l)[1])) or \
+                ((self.project(x10u,y10u,z10u)[0] > self.project(x10l,y10l,z10l)[0]) and \
+                 (self.project(x10u,y10u,z10u)[1] > self.project(x10l,y10l,z10l)[1])):
+                self.zlabelside = 10
+            else:
+                self.zlabelside = 2
         else:
-           # Test to see if upper end of side 5 appears above and to right, or below and
-           # to left, of lower end
-           x5u = self.frame[5,1,0];y5u =self.frame[5,1,1];z5u = self.frame[5,1,2]
-           x5l = self.frame[5,0,0];y5l =self.frame[5,0,1];z5l = self.frame[5,0,2]
-           if ((self.project(x5u,y5u,z5u)[0] < self.project(x5l,y5l,z5l)[0]) and \
-               (self.project(x5u,y5u,z5u)[1] < self.project(x5l,y5l,z5l)[1])) or \
-               ((self.project(x5u,y5u,z5u)[0] > self.project(x5l,y5l,z5l)[0]) and \
-                (self.project(x5u,y5u,z5u)[1] > self.project(x5l,y5l,z5l)[1])):
-                  self.zlabelside = 5
-           else:
-              self.zlabelside = 9
-           
-        
-    def printframelabel(self,labelside):
-       """
-       prints extrema and axis label on a side of a frame
-       """
-       labelprecision = self.labelprecision
-       extraspacebeg=0.0;extraspaceend=0.0;extraspacelabel=0.0
-       if (labelside == 0) or (labelside == 8):
-          # x axis
-          axislabel = "x"
-          offsets = array([0,xlabeloffset])
-          # create text for label of starting and ending x positions
-          begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,0])
-          endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,0])
-          # Note x axis has labels offset vertically
-          labeljustify = "CA"
-          if self.zincr_tord_obs:
-             begjustify = "LA"
-             endjustify = "RA"
-          else:
-             endjustify = "LA"
-             begjustify = "RA"
-       if (labelside == 1) or (labelside == 7) or (labelside == 4) or (labelside == 6):
-          axislabel = "y"
-          offsets = array([yzlabeloffset,0])
-          # create text for label of starting and ending y positions
-          begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,1])
-          endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,1])
-          # Note y axis has labels offset horizontally
-          labeljustify = "RH"
-          begjustify = "RA"
-          endjustify = "RT"
-       if (labelside == 5) or (labelside == 9) or (labelside == 2) or (labelside == 10):
-          axislabel = "z"
-          offsets = array([yzlabeloffset,0])
-          # print "z labelside, offsets = ", labelside,offsets
-          # if labelside = 5 need a bit of extra space to left of begpostxt and label
-          # if labelside = 10 need a bit of extra space to left of endpostxt and label
-          if (labelside == 9):
-             extraspacelabel = -.01
-             extraspacebeg = -.01
-          if (labelside == 5):
-             extraspacelabel = -.01
-             extraspacebeg = -.01
-          # create text for label of starting and ending z positions
-          begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,2])
-          endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,2])
-          # Note z axis has labels offset horizontally
-          labeljustify = "RH"
-          if (self.theta < 0 and self.zincr_tord_obs) or (self.theta > 0 and not self.zincr_tord_obs):
-             begjustify = "RT"
-             endjustify = "RA"
-          else:
-             endjustify = "RT"
-             begjustify = "RA"
-       # calculate absolute values of offsets by multiplying by x and y ranges of plotted frame
-       offsets=offsets*self.winrange
+            # Test to see if upper end of side 5 appears above and to right, or below and
+            # to left, of lower end
+            x5u = self.frame[5,1,0];y5u =self.frame[5,1,1];z5u = self.frame[5,1,2]
+            x5l = self.frame[5,0,0];y5l =self.frame[5,0,1];z5l = self.frame[5,0,2]
+            if ((self.project(x5u,y5u,z5u)[0] < self.project(x5l,y5l,z5l)[0]) and \
+                (self.project(x5u,y5u,z5u)[1] < self.project(x5l,y5l,z5l)[1])) or \
+                ((self.project(x5u,y5u,z5u)[0] > self.project(x5l,y5l,z5l)[0]) and \
+                 (self.project(x5u,y5u,z5u)[1] > self.project(x5l,y5l,z5l)[1])):
+                self.zlabelside = 5
+            else:
+                self.zlabelside = 9
 
-       # get position, projected onto window,  of middle of the side, to label the axis
-       midposx = 0.5*(self.frame[labelside,0,0]+self.frame[labelside,1,0])
-       midposy = 0.5*(self.frame[labelside,0,1]+self.frame[labelside,1,1])
-       midposz = 0.5*(self.frame[labelside,0,2]+self.frame[labelside,1,2])
-       axislabelposition = array(self.project(midposx,midposy,midposz))+offsets
-       plt(axislabel,axislabelposition[0]+extraspacelabel,axislabelposition[1],justify=labeljustify,tosys=1,color=self.framecolor)
-       #
-       # get position, projected onto window, of start and end of the labelled sides
-       (xfp,yfp)=self.project(self.frame[labelside,:,0],self.frame[labelside,:,1],  \
-                              self.frame[labelside,:,2])
-       xfp = xfp + offsets[0]
-       yfp = yfp + offsets[1]
-       plt(begpostxt,xfp[0]+extraspacebeg,yfp[0],justify=begjustify,tosys=1,color=self.framecolor)
-       plt(endpostxt,xfp[1]+extraspaceend,yfp[1],justify=endjustify,tosys=1,color=self.framecolor)
-       #
-       # make sure the plot has room for the labels
-       winrangebar = sum(self.winrange)/2.
-       winsafety =0.03*winrangebar
-       rawlimits = limits(square=1)
-       limits(rawlimits[0]-winsafety,rawlimits[1],rawlimits[2]-winsafety,rawlimits[3])
+
+    def printframelabel(self,labelside):
+        """
+        prints extrema and axis label on a side of a frame
+        """
+        labelprecision = self.labelprecision
+        extraspacebeg=0.0;extraspaceend=0.0;extraspacelabel=0.0
+        if (labelside == 0) or (labelside == 8):
+            # x axis
+            axislabel = "x"
+            offsets = array([0,xlabeloffset])
+            # create text for label of starting and ending x positions
+            begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,0])
+            endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,0])
+            # Note x axis has labels offset vertically
+            labeljustify = "CA"
+            if self.zincr_tord_obs:
+                begjustify = "LA"
+                endjustify = "RA"
+            else:
+                endjustify = "LA"
+                begjustify = "RA"
+        if (labelside == 1) or (labelside == 7) or (labelside == 4) or (labelside == 6):
+            axislabel = "y"
+            offsets = array([yzlabeloffset,0])
+            # create text for label of starting and ending y positions
+            begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,1])
+            endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,1])
+            # Note y axis has labels offset horizontally
+            labeljustify = "RH"
+            begjustify = "RA"
+            endjustify = "RT"
+        if (labelside == 5) or (labelside == 9) or (labelside == 2) or (labelside == 10):
+            axislabel = "z"
+            offsets = array([yzlabeloffset,0])
+            # print "z labelside, offsets = ", labelside,offsets
+            # if labelside = 5 need a bit of extra space to left of begpostxt and label
+            # if labelside = 10 need a bit of extra space to left of endpostxt and label
+            if (labelside == 9):
+                extraspacelabel = -.01
+                extraspacebeg = -.01
+            if (labelside == 5):
+                extraspacelabel = -.01
+                extraspacebeg = -.01
+            # create text for label of starting and ending z positions
+            begpostxt = "%.*g" %(labelprecision,self.frame[labelside,0,2])
+            endpostxt = "%.*g" %(labelprecision,self.frame[labelside,1,2])
+            # Note z axis has labels offset horizontally
+            labeljustify = "RH"
+            if (self.theta < 0 and self.zincr_tord_obs) or (self.theta > 0 and not self.zincr_tord_obs):
+                begjustify = "RT"
+                endjustify = "RA"
+            else:
+                endjustify = "RT"
+                begjustify = "RA"
+        # calculate absolute values of offsets by multiplying by x and y ranges of plotted frame
+        offsets=offsets*self.winrange
+
+        # get position, projected onto window,  of middle of the side, to label the axis
+        midposx = 0.5*(self.frame[labelside,0,0]+self.frame[labelside,1,0])
+        midposy = 0.5*(self.frame[labelside,0,1]+self.frame[labelside,1,1])
+        midposz = 0.5*(self.frame[labelside,0,2]+self.frame[labelside,1,2])
+        axislabelposition = array(self.project(midposx,midposy,midposz))+offsets
+        plt(axislabel,axislabelposition[0]+extraspacelabel,axislabelposition[1],justify=labeljustify,tosys=1,color=self.framecolor)
+        #
+        # get position, projected onto window, of start and end of the labelled sides
+        (xfp,yfp)=self.project(self.frame[labelside,:,0],self.frame[labelside,:,1],  \
+                               self.frame[labelside,:,2])
+        xfp = xfp + offsets[0]
+        yfp = yfp + offsets[1]
+        plt(begpostxt,xfp[0]+extraspacebeg,yfp[0],justify=begjustify,tosys=1,color=self.framecolor)
+        plt(endpostxt,xfp[1]+extraspaceend,yfp[1],justify=endjustify,tosys=1,color=self.framecolor)
+        #
+        # make sure the plot has room for the labels
+        winrangebar = sum(self.winrange)/2.
+        winsafety =0.03*winrangebar
+        rawlimits = limits(square=1)
+        limits(rawlimits[0]-winsafety,rawlimits[1],rawlimits[2]-winsafety,rawlimits[3])
 
     def printframelabels(self,labelprecision=2):
-       """
-       Prints labels on the frame.
-       labelprecision is number of digits in printed frame limit labels
-       """
-       self.labelprecision = labelprecision
-       # Determine edges on which to place labels
-       self.outsidelines()
-       self.printframelabel(self.xlabelside)
-       self.printframelabel(self.ylabelside)
-       self.printframelabel(self.zlabelside)
+        """
+        Prints labels on the frame.
+        labelprecision is number of digits in printed frame limit labels
+        """
+        self.labelprecision = labelprecision
+        # Determine edges on which to place labels
+        self.outsidelines()
+        self.printframelabel(self.xlabelside)
+        self.printframelabel(self.ylabelside)
+        self.printframelabel(self.zlabelside)
 
     def plot3d(self,x,y,z,color="black",autoframe=true,linetype=1,marker="\1",
         xoffset=defaultxoffset,yoffset=defaultyoffset,framelabels=true,labelprecision=2):
@@ -386,7 +385,7 @@ phi is rotation of local coord. about local y axis, relative
         #  to make a frame.  Will set autoscale=true if no frame has
         #  ever been made for this instance; otherwise will use
         #  the last frame calculated.
-            
+
         self.xoffset = xoffset
         self.yoffset = yoffset
         if not self.calledmakeframe:
@@ -406,12 +405,12 @@ phi is rotation of local coord. about local y axis, relative
 
         # plot the frame
         pldefault(marks=0)
-        
+
         #calculate extrema of frame in window for scaling of plotted frame label offsets
         xfmin=0;xfmax=0;yfmin=0;yfmax=0
         for i in range(12):
-           #   (xfp,yfp)=self.project(self.framelab[i,:,0],
-           #         self.framelab[i,:,1],self.framelab[i,:,2])
+            #   (xfp,yfp)=self.project(self.framelab[i,:,0],
+            #         self.framelab[i,:,1],self.framelab[i,:,2])
             (xfp,yfp)=self.project(self.frame[i,:,0],
                   self.frame[i,:,1],self.frame[i,:,2])
             xfmin=min(xfmin,xfp[0])
@@ -430,42 +429,40 @@ phi is rotation of local coord. about local y axis, relative
         gridxy(0x200)
         # turn on axis labels if requested
         if (framelabels == true):
-           self.printframelabels(labelprecision)
-        
+            self.printframelabels(labelprecision)
+
     def plotstereo(self,x,y,z,lcolor="cyan",rcolor="red",autoframe=true,
                    linetype=1,marker="\1", stereooffset=defaultstereooffset,
                    framelabels=true,labelprecision=2):
-       """
-makes stereo (2-color separation) plots of arrays.  Arguments
-as in plot3d, except lcolor and rcolor (defaults "cyan" and "red")
-are colors for left and right eye images, and xoffset (defaulted
-to module's stereooffset value) should be set to percentage horizontal
-shift of right eye viewpoint relative to object's lab frame x extent
-Note, lcolor and rcolor can be strings of standard colors, or
-three-tuples of rgb values (range 0-255).
-       """
-       # if specified rgb values for lcolor or rcolor, create
-       # a custom palette with the rgb values
-       lcoloruse=lcolor;rcoloruse=rcolor
-       if type(lcolor) == type((1,2)) or type(lcolor) == type([1,2]) \
-         or type(lcolor) == type(dumarr) \
-         or type(rcolor) == type((1,2)) or type(rcolor) == type([1,2]) \
-         or type(rcolor) == type(dumarr):
-          (lcoloruse,rcoloruse) = makepalette(lcolor,rcolor)
-       origframecolor=self.framecolor
-       #plot right frame
-       self.framecolor=rcoloruse
+        """
+ makes stereo (2-color separation) plots of arrays.  Arguments
+ as in plot3d, except lcolor and rcolor (defaults "cyan" and "red")
+ are colors for left and right eye images, and xoffset (defaulted
+ to module's stereooffset value) should be set to percentage horizontal
+ shift of right eye viewpoint relative to object's lab frame x extent
+ Note, lcolor and rcolor can be strings of standard colors, or
+ three-tuples of rgb values (range 0-255).
+        """
+        # if specified rgb values for lcolor or rcolor, create
+        # a custom palette with the rgb values
+        lcoloruse=lcolor;rcoloruse=rcolor
+        if (isinstance(lcolor,collections.Sequence) or isinstance(lcolor,ndarray)
+          or isinstance(rcolor,collections.Sequence) or isinstance(rcolor,ndarray)):
+            (lcoloruse,rcoloruse) = makepalette(lcolor,rcolor)
+        origframecolor=self.framecolor
+        #plot right frame
+        self.framecolor=rcoloruse
 
 
-       self.plot3d(x,y,z,color=rcoloruse,autoframe=autoframe,
-          linetype=linetype,marker=marker,xoffset=stereooffset,yoffset=.01,
-          framelabels=framelabels,labelprecision=labelprecision)
-       #plot left frame
-       self.framecolor=lcoloruse
-       self.plot3d(x,y,z,color=lcoloruse,autoframe=autoframe,
-          linetype=linetype,marker=marker,xoffset=0.,
-          framelabels=framelabels,labelprecision=labelprecision)
-       self.framecolor=origframecolor
+        self.plot3d(x,y,z,color=rcoloruse,autoframe=autoframe,
+           linetype=linetype,marker=marker,xoffset=stereooffset,yoffset=.01,
+           framelabels=framelabels,labelprecision=labelprecision)
+        #plot left frame
+        self.framecolor=lcoloruse
+        self.plot3d(x,y,z,color=lcoloruse,autoframe=autoframe,
+           linetype=linetype,marker=marker,xoffset=0.,
+           framelabels=framelabels,labelprecision=labelprecision)
+        self.framecolor=origframecolor
 
 def makepalette(lcolor,rcolor):
 # make a custom palette if lcolor or rcolor are tuples
@@ -475,28 +472,28 @@ def makepalette(lcolor,rcolor):
 # lcolor and rcolor are specified as 3-tuples; otherwise
 # which ever of lcolor and rcolor is set to a 3-tuple, the
 # corresponding color variable is set to 0)
-   haveleftrgb = 0
-   redarr=[];greenarr=[];bluearr=[]
-   if type(lcolor) is type("a"):
-      lcoloruse=lcolor
-   else:
-      haveleftrgb=1
-      lcoloruse=0
-      redarr.append(lcolor[0])
-      greenarr.append(lcolor[1])
-      bluearr.append(lcolor[2])
-   if type(rcolor) is type("a"):
-      rcoloruse=rcolor
-   else:
-      rcoloruse=haveleftrgb
+    haveleftrgb = 0
+    redarr=[];greenarr=[];bluearr=[]
+    if isinstance(lcolor,basestring):
+        lcoloruse=lcolor
+    else:
+        haveleftrgb=1
+        lcoloruse=0
+        redarr.append(lcolor[0])
+        greenarr.append(lcolor[1])
+        bluearr.append(lcolor[2])
+    if isinstance(rcolor,basestring):
+        rcoloruse=rcolor
+    else:
+        rcoloruse=haveleftrgb
 #     so now rcoloruse will be 1 if both lcolor and rcolor are
 #     3-tuples; 0 otherwise.
-      redarr.append(rcolor[0])
-      greenarr.append(rcolor[1])
-      bluearr.append(rcolor[2])
-   palette(redarr,greenarr,bluearr)
-   return (lcoloruse,rcoloruse)
+        redarr.append(rcolor[0])
+        greenarr.append(rcolor[1])
+        bluearr.append(rcolor[2])
+    palette(redarr,greenarr,bluearr)
+    return (lcoloruse,rcoloruse)
 
 def restoreframe():
-   # restore the default WARP boxed plotting frame
-   gridxy(0x62b)
+    # restore the default WARP boxed plotting frame
+    gridxy(0x62b)

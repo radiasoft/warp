@@ -476,7 +476,7 @@ most of which get there default values from one of the fortran packages.
                            depos_order):
     n = len(x)
     if n == 0: return
-    if isinstance(self.sourcep,FloatType): return
+    if isinstance(self.sourcep,float): return
     if top.wpid==0:
       setrho3d(self.sourcep,n,x,y,z,zgrid,q,w,top.depos,depos_order,
                self.nxp,self.nyp,self.nzp,
@@ -506,8 +506,8 @@ most of which get there default values from one of the fortran packages.
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
-    if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
+    if top.efetch[js] == 3 and isinstance(self.fieldp,float): return
+    if top.efetch[js] != 3 and isinstance(self.potentialp,float): return
     if not f3d.lcorrectede:
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
@@ -543,7 +543,7 @@ most of which get there default values from one of the fortran packages.
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
     if n == 0: return
-    if isinstance(self.potentialp,FloatType): return
+    if isinstance(self.potentialp,float): return
     nxp = self.nxp + 2*self.nxguardphi
     nyp = self.nyp + 2*self.nyguardphi
     nzp = self.nzp + 2*self.nzguardphi
@@ -561,8 +561,8 @@ most of which get there default values from one of the fortran packages.
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      if isinstance(self.source,FloatType): return
-      if isinstance(self.sourcep,FloatType): return
+      if isinstance(self.source,float): return
+      if isinstance(self.sourcep,float): return
       setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,
                             self.nxguardrho,self.nyguardrho,self.nzguardrho,
@@ -573,8 +573,8 @@ most of which get there default values from one of the fortran packages.
     if not self.lparallel:
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
-      if isinstance(self.potential,FloatType): return
-      if isinstance(self.potentialp,FloatType): return
+      if isinstance(self.potential,float): return
+      if isinstance(self.potentialp,float): return
       getphipforparticles3d(1,self.nxlocal,self.nylocal,self.nzlocal,
                             self.nxguardphi,self.nyguardphi,self.nzguardphi,
                             self.potential,
@@ -655,8 +655,8 @@ most of which get there default values from one of the fortran packages.
       self.allocatedataarrays()
       self.setfieldforfieldsolve(0,0,0)
       if recalculate:
-        if isinstance(self.potential,FloatType): return
-        if isinstance(self.field,FloatType): return
+        if isinstance(self.potential,float): return
+        if isinstance(self.field,float): return
         getselfe3d(self.potential,self.nxlocal,self.nylocal,self.nzlocal,
                    self.nxguardphi,self.nyguardphi,self.nzguardphi,
                    self.field,self.nxguarde,self.nyguarde,self.nzguarde,
@@ -678,8 +678,8 @@ most of which get there default values from one of the fortran packages.
     self.allocatedataarrays()
     self.setfieldpforparticles(0,0,0)
     if recalculate:
-      if isinstance(self.potentialp,FloatType): return
-      if isinstance(self.fieldp,FloatType): return
+      if isinstance(self.potentialp,float): return
+      if isinstance(self.fieldp,float): return
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
                  self.nxguardphi,self.nyguardphi,self.nzguardphi,
                  self.fieldp,self.nxguarde,self.nyguarde,self.nzguarde,
@@ -835,7 +835,7 @@ data will be cleared, and will be regenerated upon the next field solve"""
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     # --- Setup data for bends.
     rstar = zeros(3+self.nzlocal,'d')
@@ -951,7 +951,7 @@ class FullMultiGrid3D(MultiGrid3D):
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     # --- Setup data for bends.
     rstar = zeros(3+self.nzlocal,'d')
@@ -1168,8 +1168,8 @@ tensor that appears from the direct implicit scheme.
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      if isinstance(self.source,FloatType): return
-      if isinstance(self.sourcep,FloatType): return
+      if isinstance(self.source,float): return
+      if isinstance(self.sourcep,float): return
       for iimp in range(1+top.nsimplicit):
         setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
                               self.source[...,iimp],
@@ -1188,7 +1188,7 @@ tensor that appears from the direct implicit scheme.
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source[...,0]
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     # --- Setup data for bends.
     rstar = fzeros(3+self.nzlocal,'d')

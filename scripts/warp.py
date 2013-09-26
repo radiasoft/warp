@@ -703,7 +703,7 @@ changed shape. It needs to be called by hand after restore.
   """
   # --- First, check if the file has the old moments in it.
   ek = ff.read('ek@top')
-  if type(ek) == ArrayType:
+  if isinstance(ek,ndarray):
     # --- If it has the new ones, do nothing.
     ff.close()
     return
@@ -871,7 +871,7 @@ def fixrestoreswitholdparticlearrays(ff):
 def fixrestorewithscalarefetch(ff):
   "If the dump file has efetch as a scalar, broadcast it to the efetch array"
   efetch = ff.read('efetch@top')
-  if isinstance(efetch,IntType):
+  if isinstance(efetch,int):
     gchange("InPart")
     top.efetch = efetch
 
@@ -965,6 +965,7 @@ Creates a dump file
   - datawriter=PW.PW: the data writer class to use. This can be any class that
                       conforms to the API of PW from the PyPDB package.
   """
+  import types # this is needed for ModuleType
   timetemp = wtime()
   if not filename:
     # --- Setup default filename based on time step and processor number.
@@ -986,7 +987,7 @@ Creates a dump file
   if pyvars:
     # --- Add to the list all variables which are not in the initial list
     for l,v in __main__.__dict__.iteritems():
-      if isinstance(v,ModuleType): continue
+      if isinstance(v,types.ModuleType): continue
       if l not in initial_global_dict_keys:
         interpreter_variables.append(l)
   # --- Resize history arrays if requested.
@@ -1125,7 +1126,7 @@ Print timers in a nice annotated format
   if file is None:
     ff = sys.stdout
     closeit = 0
-  elif type(file) == type(""):
+  elif isinstance(file,basestring):
     ff = open(file,"w")
     closeit = 1
   else:
@@ -1259,7 +1260,7 @@ Print timers in a nice annotated format, sorted by call sequence
   if file is None:
     ff = sys.stdout
     closeit = 0
-  elif type(file) == type(""):
+  elif isinstance(file,basestring):
     ff = open(file,"w")
     closeit = 1
   else:

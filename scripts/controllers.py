@@ -3,7 +3,7 @@ Controller operations
 =====================
 
 These are the functions which allow installing user created functions so that
-they are called at various places along the time step.  
+they are called at various places along the time step.
 
 For each controller, the following three functions are defined.
  - install___: Installs a function to be called at that specified time
@@ -61,187 +61,187 @@ installafterstep(myplots)
 from __future__ import generators
 controllers_version = "$Id: controllers.py,v 1.33 2011/10/19 22:58:36 grote Exp $"
 def controllersdoc():
-  import controllers
-  print controllers.__doc__
+    import controllers
+    print controllers.__doc__
 
 from warp import *
-from types import *
+import types
 import copy
 import time
 
 class ControllerFunction:
-  """
-Class to handle the function lists.
-
-Note that for functions passed in that are methods of a class instance,
-a full reference of the instance is saved. This extra reference means
-that the object will not actually deleted if the user deletes the
-original reference.  This is good since the user does not need to keep
-the reference to the object (for example it can be created using a local
-variable in a function). It is also good since this allows the installed
-method to transfer across a dump and restart. It may be bad if the user
-thinks an object was deleted, but it actually isn't since it had (unkown
-to the user) installed a method in one of the controllers.
-
-This class also provides what is effectively a picklable function
-reference. Though it is not complete, since in some cases, functions
-won't be restorable. For example, functions typed in interactively cannot
-be restored since the source is not saved anywhere.
-  """
-
-  def __init__(self,name=None,lcallonce=0):
-    self.funcs = []
-    self.time = 0.
-    self.timers = {}
-    self.name = name
-    self.lcallonce = lcallonce
-
-  def __call__(self):
-    "Call all of the functions in the list"
-    tt = self.callfuncsinlist()
-    self.time = self.time + tt
-    if self.lcallonce: self.funcs = []
-
-  def __getstate__(self):
     """
-The instance is picklable. Only the names of functions are saved. A full
-reference to a method's object is saved. The names of functions replace
-the funcs attribute in the dictionary returned. Note that nothing
-special is needed on a restore since the function names will
-automatically be converted back into functions the first time they are
-called (so there is no __setstate__). For methods, the name is saved since
-instancemethods cannot be pickled.
-The ControllerFunctionContainer class below ensures that top level
-controllers are restored properly.
+  Class to handle the function lists.
+
+  Note that for functions passed in that are methods of a class instance,
+  a full reference of the instance is saved. This extra reference means
+  that the object will not actually deleted if the user deletes the
+  original reference.  This is good since the user does not need to keep
+  the reference to the object (for example it can be created using a local
+  variable in a function). It is also good since this allows the installed
+  method to transfer across a dump and restart. It may be bad if the user
+  thinks an object was deleted, but it actually isn't since it had (unkown
+  to the user) installed a method in one of the controllers.
+
+  This class also provides what is effectively a picklable function
+  reference. Though it is not complete, since in some cases, functions
+  won't be restorable. For example, functions typed in interactively cannot
+  be restored since the source is not saved anywhere.
     """
-    dict = self.__dict__.copy()
-    del dict['funcs']
-    funcnamelist = []
-    for f in self.controllerfuncnames():
-      funcnamelist.append(f)
-    dict['funcs'] = funcnamelist
-    return dict
 
-  def hasfuncsinstalled(self):
-    "Checks if there are any functions installed"
-    return len(self.funcs) > 0
+    def __init__(self,name=None,lcallonce=0):
+        self.funcs = []
+        self.time = 0.
+        self.timers = {}
+        self.name = name
+        self.lcallonce = lcallonce
 
-  def getmethodobject(self,func):
-    return func[0]
+    def __call__(self):
+        "Call all of the functions in the list"
+        tt = self.callfuncsinlist()
+        self.time = self.time + tt
+        if self.lcallonce: self.funcs = []
 
-  def controllerfuncnames(self):
-    """Returns the names of the functions in the list, and any methods
-       (which are stored in lists)"""
-    for f in self.funcs:
-      if type(f) == ListType:
-        result = f
-      elif type(f) == StringType:
-        import __main__
-        if f in __main__.__dict__:
-          result = f
+    def __getstate__(self):
+        """
+    The instance is picklable. Only the names of functions are saved. A full
+    reference to a method's object is saved. The names of functions replace
+    the funcs attribute in the dictionary returned. Note that nothing
+    special is needed on a restore since the function names will
+    automatically be converted back into functions the first time they are
+    called (so there is no __setstate__). For methods, the name is saved since
+    instancemethods cannot be pickled.
+    The ControllerFunctionContainer class below ensures that top level
+    controllers are restored properly.
+        """
+        dict = self.__dict__.copy()
+        del dict['funcs']
+        funcnamelist = []
+        for f in self.controllerfuncnames():
+            funcnamelist.append(f)
+        dict['funcs'] = funcnamelist
+        return dict
+
+    def hasfuncsinstalled(self):
+        "Checks if there are any functions installed"
+        return len(self.funcs) > 0
+
+    def getmethodobject(self,func):
+        return func[0]
+
+    def controllerfuncnames(self):
+        """Returns the names of the functions in the list, and any methods
+           (which are stored in lists)"""
+        for f in self.funcs:
+            if isinstance(f,list):
+                result = f
+            elif isinstance(f,basestring):
+                import __main__
+                if f in __main__.__dict__:
+                    result = f
+                else:
+                    continue
+            else:
+                result = f.__name__
+            yield result
+
+    def controllerfunclist(self):
+        funclistcopy = copy.copy(self.funcs)
+        for f in funclistcopy:
+            if isinstance(f,list):
+                object = self.getmethodobject(f)
+                if object is None:
+                    self.funcs.remove(f)
+                    continue
+                result = getattr(object,f[1])
+            elif isinstance(f,basestring):
+                import __main__
+                if f in __main__.__dict__:
+                    result = __main__.__dict__[f]
+                    # --- If the function with the name is found, then replace the
+                    # --- name in the list with the function.
+                    self.funcs[self.funcs.index(f)] = result
+                else:
+                    continue
+            else:
+                result = f
+            if not callable(result):
+                print "\n\nWarning: a controller was found that is not callable."
+                print "Only callable objects can be installed."
+                print "It is possible that the callable's name has been overwritten"
+                print "by something not callable. This can happen during restart"
+                print "if a function name had later been used as a variable name."
+                if isinstance(f,basestring):
+                    print "The name of the controller is ",f
+                print "\n\n"
+                continue
+            yield result
+
+    def installfuncinlist(self,f):
+        if isinstance(f,types.MethodType):
+            # --- If the function is a method of a class instance, then save a full
+            # --- reference to that instance and the method name.
+            finstance = f.im_self
+            fname = f.__name__
+            self.funcs.append([finstance,fname])
         else:
-          continue
-      else:
-        result = f.__name__
-      yield result
+            self.funcs.append(f)
 
-  def controllerfunclist(self):
-    funclistcopy = copy.copy(self.funcs)
-    for f in funclistcopy:
-      if type(f) == ListType:
-        object = self.getmethodobject(f)
-        if object is None:
-          self.funcs.remove(f)
-          continue
-        result = getattr(object,f[1])
-      elif type(f) == StringType:
-        import __main__
-        if f in __main__.__dict__:
-          result = __main__.__dict__[f]
-          # --- If the function with the name is found, then replace the
-          # --- name in the list with the function.
-          self.funcs[self.funcs.index(f)] = result
-        else:
-          continue
-      else:
-        result = f
-      if not callable(result):
-        print "\n\nWarning: a controller was found that is not callable."
-        print "Only callable objects can be installed."
-        print "It is possible that the callable's name has been overwritten"
-        print "by something not callable. This can happen during restart"
-        print "if a function name had later been used as a variable name."
-        if type(f) == StringType:
-          print "The name of the controller is ",f
-        print "\n\n"
-        continue
-      yield result
+    def uninstallfuncinlist(self,f):
+        # --- An element by element search is needed
+        # --- f can be a function or method object, or a name (string).
+        # --- Note that method objects can not be removed by name.
+        funclistcopy = copy.copy(self.funcs)
+        for func in funclistcopy:
+            if f == func:
+                self.funcs.remove(f)
+                return
+            elif isinstance(func,list) and isinstance(f,types.MethodType):
+                object = self.getmethodobject(func)
+                if f.im_self is object and f.__name__ == func[1]:
+                    self.funcs.remove(func)
+                    return
+            elif isinstance(func,basestring):
+                if f.__name__ == func:
+                    self.funcs.remove(func)
+                    return
+            elif isinstance(f,basestring):
+                if isinstance(func,basestring): funcname = func
+                elif isinstance(func,list): funcname = None
+                else:                        funcname = func.__name__
+                if f == funcname:
+                    self.funcs.remove(func)
+                    return
+        raise Exception('Warning: no such function had been installed')
 
-  def installfuncinlist(self,f):
-    if type(f) == MethodType:
-      # --- If the function is a method of a class instance, then save a full
-      # --- reference to that instance and the method name.
-      finstance = f.im_self
-      fname = f.__name__
-      self.funcs.append([finstance,fname])
-    else:
-      self.funcs.append(f)
+    def isinstalledfuncinlist(self,f):
+        # --- An element by element search is needed
+        funclistcopy = copy.copy(self.funcs)
+        for func in funclistcopy:
+            if f == func:
+                return 1
+            elif isinstance(func,list) and isinstance(f,types.MethodType):
+                object = self.getmethodobject(func)
+                if f.im_self is object and f.__name__ == func[1]:
+                    return 1
+            elif isinstance(func,basestring):
+                if f.__name__ == func:
+                    return 1
+        return 0
 
-  def uninstallfuncinlist(self,f):
-    # --- An element by element search is needed
-    # --- f can be a function or method object, or a name (string).
-    # --- Note that method objects can not be removed by name.
-    funclistcopy = copy.copy(self.funcs)
-    for func in funclistcopy:
-      if f == func:
-        self.funcs.remove(f)
-        return
-      elif type(func) == ListType and type(f) == MethodType:
-        object = self.getmethodobject(func)
-        if f.im_self is object and f.__name__ == func[1]:
-          self.funcs.remove(func)
-          return
-      elif type(func) == StringType:
-        if f.__name__ == func:
-          self.funcs.remove(func)
-          return
-      elif type(f) == StringType:
-        if type(func) == StringType: funcname = func
-        elif type(func) == ListType: funcname = None
-        else:                        funcname = func.__name__
-        if f == funcname:
-          self.funcs.remove(func)
-          return
-    raise Exception('Warning: no such function had been installed')
-
-  def isinstalledfuncinlist(self,f):
-    # --- An element by element search is needed
-    funclistcopy = copy.copy(self.funcs)
-    for func in funclistcopy:
-      if f == func:
-        return 1
-      elif type(func) == ListType and type(f) == MethodType:
-        object = self.getmethodobject(func)
-        if f.im_self is object and f.__name__ == func[1]:
-          return 1
-      elif type(func) == StringType:
-        if f.__name__ == func:
-          return 1
-    return 0
-
-  def callfuncsinlist(self,*args,**kw):
-    bb = time.time()
-    for f in self.controllerfunclist():
-      #barrier()
-      t1 = time.time()
-      f(*args,**kw)
-      #barrier()
-      t2 = time.time()
-      # --- For the timers, use the function (or method) name as the key.
-      # --- This is done since instancemethods cannot be pickled.
-      self.timers[f.__name__] = self.timers.get(f.__name__,0.) + (t2 - t1)
-    aa = time.time()
-    return aa - bb
+    def callfuncsinlist(self,*args,**kw):
+        bb = time.time()
+        for f in self.controllerfunclist():
+            #barrier()
+            t1 = time.time()
+            f(*args,**kw)
+            #barrier()
+            t2 = time.time()
+            # --- For the timers, use the function (or method) name as the key.
+            # --- This is done since instancemethods cannot be pickled.
+            self.timers[f.__name__] = self.timers.get(f.__name__,0.) + (t2 - t1)
+        aa = time.time()
+        return aa - bb
 
 #=============================================================================
 
@@ -271,73 +271,73 @@ userappliedfields = ControllerFunction('userappliedfields')
 
 #=============================================================================
 class ControllerFunctionContainer:
-  """
-This is a somewhat kludgy fix to how to get any saved functions restored.
-A single instance of this class is created and this instance is what is save
-in a dump. This instance will have a list of the controllers, so the
-controllers will be saved, but not as top level python variables.
-Upon restoration, this container will go through each of the saved controllers
-and reinstall the functions saved therein. This installs the functions in the
-original set of controllers created when this module was first imported.
-Anything that may have already been installed will therefore be unaffected.
-  """
-  def __init__(self,clist):
-    self.clist = clist
-  def __setstate__(self,dict):
-    import controllers
-    import __main__
-    self.__dict__.update(dict)
-    for c in self.clist:
-      for f in c.funcs:
-        if type(f) is StringType:
-          # --- Check if f is already in the original list of functions,
-          # --- and skip it if it is. Both the function name (f) and the
-          # --- actual function in main are checked.
-          # --- This will be the case if, for example, the user execs the
-          # --- original input file, which sets up some functions, before
-          # --- doing the restart.
-          origfuncs = controllers.__dict__[c.name].funcs
-          try:
-            ffunc = __main__.__dict__[f]
-          except KeyError:
-            ffunc = None
-          if (f not in origfuncs and ffunc not in origfuncs):
-            controllers.__dict__[c.name].installfuncinlist(f)
-        else:
-          # --- Otherwise, f is a method, so it can be directly installed.
-          # --- A check is still made to ensure it isn't installed twice.
-          # --- The check is only needed temporarily until the classes
-          # --- are fixed to not resinstall in the getstate.
-          ffunc = getattr(f[0],f[1])
-          if not controllers.__dict__[c.name].isinstalledfuncinlist(ffunc):
-            controllers.__dict__[c.name].installfuncinlist(ffunc)
-    # --- The clist is obtained from the original instance in the controllers
-    # --- module so that the list contains references to the original
-    # --- controller instances. This is needed, since in the next dump,
-    # --- this instance will be written out and must contain an updated
-    # --- list of controllers.
-    self.clist = controllers.__dict__['controllerfunctioncontainer'].clist
-
-  def printtimers(self,tmin=1.,lminmax=0.,ff=None):
-    """Prints timings of install functions.
- - tmin=1.: only functions with time greater than tmin will be printed
     """
-    if ff is None: ff = sys.stdout
-    for c in self.clist:
-      for fname,time in c.timers.items():
-        vlist = array(gather(time))
-        if me > 0: continue
-        vsum = sum(vlist)
-        if vsum <= tmin: continue
-        vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
-        ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,fname,vsum,vsum/npes,vrms))
-        if lminmax:
-          vmin = min(vlist)
-          vmax = max(vlist)
-          ff.write('  %10.4f  %10.4f'%(vmin,vmax))
-        if top.it > 0:
-          ff.write('   %10.4f'%(vsum/npes/(top.it)))
-        ff.write('\n')
+  This is a somewhat kludgy fix to how to get any saved functions restored.
+  A single instance of this class is created and this instance is what is save
+  in a dump. This instance will have a list of the controllers, so the
+  controllers will be saved, but not as top level python variables.
+  Upon restoration, this container will go through each of the saved controllers
+  and reinstall the functions saved therein. This installs the functions in the
+  original set of controllers created when this module was first imported.
+  Anything that may have already been installed will therefore be unaffected.
+    """
+    def __init__(self,clist):
+        self.clist = clist
+    def __setstate__(self,dict):
+        import controllers
+        import __main__
+        self.__dict__.update(dict)
+        for c in self.clist:
+            for f in c.funcs:
+                if isinstance(f,basestring):
+                    # --- Check if f is already in the original list of functions,
+                    # --- and skip it if it is. Both the function name (f) and the
+                    # --- actual function in main are checked.
+                    # --- This will be the case if, for example, the user execs the
+                    # --- original input file, which sets up some functions, before
+                    # --- doing the restart.
+                    origfuncs = controllers.__dict__[c.name].funcs
+                    try:
+                        ffunc = __main__.__dict__[f]
+                    except KeyError:
+                        ffunc = None
+                    if (f not in origfuncs and ffunc not in origfuncs):
+                        controllers.__dict__[c.name].installfuncinlist(f)
+                else:
+                    # --- Otherwise, f is a method, so it can be directly installed.
+                    # --- A check is still made to ensure it isn't installed twice.
+                    # --- The check is only needed temporarily until the classes
+                    # --- are fixed to not resinstall in the getstate.
+                    ffunc = getattr(f[0],f[1])
+                    if not controllers.__dict__[c.name].isinstalledfuncinlist(ffunc):
+                        controllers.__dict__[c.name].installfuncinlist(ffunc)
+        # --- The clist is obtained from the original instance in the controllers
+        # --- module so that the list contains references to the original
+        # --- controller instances. This is needed, since in the next dump,
+        # --- this instance will be written out and must contain an updated
+        # --- list of controllers.
+        self.clist = controllers.__dict__['controllerfunctioncontainer'].clist
+
+    def printtimers(self,tmin=1.,lminmax=0.,ff=None):
+        """Prints timings of install functions.
+     - tmin=1.: only functions with time greater than tmin will be printed
+        """
+        if ff is None: ff = sys.stdout
+        for c in self.clist:
+            for fname,time in c.timers.items():
+                vlist = array(gather(time))
+                if me > 0: continue
+                vsum = sum(vlist)
+                if vsum <= tmin: continue
+                vrms = sqrt(max(0.,ave(vlist**2) - ave(vlist)**2))
+                ff.write('%20s %s %10.4f  %10.4f %10.4f'%(c.name,fname,vsum,vsum/npes,vrms))
+                if lminmax:
+                    vmin = min(vlist)
+                    vmax = max(vlist)
+                    ff.write('  %10.4f  %10.4f'%(vmin,vmax))
+                if top.it > 0:
+                    ff.write('   %10.4f'%(vsum/npes/(top.it)))
+                ff.write('\n')
 
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
@@ -358,65 +358,65 @@ controllerfunctioncontainer = ControllerFunctionContainer(
 #=============================================================================
 # ----------------------------------------------------------------------------
 def callfromaftergenerate(f):
-  installaftergenerate(f)
-  return f
+    installaftergenerate(f)
+    return f
 def installaftergenerate(f):
-  "Adds a function to the list of functions called after a generate"
-  aftergenerate.installfuncinlist(f)
+    "Adds a function to the list of functions called after a generate"
+    aftergenerate.installfuncinlist(f)
 def uninstallaftergenerate(f):
-  "Removes the function from the list of functions called after a generate"
-  aftergenerate.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called after a generate"
+    aftergenerate.uninstallfuncinlist(f)
 def isinstalledaftergenerate(f):
-  "Checks if the function is called after a generate"
-  return aftergenerate.isinstalledfuncinlist(f)
+    "Checks if the function is called after a generate"
+    return aftergenerate.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfrombeforefs(f):
-  installbeforefs(f)
-  return f
+    installbeforefs(f)
+    return f
 def installbeforefs(f):
-  "Adds a function to the list of functions called before a field-solve"
-  beforefs.installfuncinlist(f)
-  w3d.lbeforefs = true
+    "Adds a function to the list of functions called before a field-solve"
+    beforefs.installfuncinlist(f)
+    w3d.lbeforefs = true
 def uninstallbeforefs(f):
-  "Removes the function from the list of functions called before a field-solve"
-  beforefs.uninstallfuncinlist(f)
-  if not beforefs.hasfuncsinstalled(): w3d.lbeforefs = false
+    "Removes the function from the list of functions called before a field-solve"
+    beforefs.uninstallfuncinlist(f)
+    if not beforefs.hasfuncsinstalled(): w3d.lbeforefs = false
 def isinstalledbeforefs(f):
-  "Checks if the function is called before a field-solve"
-  return beforefs.isinstalledfuncinlist(f)
+    "Checks if the function is called before a field-solve"
+    return beforefs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromafterfs(f):
-  installafterfs(f)
-  return f
+    installafterfs(f)
+    return f
 def installafterfs(f):
-  "Adds a function to the list of functions called after a field-solve"
-  afterfs.installfuncinlist(f)
-  w3d.lafterfs = true
+    "Adds a function to the list of functions called after a field-solve"
+    afterfs.installfuncinlist(f)
+    w3d.lafterfs = true
 def uninstallafterfs(f):
-  "Removes the function from the list of functions called after a field-solve"
-  afterfs.uninstallfuncinlist(f)
-  if not afterfs.hasfuncsinstalled(): w3d.lafterfs = false
+    "Removes the function from the list of functions called after a field-solve"
+    afterfs.uninstallfuncinlist(f)
+    if not afterfs.hasfuncsinstalled(): w3d.lafterfs = false
 def isinstalledafterfs(f):
-  "Checks if the function is called after a field-solve"
-  return afterfs.isinstalledfuncinlist(f)
+    "Checks if the function is called after a field-solve"
+    return afterfs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfrombeforeloadrho(f):
-  installbeforeloadrho(f)
-  return f
+    installbeforeloadrho(f)
+    return f
 def installbeforeloadrho(f):
-  "Adds a function to the list of functions called before a load rho"
-  beforeloadrho.installfuncinlist(f)
-  w3d.lbeforelr = true
+    "Adds a function to the list of functions called before a load rho"
+    beforeloadrho.installfuncinlist(f)
+    w3d.lbeforelr = true
 def uninstallbeforeloadrho(f):
-  "Removes the function from the list of functions called before a load rho"
-  beforeloadrho.uninstallfuncinlist(f)
-  if not beforeloadrho.hasfuncsinstalled(): w3d.lbeforelr = false
+    "Removes the function from the list of functions called before a load rho"
+    beforeloadrho.uninstallfuncinlist(f)
+    if not beforeloadrho.hasfuncsinstalled(): w3d.lbeforelr = false
 def isinstalledbeforeloadrho(f):
-  "Checks if the function is called before a load rho"
-  return beforeloadrho.isinstalledfuncinlist(f)
+    "Checks if the function is called before a load rho"
+    return beforeloadrho.isinstalledfuncinlist(f)
 
 # --- This are defined for backwards compatibility
 installbeforelr = installbeforeloadrho
@@ -425,319 +425,318 @@ isinstalledbeforelr = isinstalledbeforeloadrho
 
 # ----------------------------------------------------------------------------
 def callfromafterloadrho(f):
-  installafterloadrho(f)
-  return f
+    installafterloadrho(f)
+    return f
 def installafterloadrho(f):
-  "Adds a function to the list of functions called after a load rho"
-  afterloadrho.installfuncinlist(f)
-  w3d.lafterloadrho = true
+    "Adds a function to the list of functions called after a load rho"
+    afterloadrho.installfuncinlist(f)
+    w3d.lafterloadrho = true
 def uninstallafterloadrho(f):
-  "Removes the function from the list of functions called after a load rho"
-  afterloadrho.uninstallfuncinlist(f)
-  if not afterloadrho.hasfuncsinstalled(): w3d.lafterloadrho = false
+    "Removes the function from the list of functions called after a load rho"
+    afterloadrho.uninstallfuncinlist(f)
+    if not afterloadrho.hasfuncsinstalled(): w3d.lafterloadrho = false
 def isinstalledafterloadrho(f):
-  "Checks if the function is called after a load rho"
-  return afterloadrho.isinstalledfuncinlist(f)
+    "Checks if the function is called after a load rho"
+    return afterloadrho.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromothereuser(f):
-  installothereuser(f)
-  return f
+    installothereuser(f)
+    return f
 def installothereuser(f):
-  "Adds a function to the list of functions called during the electric fields gathering"
-  othereuser.installfuncinlist(f)
-  w3d.lothereuser = true
+    "Adds a function to the list of functions called during the electric fields gathering"
+    othereuser.installfuncinlist(f)
+    w3d.lothereuser = true
 def uninstallothereuser(f):
-  "Removes the function from the list of functions called during the electric fields gathering"
-  othereuser.uninstallfuncinlist(f)
-  if not othereuser.hasfuncsinstalled(): w3d.lothereuser = false
+    "Removes the function from the list of functions called during the electric fields gathering"
+    othereuser.uninstallfuncinlist(f)
+    if not othereuser.hasfuncsinstalled(): w3d.lothereuser = false
 def isinstalledothereuser(f):
-  "Checks if the function is called during the electric fields gathering"
-  return othereuser.isinstalledfuncinlist(f)
+    "Checks if the function is called during the electric fields gathering"
+    return othereuser.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfrombeforescraper(f):
-  installbeforescraper(f)
-  return f
+    installbeforescraper(f)
+    return f
 def installbeforescraper(f):
-  "Adds a function to the list of functions called before scraping particles"
-  beforescraper.installfuncinlist(f)
-  w3d.lbeforescraper = true
+    "Adds a function to the list of functions called before scraping particles"
+    beforescraper.installfuncinlist(f)
+    w3d.lbeforescraper = true
 def uninstallbeforescraper(f):
-  "Removes the function from the list of functions called before scraping particles"
-  beforescraper.uninstallfuncinlist(f)
-  if not beforescraper.hasfuncsinstalled(): w3d.lbeforescraper = false
+    "Removes the function from the list of functions called before scraping particles"
+    beforescraper.uninstallfuncinlist(f)
+    if not beforescraper.hasfuncsinstalled(): w3d.lbeforescraper = false
 def isinstalledbeforescraper(f):
-  "Checks if the function is called before scraping particles"
-  return beforescraper.isinstalledfuncinlist(f)
+    "Checks if the function is called before scraping particles"
+    return beforescraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromafterscraper(f):
-  installafterscraper(f)
-  return f
+    installafterscraper(f)
+    return f
 def installafterscraper(f):
-  "Adds a function to the list of functions called after scraping particles"
-  afterscraper.installfuncinlist(f)
-  w3d.lafterscraper = true
+    "Adds a function to the list of functions called after scraping particles"
+    afterscraper.installfuncinlist(f)
+    w3d.lafterscraper = true
 def uninstallafterscraper(f):
-  "Removes the function from the list of functions called after scraping particles"
-  afterscraper.uninstallfuncinlist(f)
-  if not afterscraper.hasfuncsinstalled(): w3d.lafterscraper = false
+    "Removes the function from the list of functions called after scraping particles"
+    afterscraper.uninstallfuncinlist(f)
+    if not afterscraper.hasfuncsinstalled(): w3d.lafterscraper = false
 def isinstalledafterscraper(f):
-  "Checks if the function is called after scraping particles"
-  return afterscraper.isinstalledfuncinlist(f)
+    "Checks if the function is called after scraping particles"
+    return afterscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromparticlescraper(f):
-  installparticlescraper(f)
-  return f
+    installparticlescraper(f)
+    return f
 def installparticlescraper(f):
-  "Adds a function to the list of functions called to scrape particles"
-  callscraper.installfuncinlist(f)
-  w3d.lcallscraper = true
+    "Adds a function to the list of functions called to scrape particles"
+    callscraper.installfuncinlist(f)
+    w3d.lcallscraper = true
 def uninstallparticlescraper(f):
-  "Removes the function from the list of functions called to scrape particles"
-  callscraper.uninstallfuncinlist(f)
-  if not callscraper.hasfuncsinstalled(): w3d.lcallscraper = false
+    "Removes the function from the list of functions called to scrape particles"
+    callscraper.uninstallfuncinlist(f)
+    if not callscraper.hasfuncsinstalled(): w3d.lcallscraper = false
 def isinstalledparticlescraper(f):
-  "Checks if the function is called to scrape particles"
-  return callscraper.isinstalledfuncinlist(f)
+    "Checks if the function is called to scrape particles"
+    return callscraper.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromparticleloader(f):
-  installparticleloader(f)
-  return f
+    installparticleloader(f)
+    return f
 def installparticleloader(f):
-  "Adds a function to the list of functions called to load particles"
-  callparticleloader.installfuncinlist(f)
-  w3d.lcallparticleloader = true
+    "Adds a function to the list of functions called to load particles"
+    callparticleloader.installfuncinlist(f)
+    w3d.lcallparticleloader = true
 def uninstallparticleloader(f):
-  "Removes the function from the list of functions called to load particles"
-  callparticleloader.uninstallfuncinlist(f)
-  if not callparticleloader.hasfuncsinstalled():
-    w3d.lcallparticleloader = false
+    "Removes the function from the list of functions called to load particles"
+    callparticleloader.uninstallfuncinlist(f)
+    if not callparticleloader.hasfuncsinstalled():
+        w3d.lcallparticleloader = false
 def isinstalledparticleloader(f):
-  "Checks if the function is called to load particles"
-  return callparticleloader.isinstalledfuncinlist(f)
+    "Checks if the function is called to load particles"
+    return callparticleloader.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromaddconductor(f):
-  installaddconductor(f)
-  return f
+    installaddconductor(f)
+    return f
 def installaddconductor(f):
-  "Adds a function to the list of functions called to add conductors"
-  calladdconductor.installfuncinlist(f)
-  f3d.laddconductor = true
+    "Adds a function to the list of functions called to add conductors"
+    calladdconductor.installfuncinlist(f)
+    f3d.laddconductor = true
 def uninstalladdconductor(f):
-  "Removes the function from the list of functions called to add conductors"
-  calladdconductor.uninstallfuncinlist(f)
-  if not calladdconductor.hasfuncsinstalled(): f3d.laddconductor = false
+    "Removes the function from the list of functions called to add conductors"
+    calladdconductor.uninstallfuncinlist(f)
+    if not calladdconductor.hasfuncsinstalled(): f3d.laddconductor = false
 def isinstalledaddconductor(f):
-  "Checks if the function is called to add conductors"
-  return calladdconductor.isinstalledfuncinlist(f)
+    "Checks if the function is called to add conductors"
+    return calladdconductor.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfrombeforestep(f):
-  installbeforestep(f)
-  return f
+    installbeforestep(f)
+    return f
 def installbeforestep(f):
-  "Adds a function to the list of functions called before a step"
-  callbeforestepfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions called before a step"
+    callbeforestepfuncs.installfuncinlist(f)
 def uninstallbeforestep(f):
-  "Removes the function from the list of functions called before a step"
-  callbeforestepfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called before a step"
+    callbeforestepfuncs.uninstallfuncinlist(f)
 def isinstalledbeforestep(f):
-  "Checks if the function is called before a step"
-  return callbeforestepfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is called before a step"
+    return callbeforestepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromafterstep(f):
-  installafterstep(f)
-  return f
+    installafterstep(f)
+    return f
 def installafterstep(f):
-  "Adds a function to the list of functions called after a step"
-  callafterstepfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions called after a step"
+    callafterstepfuncs.installfuncinlist(f)
 def uninstallafterstep(f):
-  "Removes the function from the list of functions called after a step"
-  callafterstepfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called after a step"
+    callafterstepfuncs.uninstallfuncinlist(f)
 def isinstalledafterstep(f):
-  "Checks if the function is called after a step"
-  return callafterstepfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is called after a step"
+    return callafterstepfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfrombeforeplot(f):
-  installbeforeplot(f)
-  return f
+    installbeforeplot(f)
+    return f
 def installbeforeplot(f):
-  "Adds a function to the list of functions called before a plot"
-  beforeplotfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions called before a plot"
+    beforeplotfuncs.installfuncinlist(f)
 def uninstallbeforeplot(f):
-  "Removes the function from the list of functions called before a plot"
-  beforeplotfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called before a plot"
+    beforeplotfuncs.uninstallfuncinlist(f)
 def isinstalledbeforeplot(f):
-  "Checks if the function is called before a plot"
-  return beforeplotfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is called before a plot"
+    return beforeplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromafterplot(f):
-  installafterplot(f)
-  return f
+    installafterplot(f)
+    return f
 def installafterplot(f):
-  "Adds a function to the list of functions called after a plot"
-  callafterplotfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions called after a plot"
+    callafterplotfuncs.installfuncinlist(f)
 def uninstallafterplot(f):
-  "Removes the function from the list of functions called after a plot"
-  callafterplotfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called after a plot"
+    callafterplotfuncs.uninstallfuncinlist(f)
 def isinstalledafterplot(f):
-  "Checks if the function is called after a plot"
-  return callafterplotfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is called after a plot"
+    return callafterplotfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromplseldom(f):
-  installplseldom(f)
-  return f
+    installplseldom(f)
+    return f
 def installplseldom(f):
-  "Adds a function to the list of functions controlled by itplseldom and zzplseldom"
-  callplseldomfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions controlled by itplseldom and zzplseldom"
+    callplseldomfuncs.installfuncinlist(f)
 def uninstallplseldom(f):
-  "Removes the function from the list of functions controlled by itplseldom and zzplseldom"
-  callplseldomfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions controlled by itplseldom and zzplseldom"
+    callplseldomfuncs.uninstallfuncinlist(f)
 def isinstalledplseldom(f):
-  "Checks if the function is controlled by itplseldom and zzplseldom"
-  return callplseldomfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is controlled by itplseldom and zzplseldom"
+    return callplseldomfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromplalways(f):
-  installplalways(f)
-  return f
+    installplalways(f)
+    return f
 def installplalways(f):
-  "Adds a function to the list of functions controlled by itplalways and zzplalways"
-  callplalwaysfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions controlled by itplalways and zzplalways"
+    callplalwaysfuncs.installfuncinlist(f)
 def uninstallplalways(f):
-  "Removes the function from the list of functions controlled by itplalways and zzplalways"
-  callplalwaysfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions controlled by itplalways and zzplalways"
+    callplalwaysfuncs.uninstallfuncinlist(f)
 def isinstalledplalways(f):
-  "Checks if the function is controlled by itplalways and zzplalways"
-  return callplalwaysfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is controlled by itplalways and zzplalways"
+    return callplalwaysfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromafterrestart(f):
-  installafterrestart(f)
-  return f
+    installafterrestart(f)
+    return f
 def installafterrestart(f):
-  "Adds a function to the list of functions called immediately after a restart"
-  callafterrestartfuncs.installfuncinlist(f)
+    "Adds a function to the list of functions called immediately after a restart"
+    callafterrestartfuncs.installfuncinlist(f)
 def uninstallafterrestart(f):
-  "Removes the function from the list of functions called immediately after a restart"
-  callafterrestartfuncs.uninstallfuncinlist(f)
+    "Removes the function from the list of functions called immediately after a restart"
+    callafterrestartfuncs.uninstallfuncinlist(f)
 def isinstalledafterrestart(f):
-  "Checks if the function is called immediately after a restart"
-  return callafterrestartfuncs.isinstalledfuncinlist(f)
+    "Checks if the function is called immediately after a restart"
+    return callafterrestartfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromuserinjection(f):
-  installuserinjection(f)
-  return f
+    installuserinjection(f)
+    return f
 def installuserinjection(f):
-  """
-Adds a user defined function that is to be called when particle
-injection happens, after the position advance and before loadrho is
-called, allowing a user defined particle distribution to be injected
-each time step"""
-  userinjection.installfuncinlist(f)
+    """
+  Adds a user defined function that is to be called when particle
+  injection happens, after the position advance and before loadrho is
+  called, allowing a user defined particle distribution to be injected
+  each time step"""
+    userinjection.installfuncinlist(f)
 def uninstalluserinjection(f):
-  "Removes the function installed by installuserinjection"
-  userinjection.uninstallfuncinlist(f)
+    "Removes the function installed by installuserinjection"
+    userinjection.uninstallfuncinlist(f)
 def isinstalleduserinjection(f):
-  "Checks if the function is called when particles injection happens"
-  return userinjection.isinstalledfuncinlist(f)
+    "Checks if the function is called when particles injection happens"
+    return userinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromuserinjection2(f):
-  installuserinjection2(f)
-  return f
+    installuserinjection2(f)
+    return f
 def installuserinjection2(f):
-  """
-Adds a user defined function that is to be called when the second part of
-particle injection happens, after the field solve,
-allowing a user defined injected particle velocity synchronization"""
-  userinjection2.installfuncinlist(f)
+    """
+  Adds a user defined function that is to be called when the second part of
+  particle injection happens, after the field solve,
+  allowing a user defined injected particle velocity synchronization"""
+    userinjection2.installfuncinlist(f)
 def uninstalluserinjection2(f):
-  "Removes the function installed by installuserinjection2"
-  userinjection2.uninstallfuncinlist(f)
+    "Removes the function installed by installuserinjection2"
+    userinjection2.uninstallfuncinlist(f)
 def isinstalleduserinjection2(f):
-  "Checks if the function is called when particles injection happens"
-  return userinjection2.isinstalledfuncinlist(f)
+    "Checks if the function is called when particles injection happens"
+    return userinjection2.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromuserparticlesinjection(f):
-  installuserparticlesinjection(f)
-  return f
+    installuserparticlesinjection(f)
+    return f
 def installuserparticlesinjection(f):
-  """
-Adds a user defined function that is to be called during injection which
-allows the user to specify the distribution of particles on the emitting
-surface. For expert use only.
-To use, the installed function should set w3d.npgrp to the number of
-particles to inject, call gchange("Setpwork3d") to allocate the arrays, and
-fill the arrays w3d.xt, yt, uxt, uyt, and uzt with the particle data. The
-particles start on the emitting surface and the code will advance them away
-from the surface. The function will be called once for each species each time
-step, with the variable w3d.inj_js set to the species being injected. Note
-that if no particles are to be injected, set w3d.npgrp=0 to avoid injection
-of bad particles."""
-  w3d.l_inj_user_particles = true
-  generateuserparticlesforinjection.installfuncinlist(f)
+    """
+  Adds a user defined function that is to be called during injection which
+  allows the user to specify the distribution of particles on the emitting
+  surface. For expert use only.
+  To use, the installed function should set w3d.npgrp to the number of
+  particles to inject, call gchange("Setpwork3d") to allocate the arrays, and
+  fill the arrays w3d.xt, yt, uxt, uyt, and uzt with the particle data. The
+  particles start on the emitting surface and the code will advance them away
+  from the surface. The function will be called once for each species each time
+  step, with the variable w3d.inj_js set to the species being injected. Note
+  that if no particles are to be injected, set w3d.npgrp=0 to avoid injection
+  of bad particles."""
+    w3d.l_inj_user_particles = true
+    generateuserparticlesforinjection.installfuncinlist(f)
 def uninstalluserparticlesinjection(f):
-  "Removes the function installed by installuserparticlesinjection"
-  generateuserparticlesforinjection.uninstallfuncinlist(f)
-  if not generateuserparticlesforinjection.hasfuncsinstalled():
-    w3d.l_inj_user_particles = false
+    "Removes the function installed by installuserparticlesinjection"
+    generateuserparticlesforinjection.uninstallfuncinlist(f)
+    if not generateuserparticlesforinjection.hasfuncsinstalled():
+        w3d.l_inj_user_particles = false
 def isinstalleduserparticlesinjection(f):
-  "Checks if the function is called during injection"
-  return generateuserparticlesforinjection.isinstalledfuncinlist(f)
+    "Checks if the function is called during injection"
+    return generateuserparticlesforinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def callfromuserappliedfields(f):
-  installuserappliedfields(f)
-  return f
+    installuserappliedfields(f)
+    return f
 def installuserappliedfields(f):
+    """
+  Adds a user defined function which can specify E and B fields which are applied
+  to the particles during the particle advance. This function is called at the
+  start of padvnc3d. Note, that the following must be done in this install function:
+   - lresetparticlee and/or lresetparticleb must be set to false
+   - the E and/or B of the particles must be zeroed if they are otherwise unset
   """
-Adds a user defined function which can specify E and B fields which are applied
-to the particles during the particle advance. This function is called at the
-start of padvnc3d. Note, that the following must be done in this install function:
- - lresetparticlee and/or lresetparticleb must be set to false
- - the E and/or B of the particles must be zeroed if they are otherwise unset
-"""
-  userappliedfields.installfuncinlist(f)
-  w3d.luserappliedfields = true
+    userappliedfields.installfuncinlist(f)
+    w3d.luserappliedfields = true
 def uninstalluserappliedfields(f):
-  "Removes the function installed by installuserappliedfields"
-  userappliedfields.uninstallfuncinlist(f)
-  if not userappliedfields.hasfuncsinstalled():
-      w3d.luserappliedfields = false
+    "Removes the function installed by installuserappliedfields"
+    userappliedfields.uninstallfuncinlist(f)
+    if not userappliedfields.hasfuncsinstalled():
+        w3d.luserappliedfields = false
 def isinstalleduserappliedfields(f):
-  "Checks if the function is called when which applies fields"
-  return userappliedfields.isinstalledfuncinlist(f)
+    "Checks if the function is called when which applies fields"
+    return userappliedfields.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
 def fixcontrollersfromolddump():
-  import __main__
-  import controllers
-  controllernames = ['aftergenerate','beforefs','afterfs','callscraper',
-                     'calladdconductor','callbeforestepfuncs',
-                     'callafterstepfuncs','callbeforeplotfuncs',
-                     'callafterplotfuncs','callplseldomfuncs',
-                     'callplalwaysfuncs']
-  for cname in controllernames:
-    if cname in __main__.__dict__:
-      controller = __main__.__dict__[cname]
-      if 'funcnamelist' in controller.__dict__:
-        controllers.__dict__[controller.name] = controller
-        controller.funcs = controller.funcnamelist
-        del controller.funcnamelist
-    else:
-      print "Controller ",cname," not found"
-
+    import __main__
+    import controllers
+    controllernames = ['aftergenerate','beforefs','afterfs','callscraper',
+                       'calladdconductor','callbeforestepfuncs',
+                       'callafterstepfuncs','callbeforeplotfuncs',
+                       'callafterplotfuncs','callplseldomfuncs',
+                       'callplalwaysfuncs']
+    for cname in controllernames:
+        if cname in __main__.__dict__:
+            controller = __main__.__dict__[cname]
+            if 'funcnamelist' in controller.__dict__:
+                controllers.__dict__[controller.name] = controller
+                controller.funcs = controller.funcnamelist
+                del controller.funcnamelist
+        else:
+            print "Controller ",cname," not found"

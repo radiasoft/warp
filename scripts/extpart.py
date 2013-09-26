@@ -124,7 +124,7 @@ self.topgroupname
     def __init__(self,iz=-1,zz=0.,laccumulate=0,lsavefields=False,
                  name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
-        assert type(iz) is IntType,"iz must be an integer"
+        assert isinstance(iz,int),"iz must be an integer"
         assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
         self.iz = iz
         self.zz = zz
@@ -132,10 +132,10 @@ self.topgroupname
         self.lsavefields = lsavefields
         self.lautodump = lautodump
         if name is not None:
-          if name in self.name_cache:
-            raise ValueError('the name "%s" is not unique'%name)
-          else:
-            self.name_cache.append(name)
+            if name in self.name_cache:
+                raise ValueError('the name "%s" is not unique'%name)
+            else:
+                self.name_cache.append(name)
         self.name = name
         self.dumptofile = dumptofile
         self.dt = top.dt
@@ -345,7 +345,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
         # --- ready to accumulate more data and are prepared for writing
         # --- that data out to the files.
         if self.restored:
-          self.setuparrays(self.getns())
+            self.setuparrays(self.getns())
 
         # --- Check if the number of species has changed. This is done to ensure
         # --- crashes don't happen.
@@ -496,8 +496,8 @@ accumulated. If the data is being accumulated, any existing data is preserved.
             ff = PW.PW(self.name+'_%05d_%05d_%sdump.pdb'%(me,npes,self.type))
             dumpsmode = 0
             if ff is None:
-                 print "%s: %s unable to dump data to file."%(self.topgroupname,self.name)
-                 return
+                print "%s: %s unable to dump data to file."%(self.topgroupname,self.name)
+                return
             ff.write(self.name+'@pickle',cPickle.dumps(self,dumpsmode))
             ff.close()
         self.clear()
@@ -587,7 +587,7 @@ accumulated. If the data is being accumulated, any existing data is preserved.
     def restoredata(self,lforce=0,files=None,nprocs=None):
         """
 Restores the data that was written out to a file. This is used when doing
-post processing of the saved data when the flag dumptofile was turned on.  
+post processing of the saved data when the flag dumptofile was turned on.
         """
         if self.restored: return
         #self.restoredataPDB(lforce,files)
@@ -606,9 +606,9 @@ feature.
         if not lforce and (not self.enabled or _extforcenorestore): return
 
         # --- Check some input, converting to lists if needed.
-        if not isinstance(files,ListType):
+        if not isinstance(files,list):
             files = [files]
-        if not isinstance(names,ListType):
+        if not isinstance(names,list):
             names = [names]
 
         # --- If the list of files was not given, then it needs to be
@@ -1128,7 +1128,7 @@ each species and each one in the list. Also assign colors accordingly
         """
         args = list(args)
         js = args[0]
-        if js != -1 and type(js) != ListType:
+        if js != -1 and not isinstance(js,list):
             return false
         else:
             if js == -1: js = range(self.getns())
@@ -1171,7 +1171,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pxvx,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
         vx = self.getvx(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(x) > 0:
                 slope = (ave(x*vx)-ave(x)*ave(vx))/(ave(x*x) - ave(x)**2)
                 offset = ave(vx)-slope*ave(x)
@@ -1200,7 +1200,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
             return
         y = self.gety(js,tc,wt,tp,z)
         vy = self.getvy(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(y) > 0:
                 slope = (ave(y*vy)-ave(y)*ave(vy))/(ave(y*y) - ave(y)**2)
                 offset = ave(vy)-slope*ave(y)
@@ -1262,9 +1262,9 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         r = sqrt(x**2 + y**2)
         t = arctan2(y,x)
         vr = vx*cos(t) + vy*sin(t)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(r) > 0:
-              slope = ave(r*vr)/ave(r*r)
+                slope = ave(r*vr)/ave(r*r)
             else:
                 slope = 0.
         kw['slope'] = slope
@@ -1287,7 +1287,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         if self.ppmultispecies(self.pxxp,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
         xp = self.getxp(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(x) > 0:
                 slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
                 offset = ave(xp)-slope*ave(x)
@@ -1318,7 +1318,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
             return
         y = self.gety(js,tc,wt,tp,z)
         yp = self.getyp(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(y) > 0:
                 slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
                 offset = ave(yp)-slope*ave(y)
@@ -1384,9 +1384,9 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
         r = sqrt(x**2 + y**2)
         t = arctan2(y,x)
         rp = xp*cos(t) + yp*sin(t)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(r) > 0:
-              slope = ave(r*rp)/ave(r*r)
+                slope = ave(r*rp)/ave(r*r)
             else:
                 slope = 0.
         kw['slope'] = slope
@@ -1618,7 +1618,7 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
             pplimits = defaultpplimits
         else:
             kw['lframe'] = 1
-            if type(pplimits[0]) != type(()):
+            if not isinstance(pplimits[0],tuple):
                 pplimits = 4*[pplimits]
             else:
                 for i in range(4):
@@ -1627,28 +1627,28 @@ The same arguments for :py:func:`selectparticles` and :py:func:`~warpplots.ppgen
 
         kw['view'] = 3
         kw['pplimits'] = pplimits[0]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = 0.
         settitles("Y vs X","X","Y",titler)
         ppgeneric(y,x,kwdict=kw)
 
         kw['view'] = 4
         kw['pplimits'] = pplimits[1]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = (ave(y*yp)-ave(y)*ave(yp))/dvnz(ave(y*y) - ave(y)**2)
         settitles("Y' vs Y","Y","Y'",titler)
         ppgeneric(yp,y,kwdict=kw)
 
         kw['view'] = 5
         kw['pplimits'] = pplimits[2]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = (ave(x*xp)-ave(x)*ave(xp))/dvnz(ave(x*x) - ave(x)**2)
         settitles("X' vs X","X","X'",titler)
         ppgeneric(xp,x,kwdict=kw)
 
         kw['view'] = 6
         kw['pplimits'] = pplimits[3]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = 0.
         settitles("X' vs Y'","Y'","X'",titler)
         ppgeneric(xp,yp,kwdict=kw)
@@ -1776,7 +1776,7 @@ over m.
 Note that because the extrapolation is inconsistent with the particle advance
 used during the time steps, there can be gaps in the resulting data at time
 step boundaries. It is recommended that :py:func:`ZCrossingParticles` be used
-instead.  
+instead.
 
 The creator options are:
 
@@ -2032,7 +2032,7 @@ class ExtPartDeprecated:
     def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
                  lepsaveonce=None,name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
-        assert type(iz) is IntType,"iz must be an integer"
+        assert isinstance(iz,int),"iz must be an integer"
         assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
         self.iz = iz
         self.zz = zz
@@ -2331,8 +2331,8 @@ class ExtPartDeprecated:
             ff = PW.PW(self.name+'_%05d_%05d_epdump.pdb'%(me,npes))
             dumpsmode = 0
             if ff is None:
-                 print "ExtPart: %s unable to dump data to file."%self.name
-                 return
+                print "ExtPart: %s unable to dump data to file."%self.name
+                return
             ff.write(self.name+'@pickle',cPickle.dumps(self,dumpsmode))
             ff.close()
         self.nepmax = 1
@@ -2421,9 +2421,9 @@ feature.
         self.laccumulate = 1
 
         # --- Check some input, converting to lists if needed.
-        if not isinstance(files,ListType):
+        if not isinstance(files,list):
             files = [files]
-        if not isinstance(names,ListType):
+        if not isinstance(names,list):
             names = [names]
 
         # --- If the list of files was not given, then it needs to be
@@ -2765,7 +2765,7 @@ each species and each one in the list. Also assign colors accordingly
         """
         args = list(args)
         js = args[0]
-        if js != -1 and type(js) != ListType:
+        if js != -1 and not isinstance(js,list):
             return false
         else:
             if js == -1: js = range(self.getns())
@@ -2802,7 +2802,7 @@ each species and each one in the list. Also assign colors accordingly
         if self.ppmultispecies(self.pxxp,(js,tc,wt,tp,z),kw): return
         x = self.getx(js,tc,wt,tp,z)
         xp = self.getxp(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(x) > 0:
                 slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
                 offset = ave(xp)-slope*ave(x)
@@ -2830,7 +2830,7 @@ each species and each one in the list. Also assign colors accordingly
             return
         y = self.gety(js,tc,wt,tp,z)
         yp = self.getyp(js,tc,wt,tp)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(y) > 0:
                 slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
                 offset = ave(yp)-slope*ave(y)
@@ -2890,9 +2890,9 @@ each species and each one in the list. Also assign colors accordingly
         r = sqrt(x**2 + y**2)
         t = arctan2(y,x)
         rp = xp*cos(t) + yp*sin(t)
-        if type(slope) == type(''):
+        if isinstance(slope,basestring):
             if len(r) > 0:
-              slope = ave(r*rp)/ave(r*r)
+                slope = ave(r*rp)/ave(r*r)
             else:
                 slope = 0.
         kw['slope'] = slope
@@ -3072,7 +3072,7 @@ Plots X-Y, X-X', Y-Y', Y'-X' in single page
             pplimits = defaultpplimits
         else:
             kw['lframe'] = 1
-            if type(pplimits[0]) != type(()):
+            if not isinstance(pplimits[0],tuple):
                 pplimits = 4*[pplimits]
             else:
                 for i in range(4):
@@ -3081,29 +3081,28 @@ Plots X-Y, X-X', Y-Y', Y'-X' in single page
 
         kw['view'] = 3
         kw['pplimits'] = pplimits[0]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = 0.
         settitles("Y vs X","X","Y",titler)
         ppgeneric(y,x,kwdict=kw)
 
         kw['view'] = 4
         kw['pplimits'] = pplimits[1]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = (ave(y*yp)-ave(y)*ave(yp))/dvnz(ave(y*y) - ave(y)**2)
         settitles("Y' vs Y","Y","Y'",titler)
         ppgeneric(yp,y,kwdict=kw)
 
         kw['view'] = 5
         kw['pplimits'] = pplimits[2]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = (ave(x*xp)-ave(x)*ave(xp))/dvnz(ave(x*x) - ave(x)**2)
         settitles("X' vs X","X","X'",titler)
         ppgeneric(xp,x,kwdict=kw)
 
         kw['view'] = 6
         kw['pplimits'] = pplimits[3]
-        if type(slope)==type(''):
+        if isinstance(slope,basestring):
             kw['slope'] = 0.
         settitles("X' vs Y'","Y'","X'",titler)
         ppgeneric(xp,yp,kwdict=kw)
-

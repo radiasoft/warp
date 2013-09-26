@@ -1,7 +1,7 @@
 """Class for doing 3 D electromagnetic solver """
 from warp import *
 from mkpalette import getpalhrgb
-import operator
+import collections
 
 try:
   from Opyndx import *
@@ -430,14 +430,14 @@ class EM3D(SubcycledPoissonSolver):
 
     # --- Check if laser_func is a dictionary
     self.laser_func_dict = None
-    if type(self.laser_func)==type({}):
+    if isinstance(self.laser_func,dict):
       self.laser_func_dict = self.laser_func
 
     # --- Check if laser_amplitude is a function, table, or constant
     self.laser_amplitude_func = None
     self.laser_amplitude_table = None
     self.laser_amplitude_dict = None
-    if operator.isSequenceType(self.laser_amplitude):
+    if isinstance(self.laser_amplitude,collections.Sequence):
       assert len(self.laser_amplitude.shape) == 2 and \
              self.laser_amplitude.shape[1] == 2,\
              "The laser_amplitude table is not formatted properly"
@@ -445,13 +445,13 @@ class EM3D(SubcycledPoissonSolver):
       self.laser_amplitude_table_i = -1
     elif callable(self.laser_amplitude):
       self.laser_amplitude_func = self.laser_amplitude
-    elif type(self.laser_amplitude)==type({}):
+    elif isinstance(self.laser_amplitude,dict):
       self.laser_amplitude_dict = self.laser_amplitude
     
     # --- Check if laser_phase is a function, table, or constant
     self.laser_phase_func = None
     self.laser_phase_table = None
-    if operator.isSequenceType(self.laser_phase):
+    if isinstance(self.laser_phase,collections.Sequence):
       assert len(self.laser_phase.shape) == 2 and \
              self.laser_phase.shape[1] == 2,\
              "The laser_phase table is not formatted properly"
@@ -538,7 +538,7 @@ class EM3D(SubcycledPoissonSolver):
         yy = self.laser_yy-self.laser_gauss_centery; yy /= self.laser_gauss_widthy
         self.laser_profile = exp(-(xx**2+yy**2)/2.)
 
-    elif operator.isSequenceType(self.laser_profile):
+    elif isinstance(self.laser_profile,collections.Sequence):
       if self.laser_mode==1:
         assert len(self.laser_profile[:,0]) == f.nx+1,"The specified profile must be of length nx+1"
         assert len(self.laser_profile[0,:]) == f.ny+1,"The specified profile must be of length ny+1"
@@ -557,11 +557,11 @@ class EM3D(SubcycledPoissonSolver):
 #===============================================================================
   def add_laser(self,field):
 #===============================================================================
-    if type(self.laser_func_dict)==type({}):
+    if isinstance(self.laser_func_dict,dict):
       for self.laser_key in self.laser_func_dict.keys():
         self.laser_func = self.laser_func_dict[self.laser_key]
         self.add_laser_work(field)
-    elif type(self.laser_amplitude_dict)==type({}):
+    elif isinstance(self.laser_amplitude_dict,dict):
       for self.laser_key in self.laser_amplitude_dict.keys():
         self.laser_amplitude_func = self.laser_amplitude_dict[self.laser_key]
         self.add_laser_work(field)
@@ -677,7 +677,7 @@ class EM3D(SubcycledPoissonSolver):
           y = self.laser_yy
           t = top.time*(1.-self.laser_source_v/clight)
           laser_amplitude = self.laser_func(x,y,t)
-          if type(laser_amplitude) is type([]):
+          if isinstance(laser_amplitude,list):
             laser_amplitude_x=laser_amplitude[0]*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
             laser_amplitude_y=laser_amplitude[1]*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
           else:
@@ -2257,7 +2257,7 @@ class EM3D(SubcycledPoissonSolver):
             xtitle='X';ytitle='Y'
         plsys(view)
         ptitles(title,xtitle,ytitle,'t = %gs'%(top.time))
-      if type(procs) is type(1):procs=[procs]
+      if isinstance(procs,int):procs=[procs]
       if me>0 and me in procs:
         comm_world.send(self.isactive,0,3)
         if self.isactive:
@@ -2492,7 +2492,7 @@ class EM3D(SubcycledPoissonSolver):
           if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
       else:
         datag=None
-      if type(procs) is type(1):procs=[procs]
+      if isinstance(procs,int):procs=[procs]
       validdata = gatherlist(self.isactive and data is not None,bcast=1)
       validprocs = compress(validdata,arange(len(validdata)))
       alldata = gatherlist([xmin,ymin,data],dest=0,procs=validprocs)

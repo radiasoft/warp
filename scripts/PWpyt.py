@@ -51,7 +51,7 @@ class PW:
 
     def __init__(self, filename=None, mode="w", group='/',
                  verbose = 1, delimiter='@'):
-        "PW(filename='', verbose=1) creates filename if given" 
+        "PW(filename='', verbose=1) creates filename if given"
         self.__dict__['_delimiter'] = delimiter
         self.__dict__['_file'] = None
         self.set_verbosity(verbose)
@@ -177,14 +177,14 @@ class PW:
                                           '_floats',FloatScalar,"Scalar Floats")
 
     def make_group(self, name, title=''):
-        """make_group(name) 
+        """make_group(name)
         -- create a new HDF group, return status"""
         self.check_open()
         self.inquire_file().createGroup(self.inquire_group(),name,title=title)
         return 1
 
     def set_group(self, name):
-        """set_group(name) 
+        """set_group(name)
         -- change HDF group to name, return status"""
         if name[0] == '/':
             group = name
@@ -196,8 +196,8 @@ class PW:
 
     def set_verbosity(self, flag):
         """set_verbosity(flag) sets verbosity level to flag.
-        0 for quiet operation, 
-        1 to report closing only, 
+        0 for quiet operation,
+        1 to report closing only,
         2 to report access to data."""
         if 0 <= flag <= 2:
             self.__dict__['_verbose_flag'] = flag
@@ -205,21 +205,21 @@ class PW:
             self.__dict__['_verbose_flag'] = 2
 
     def fixlongnames(self,name):
-      """
-Handle names longer than the maximum length allowed by IntScalar and
-FloatScalar.
-      """
-      origname = name
-      if len(name) > _max_name_len:
-          hash = md5.new(origname).digest().translate(_transtable)
-          hashedname = hash[:_max_name_len]
-          h.createArray(self.inquire_group(),
-                        hashedname,
-                        origname,
-                        title='HashedName')
-      else:
-          hashedname = name
-      return origname,hashedname
+        """
+  Handle names longer than the maximum length allowed by IntScalar and
+  FloatScalar.
+        """
+        origname = name
+        if len(name) > _max_name_len:
+            hash = md5.new(origname).digest().translate(_transtable)
+            hashedname = hash[:_max_name_len]
+            h.createArray(self.inquire_group(),
+                          hashedname,
+                          origname,
+                          title='HashedName')
+        else:
+            hashedname = name
+        return origname,hashedname
 
     def write(self, name, quantity, title=''):
         """Write quantity to file as 'name'"""
@@ -230,7 +230,7 @@ FloatScalar.
         if self._delimiter != '@':
             name = self._fixdelimiter.sub(self._delimiter,name)
 
-        if isinstance(quantity,types.IntType):
+        if isinstance(quantity,int):
             # --- integers are put into the ints table
             origname,name = self.fixlongnames(name)
             self._ints.row['name'] = name
@@ -283,7 +283,7 @@ FloatScalar.
                     del q
                 except:
                     if self.inquire_verbosity():
-                      print name,' is being skipped since it could not be written or pickled'
+                        print name,' is being skipped since it could not be written or pickled'
                     return
                 # --- Things that need to be pickled will all be written out at
                 # --- once in the same pickle when the file is being closed so that
@@ -335,9 +335,3 @@ if __name__ == "__main__":
     g = PR('goo.hdf')
     print "xh is", xh, ", file it is ", g.xh
     g.close()
-
-
-
-
-
-

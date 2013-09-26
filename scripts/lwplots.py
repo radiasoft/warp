@@ -87,7 +87,7 @@ Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
 returned.
     """
-    if type(name) == StringType:
+    if isinstance(name,basestring):
         # --- if varsuffix is specified, try to evaluate the name with the
         # --- suffix. If ok, return the result, otherwise, default to the
         # --- fortran variable in the specified package.

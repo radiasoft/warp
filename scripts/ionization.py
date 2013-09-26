@@ -82,7 +82,7 @@ it setups up one of several cross section functions, depending on which
 interactions are supported by the libraries.
     """
     if cross_section is not None:
-      if isinstance(cross_section,ArrayType):
+      if isinstance(cross_section,ndarray):
         # --- Return an instance of a tablized cross section
         return TableCrossSection(incident_species,cross_section)
       else:
@@ -597,7 +597,7 @@ velocity of the incident particle.
           # --- get local target density
           if ndens is None:
             ndens = self.target_dens[target_species]['ndens']
-          if type(ndens) in [type(0.),type(0)]:
+          if isinstance(ndens,(int,float)):
             dp=ones(ni,'d')*ndens
             if target_fluidvel is None:
               xmin=self.xmin
@@ -636,7 +636,7 @@ velocity of the incident particle.
               target_fluidvel = [0.,0.,0.]
             else:
               target_fluidvel = self.target_dens[target_species]['target_fluidvel']
-          if type(target_fluidvel) in [type([])]:
+          if isinstance(target_fluidvel,list):
             vxtf = target_fluidvel[0]
             vytf = target_fluidvel[1]
             vztf = target_fluidvel[2]

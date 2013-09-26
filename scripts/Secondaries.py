@@ -192,7 +192,7 @@ Class for generating secondaries
 #      if material=='SS' and incident_species.type is Potassium:interaction_type=5
       if interaction_type is None:raise Exception('Error in Secondaries: invalid material or incident species')
     isinc=incident_species
-    if type(emitted_species)<>type([]):emitted_species=[emitted_species]
+    if not isinstance(emitted_species,list):emitted_species=[emitted_species]
     issec=[]
     for e in emitted_species:
       issec.append(e.jslist[0])
@@ -611,7 +611,7 @@ Class for generating secondaries
             ####################################################################
             # emission with imposed yield (note that initial velocity is tiny) #
             ####################################################################
-             if type(forced_yield) is type(0.):
+             if isinstance(forced_yield,float):
                ns=int(forced_yield)
                if ranf()<(forced_yield-ns):ns+=1
              else:
@@ -1211,7 +1211,7 @@ Class for generating secondaries
             # emission with imposed yield (note that initial velocity is tiny) #
             ####################################################################
            for i in range(n):  
-             if type(forced_yield) is type(0.):
+             if isinstance(forced_yield,float):
                ns=int(forced_yield)
                if ranf()<(forced_yield-ns):ns+=1
              else:
@@ -1595,7 +1595,7 @@ Class for generating secondaries
     if not self.l_set_params_user_only:self.set_params(maxsec,mat_num)
     # --- Now call the user's routine if there is one.
     if self.set_params_user is not None:
-      if type(self.set_params_user) is StringType:
+      if isinstance(self.set_params_user,basestring):
         # --- This is needed primarily since a user defined function cannot be
         # --- directly picklable and so only the name is saved.
         import __main__
@@ -2264,7 +2264,7 @@ Class for generating photo-electrons
     for ints in self.inter:
      incident_species=self.inter[ints]['incident_species']
      emitted_species=self.inter[incident_species]['emitted_species']
-     if type(self.Lambda) is not type(array([0.])):
+     if not isinstance(self.Lambda,ndarray):
        self.nz=0
        if self.l_switchyz:
          self.ymin=top.ypminlocal

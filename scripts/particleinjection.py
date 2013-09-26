@@ -589,7 +589,7 @@ the area of the dual cell.
         top.pgroup.gaminv[i1:i2][ii] = gaminv
 
     def registerconductors(self,newconductors):
-        if not isinstance(newconductors,ListType):
+        if not isinstance(newconductors,list):
             newconductors = [newconductors]
         for c in newconductors:
             assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
@@ -688,4 +688,3 @@ for example after load balancing.
                                         Q[1:-1,1:-1,:-2] + Q[1:-1,1:-1,2:]) +
                                       ( Q[1:-1,1:-1,1:-1]))*0.125
         '''
-

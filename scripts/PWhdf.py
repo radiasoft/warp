@@ -17,14 +17,14 @@ class PW:
     Error = 'PW error'
 
     type_dict = {'l':'int','d':'double','c':'string',
-                 IntType:'int',FloatType:'double',StringType:'string'}
+                 int:'int',float:'double',str:'string'}
 
     def __del__ (self):
         "Close any file open when this object disappears."
         self.close()
 
     def __init__ (self, filename='', mode="w", verbose = 1, compression = 6):
-        "PW(filename='', verbose=1, compression=6) creates filename if given" 
+        "PW(filename='', verbose=1, compression=6) creates filename if given"
         self.__dict__['_nodelist'] = None
         self.set_verbosity (verbose)
         self.set_compression (compression)
@@ -113,7 +113,7 @@ class PW:
         else:              return self._pwd + '/' + name
 
     def make_directory(self, name):
-        """make_directory(name) 
+        """make_directory(name)
         -- create a new HDF directory, return status"""
         self.check_open()
         self.inquire_nodelist().addNode(_pyhl.node(_pyhl.GROUP_ID,
@@ -121,14 +121,14 @@ class PW:
         return 1
 
     def make_link(self, var, link):
-        """make_directory(var, link) 
+        """make_directory(var, link)
         -- make a link, return status"""
         #self.check_open()
         #return self.inquire_nodelist().ln(name)
         raise Exception("Links unsupported")
 
     def set_directory (self, name):
-        """set_directory(name) 
+        """set_directory(name)
         -- change HDF directory to name, return status"""
         self.check_open()
         self.__dict__['_pwd'] = self.new_directory_name(name)
@@ -136,8 +136,8 @@ class PW:
 
     def set_verbosity (self, flag):
         """set_verbosity (flag) sets verbosity level to flag.
-        0 for quiet operation, 
-        1 to report closing only, 
+        0 for quiet operation,
+        1 to report closing only,
         2 to report access to data."""
         if 0 <= flag <= 2:
             self.__dict__['_verbose_flag'] = flag
@@ -151,30 +151,30 @@ class PW:
     def write (self, name, quantity, record = 0, indx = None):
         """Write quantity to file as 'name'"""
         self.check_open()
-        if self.inquire_verbosity () > 1: 
+        if self.inquire_verbosity () > 1:
             if record == 0:
                 print "PW::write writing", name
             else:
                 print "PW::write writing record", record, \
                       "of", name
-        if type(quantity) is ArrayType:
-          anode = _pyhl.node(_pyhl.DATASET_ID,self._pwd+'/'+name)
-          anode.setArrayValue(-1,shape(quantity),quantity,
-                              self.type_dict[quantity.typecode()],-1)
-          self.inquire_nodelist().addNode(anode)
-        elif len(shape(quantity)) == 0 or type(quantity) in [StringType]:
-          anode = _pyhl.node(_pyhl.ATTRIBUTE_ID,self._pwd+'/'+name)
-          anode.setScalarValue(-1,quantity,
-                               self.type_dict[type(quantity)],-1)
-          self.inquire_nodelist().addNode(anode)
+        if isinstance(quantity,ndarray):
+            anode = _pyhl.node(_pyhl.DATASET_ID,self._pwd+'/'+name)
+            anode.setArrayValue(-1,shape(quantity),quantity,
+                                self.type_dict[quantity.typecode()],-1)
+            self.inquire_nodelist().addNode(anode)
+        elif len(shape(quantity)) == 0 or isinstance(quantity,str):
+            anode = _pyhl.node(_pyhl.ATTRIBUTE_ID,self._pwd+'/'+name)
+            anode.setScalarValue(-1,quantity,
+                                 self.type_dict[type(quantity)],-1)
+            self.inquire_nodelist().addNode(anode)
         else:
-          # TODO: write as pickled object as a string
-          raise Exception("type unsupported")
+            # TODO: write as pickled object as a string
+            raise Exception("type unsupported")
 
     def defent (self, name, quantity, indx):
         """Define entry for quantity in file as 'name'"""
         self.check_open()
-        if self.inquire_verbosity () > 1: 
+        if self.inquire_verbosity () > 1:
             print "PW::defining entry for", name
         raise Exception("defent not supported")
 
@@ -219,13 +219,3 @@ if __name__ == "__main__":
     g = PR ('goo.pdb')
     print "xh is", xh, ", file it is ", g.xh
     g.close ()
-
-
-
-
-
-
-
-
-
-

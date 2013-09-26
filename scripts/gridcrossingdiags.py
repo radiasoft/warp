@@ -685,7 +685,7 @@ after simulation when the dumptofile flag was on.
                               readscintillator=1):
         if me != 0: return
 
-        if not isinstance(files,ListType):
+        if not isinstance(files,list):
             files = list([files])
         if len(files) == 0:
             files = [self.dumptofile+'_gridcrossing.pkl']
@@ -730,9 +730,9 @@ after simulation when the dumptofile flag was on.
         for var in varlist:
             name,it = var.split('_')
             if len(it) < 8:
-                 newname = name + '_' + (8-len(it))*'0' + it
-                 datadict[newname] = datadict[var]
-                 del datadict[var]
+                newname = name + '_' + (8-len(it))*'0' + it
+                datadict[newname] = datadict[var]
+                del datadict[var]
 
         self._time = []
         self._zbeam = []
@@ -1783,10 +1783,10 @@ be unreliable.
 
         self.zoldpid = nextpid()
         if nhist < 1.:
-          # --- Also save the old velocity to give a better extrapolation.
-          self.vxoldpid = nextpid()
-          self.vyoldpid = nextpid()
-          self.vzoldpid = nextpid()
+            # --- Also save the old velocity to give a better extrapolation.
+            self.vxoldpid = nextpid()
+            self.vyoldpid = nextpid()
+            self.vzoldpid = nextpid()
 
 
         self.initializedata()
@@ -2305,7 +2305,7 @@ be unreliable.
                               readscintillator=1):
         if me != 0: return
 
-        if not isinstance(files,ListType):
+        if not isinstance(files,list):
             files = list([files])
         if len(files) == 0:
             files = [self.dumptofile+'_gridcrossing.pkl']
@@ -2353,9 +2353,9 @@ be unreliable.
         for var in varlist:
             name,it = var.split('_')
             if len(it) < 8:
-                 newname = name + '_' + (8-len(it))*'0' + it
-                 datadict[newname] = datadict[var]
-                 del datadict[var]
+                newname = name + '_' + (8-len(it))*'0' + it
+                datadict[newname] = datadict[var]
+                del datadict[var]
 
         self._time = []
         self._zbeam = []
@@ -2724,4 +2724,3 @@ around the peak current."""
     scinttime = property(*_setupproperty('scinttime'))
     scintillator = property(*_setupproperty('scintillator'))
     del _setupproperty
-

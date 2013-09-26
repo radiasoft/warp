@@ -7,7 +7,7 @@ __all__ = ['MeshRefinement',
 MeshRefinement_version = "$Id: MeshRefinement.py,v 1.177 2011/08/27 00:43:15 grote Exp $"
 from warp import *
 from find_mgparam import find_mgparam
-import operator
+import collections
 try:
   import Opyndx
   VisualizableClass = Opyndx.Visualizable
@@ -73,7 +73,7 @@ Implements adaptive mesh refinement in 3d
     # --- dimension to zero. (The code only works with XYZ and RZ now.)
     if self.solvergeom == w3d.RZgeom and 0:
       if refinement is not None:
-        if operator.isSequenceType(refinement):
+        if isinstance(refinement,collections.Sequence):
           refinement = [refinement[0],1,refinement[-1]]
         else:
           refinement = [refinement,1,refinement]
@@ -1816,7 +1816,7 @@ contribute within their domains of ownership.
     getdata = getattr(self,getdataname)
     array = getdata(self.fulllower,self.fullupper)
 
-    if type(comp) != IntType:
+    if not isinstance(comp,int):
       # --- 'E','B','J','A' will give the field magnitude
       try:
         ic = ['x','y','z','E','B','J','A'].index(comp)
@@ -1829,7 +1829,7 @@ contribute within their domains of ownership.
           pass
     else:
       ic = comp
-    assert type(ic) == IntType,"Unrecognized component was input"
+    assert isinstance(ic,int),"Unrecognized component was input"
 
     if ic is not None and len(shape(array)) == 4:
       if ic > 2:
@@ -2074,7 +2074,7 @@ Create DX object drawing the object.
   def plpotentialz(self,comp=None,ix=None,iy=None,colors=None,selfonly=0,
                    scale=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
@@ -2102,7 +2102,7 @@ Create DX object drawing the object.
   def plpotentialx(self,comp=None,iy=None,iz=None,colors=None,selfonly=0,
                    scale=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if iy < self.fulllower[1]: return
@@ -2130,7 +2130,7 @@ Create DX object drawing the object.
   def plpotentialy(self,comp=None,ix=None,iz=None,colors=None,selfonly=0,
                    scale=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
@@ -2160,7 +2160,7 @@ Create DX object drawing the object.
     # --- Note that rho at the child boundaries is incorrect and not used, so
     # --- don't plot it.
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
@@ -2201,7 +2201,7 @@ Create DX object drawing the object.
     # --- Note that source at the child boundaries is incorrect and not used, so
     # --- don't plot it.
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if iy < self.fulllower[1]: return
@@ -2242,7 +2242,7 @@ Create DX object drawing the object.
     # --- Note that source at the child boundaries is incorrect and not used, so
     # --- don't plot it.
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
@@ -2281,7 +2281,7 @@ Create DX object drawing the object.
   def plfieldz(self,comp=2,ix=None,iy=None,colors=None,selfonly=0,scale=1,
                withguard=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if withguard:
       lower,upper = self.fulllower,self.fullupper
       iz = slice(None)
@@ -2315,7 +2315,7 @@ Create DX object drawing the object.
   def plfieldx(self,comp=2,iy=None,iz=None,colors=None,selfonly=0,scale=1,
                withguard=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if withguard:
       lower,upper = self.fulllower,self.fullupper
       ix = slice(None)
@@ -2349,7 +2349,7 @@ Create DX object drawing the object.
   def plfieldy(self,comp=2,ix=None,iz=None,colors=None,selfonly=0,scale=1,
                withguard=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if withguard:
       lower,upper = self.fulllower,self.fullupper
       iy = slice(None)
@@ -2771,7 +2771,7 @@ with variable dielectric
 
   def plepsilonz(self,ix=None,colors=None,selfonly=0,scale=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if ix < self.fulllower[0]: return
@@ -2796,7 +2796,7 @@ with variable dielectric
 
   def plepsilonx(self,iz=None,colors=None,selfonly=0,scale=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if self is self.root: accumulateplotlists()
     try:
       if iz < self.fulllower[2]: return
@@ -2883,7 +2883,7 @@ field solver
 
   def plphiz(self,ix=None,colors=None,selfonly=0):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if ix < self.fulllower[0]: return
     if ix > self.fullupper[0]: return
     if self is self.root: accumulateplotlists()
@@ -2898,7 +2898,7 @@ field solver
 
   def plphix(self,iz=None,colors=None,selfonly=0):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if iz < self.fulllower[2]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
@@ -2913,7 +2913,7 @@ field solver
 
   def plrhoz(self,ix=None,colors=None,selfonly=0):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if ix < self.fulllower[0]: return
     if ix > self.fullupper[0]: return
     if self is self.root: accumulateplotlists()
@@ -2928,7 +2928,7 @@ field solver
 
   def plrhox(self,iz=None,colors=None,selfonly=0):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if iz < self.fulllower[2]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
@@ -2943,7 +2943,7 @@ field solver
 
   def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if withguard:
       lower,upper = self.fulllower,self.fullupper
       iz = slice(None)
@@ -2966,7 +2966,7 @@ field solver
 
   def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
     if colors is None: colors = color
-    elif not operator.isSequenceType(colors): colors = list([colors])
+    elif not isinstance(colors,collections.Sequence): colors = list([colors])
     if withguard:
       lower,upper = self.fulllower,self.fullupper
       ix = slice(None)

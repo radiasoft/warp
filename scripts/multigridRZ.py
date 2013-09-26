@@ -107,7 +107,7 @@ class MultiGridRZ(MultiGrid3D):
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
     if n == 0: return
-    if isinstance(self.potentialp,FloatType): return
+    if isinstance(self.potentialp,float): return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
     nxp = self.nxp + 2*self.nxguardphi
@@ -168,10 +168,10 @@ class MultiGridRZ(MultiGrid3D):
     # --- Set vinject first is requested.
     # --- This is copied from plot_conductors.setconductorvoltage.
     if setvinject:
-      if type(voltage) in [ListType,TupleType,ArrayType]:
+      if instance(voltage,(list,tuple,ndarray)):
         # --- Set it to the voltage on the left edge
         top.vinject = voltage[0]
-      elif type(voltage) == FunctionType:
+      elif callable(voltage):
         # --- Set it to the voltage at the source center
         top.vinject = voltage(top.xinject,top.yinject,top.zinject)
       else:
@@ -181,7 +181,7 @@ class MultiGridRZ(MultiGrid3D):
     # --- are handled.
     # --- XXX NOTE THAT SELFB IS NOT IMPLEMENTED YET FOR MultiGridRZ XXX
     for iselfb in range(top.nsselfb):
-      if type(voltage) in [ListType,TupleType,ArrayType]:
+      if isinstance(voltage,(list,tuple,ndarray)):
       # --- Voltage is assumed to be the voltages are the z grid cell locations
       # --- (in the global beam frame).
         setconductorvoltagerz_grid(self.grid,voltage,self.nz,self.zmmin,
@@ -199,7 +199,7 @@ class MultiGridRZ(MultiGrid3D):
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
 #   if self.izfsslave is None: self.izfsslave = top.izfsslave
 #   if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
@@ -303,7 +303,7 @@ class MultiGrid2D(MultiGrid3D):
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
     if n == 0: return
-    if isinstance(self.potentialp,FloatType): return
+    if isinstance(self.potentialp,float): return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
     nxp = self.nxp + 2*self.nxguardphi
@@ -344,7 +344,7 @@ class MultiGrid2D(MultiGrid3D):
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     mgverbose = self.getmgverbose()
     mgiters = zeros(1,'l')
@@ -386,7 +386,7 @@ class MultiGrid2D(MultiGrid3D):
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
@@ -538,7 +538,7 @@ class MultiGrid2DDielectric(MultiGrid2D):
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     mgverbose = self.getmgverbose()
     mgiters = zeros(1,'l')
@@ -766,8 +766,8 @@ Initially, conductors are not implemented.
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      if isinstance(self.source,FloatType): return
-      if isinstance(self.sourcep,FloatType): return
+      if isinstance(self.source,float): return
+      if isinstance(self.sourcep,float): return
       for iimp in range(1+top.nsimplicit):
         setrhoforfieldsolve3d(self.nxlocal,self.nylocal,self.nzlocal,
                               self.source[...,iimp],
@@ -824,7 +824,7 @@ Initially, conductors are not implemented.
     # --- This is only done for convenience.
     self._phi = self.potential
     self._rho = self.source[...,0]
-    if isinstance(self.potential,FloatType): return
+    if isinstance(self.potential,float): return
 
     mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
