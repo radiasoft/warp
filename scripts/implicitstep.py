@@ -248,7 +248,7 @@ Handles implicit time stepping.
     # --- zgrid is integer number of dz's
     if (top.lgridqnt):
       top.zgrid = int(top.zgrid/w3d.dz + .5)*w3d.dz
-      top.zgridndts[:] = int(top.zgridndts/w3d.dz + .5)*w3d.dz
+      top.zgridndts[:] = aint(top.zgridndts/w3d.dz + .5)*w3d.dz
 
   def advancezbeam(self):
     # --- Now the position of the grid can be advanced.

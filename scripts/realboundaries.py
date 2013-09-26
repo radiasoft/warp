@@ -500,7 +500,7 @@ Constructor arguments:
     s.xcond = compress(ii,x)
     s.ycond = compress(ii,y)
     s.vcond = compress(ii,v)*1.
-    s.vcondunit = int(s.vcond + 0)
+    s.vcondunit = aint(s.vcond + 0)
     # --- Finally, get the matrix using those points
     s.getmatrix()
   #----------------------------------------------------------------------------
@@ -720,8 +720,8 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def setscraper(self,zl,zr,ap,ax,ay,ox,oy):
     if self.scrapemethod != 1: return
-    izl = int(ceil((zl - top.zbeam - top.zzmin)/top.dzz))
-    izr = int(floor((zr - top.zbeam - top.zzmin)/top.dzz))
+    izl = aint(ceil((zl - top.zbeam - top.zzmin)/top.dzz))
+    izr = aint(floor((zr - top.zbeam - top.zzmin)/top.dzz))
     izl = max(0,min(top.nzzarr,izl))
     izr = max(0,min(top.nzzarr,izr)) + 1
     if ax == 0.: ax = ap

@@ -577,7 +577,7 @@ Input:
             xmesh,ymesh = getmesh2d(xmmin,w3d.dx,nx,ymmin,w3d.dy,ny)
             rmesh = sqrt(xmesh**2 + ymesh**2)
             dr = (self.xmmax - self.xmmin)/self.nx_plane
-            self.irmesh = int(rmesh/dr)
+            self.irmesh = aint(rmesh/dr)
             self.wrmesh =     rmesh/dr  - self.irmesh
             self.wrmesh = where(self.irmesh >= self.nx_plane,1,self.wrmesh)
             self.irmesh = where(self.irmesh >= self.nx_plane,self.nx_plane-1,self.irmesh)

@@ -1615,14 +1615,14 @@ class EM3D(SubcycledPoissonSolver):
            permeability = 1.
          set_macroscopic_coefs_on_yee(self.fields, \
                                       self.fields.nconds, \
-                                      int(conductorobject.interior.indx[:,:self.fields.nconds]), \
+                                      aint(conductorobject.interior.indx[:,:self.fields.nconds]), \
                                       conductivity, \
                                       permittivity, \
                                       permeability)
       else:
          set_incond(self.fields, \
                     self.fields.nconds, \
-                    int(conductorobject.interior.indx[:,:self.fields.nconds]))
+                    aint(conductorobject.interior.indx[:,:self.fields.nconds]))
          if self.block.xlbnd==openbc:self.fields.incond[:3,:,:]=False
          if self.block.xrbnd==openbc:self.fields.incond[-3:,:,:]=False
          if self.block.ylbnd==openbc:self.fields.incond[:,:3,:]=False

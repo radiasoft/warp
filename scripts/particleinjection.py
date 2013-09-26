@@ -329,7 +329,7 @@ the area of the dual cell.
         # --- evenly distributed throughout the cell.
         # --- This also gets the E field at the cell center for each
         # --- of the particles.
-        nn = sum(int(rnn))
+        nn = sum(aint(rnn))
         if nn == 0: return
         xx,yy,zz = zeros((3,nn),'d')
         ex,ey,ez = zeros((3,nn),'d')

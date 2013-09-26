@@ -79,7 +79,7 @@ def gfpmaker(pname,br=None):
     fn = 255./float(max(max(rn),max(gn),max(bn)))
     rn = nint(rn*fn)
     gn = nint(gn*fn)
-    bn = int(t*fn)-rn-gn
+    bn = aint(t*fn)-rn-gn
     bn = where(bn>=0,bn,0)
     for i in range(n):
       f.write('%8d%8d%8d\n'%(rn[i],gn[i],bn[i]))

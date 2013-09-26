@@ -282,8 +282,8 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0,adjustppdecomp=true):
     top.ppdecomp.zmin = top.ppdecomp.zmin.clip(w3d.zmmin,w3d.zmmax)
     top.ppdecomp.zmax = top.ppdecomp.zmax.clip(w3d.zmmin,w3d.zmmax)
     # --- iz and nz must be adjusted to be relative to the new zmin
-    top.ppdecomp.iz = int((top.ppdecomp.zmin - w3d.zmmin)/w3d.dz)
-    top.ppdecomp.nz = int((top.ppdecomp.zmax - w3d.zmmin)/w3d.dz -
+    top.ppdecomp.iz = aint((top.ppdecomp.zmin - w3d.zmmin)/w3d.dz)
+    top.ppdecomp.nz = aint((top.ppdecomp.zmax - w3d.zmmin)/w3d.dz -
                           top.ppdecomp.iz)
     # --- Check for the cases where int rounded down.
     zmax1 = w3d.zmmin + (top.ppdecomp.iz + top.ppdecomp.nz)*w3d.dz

@@ -581,9 +581,9 @@ class ParticleScraper(object):
             gdx = [0.,dx,0.,dx,0.,dx,0.,dx]
             gdy = [0.,0.,dy,dy,0.,0.,dy,dy]
             gdz = [0.,0.,0.,0.,dz,dz,dz,dz]
-            xg = xmin+int(abs(xx-xmin)/dx)*dx
-            yg = ymin+int(abs(yy-ymin)/dy)*dy
-            zg = zmin+int(abs(zz-zmin)/dz)*dz
+            xg = xmin+aint(abs(xx-xmin)/dx)*dx
+            yg = ymin+aint(abs(yy-ymin)/dy)*dy
+            zg = zmin+aint(abs(zz-zmin)/dz)*dz
         elif w3d.solvergeom in [w3d.RZgeom]:
             nd = 2
             gdx = [0.,dx,0.,dx]
@@ -594,20 +594,20 @@ class ParticleScraper(object):
             # --- is probably faster
             #rr = sqrt(xx**2 + yy**2)
             rr = take(rr,iclose-i1)
-            xg = xmin+int(abs(rr-xmin)/dx)*dx
-            zg = zmin+int(abs(zz-zmin)/dz)*dz
+            xg = xmin+aint(abs(rr-xmin)/dx)*dx
+            zg = zmin+aint(abs(zz-zmin)/dz)*dz
         elif w3d.solvergeom in [w3d.XZgeom]:
             nd = 2
             gdx = [0.,dx,0.,dx]
             gdz = [0.,0.,dz,dz]
-            xg = xmin+int(abs(xx-xmin)/dx)*dx
-            zg = zmin+int(abs(zz-zmin)/dz)*dz
+            xg = xmin+aint(abs(xx-xmin)/dx)*dx
+            zg = zmin+aint(abs(zz-zmin)/dz)*dz
         elif w3d.solvergeom == w3d.XYgeom:
             nd = 2
             gdx = [0.,dx,0.,dx]
             gdy = [0.,0.,dy,dy]
-            xg = xmin+int(abs(xx-xmin)/dx)*dx
-            yg = ymin+int(abs(yy-ymin)/dy)*dy
+            xg = xmin+aint(abs(xx-xmin)/dx)*dx
+            yg = ymin+aint(abs(yy-ymin)/dy)*dy
         elif w3d.solvergeom in [w3d.Rgeom]:
             nd = 1
             gdx = [0.,dx]
@@ -617,15 +617,15 @@ class ParticleScraper(object):
             # --- is probably faster
             #rr = sqrt(xx**2 + yy**2)
             rr = take(rr,iclose-i1)
-            xg = xmin+int(abs(rr-xmin)/dx)*dx
+            xg = xmin+aint(abs(rr-xmin)/dx)*dx
         elif w3d.solvergeom == w3d.Ygeom:
             nd = 1
             gdy = [0.,dy]
-            yg = ymin+int(abs(yy-ymin)/dy)*dy
+            yg = ymin+aint(abs(yy-ymin)/dy)*dy
         elif w3d.solvergeom == w3d.zgeom:
             nd = 1
             gdz = [0.,dz]
-            zg = zmin+int(abs(zz-zmin)/dz)*dz
+            zg = zmin+aint(abs(zz-zmin)/dz)*dz
 
         nn = len(iclose)
         pp = zeros(nn,'d')
@@ -935,9 +935,9 @@ class ParticleScraper(object):
         x8 = take(xx,iscrape-i1)
         y8 = take(yy,iscrape-i1)
         z8 = take(zz,iscrape-i1)
-        xg = xmin+int(abs(x8-xmin)/dx)*dx + array(nn/8*[0.,dx,0.,dx,0.,dx,0.,dx])
-        yg = ymin+int(abs(y8-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
-        zg = zmin+int(abs(z8-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
+        xg = xmin+aint(abs(x8-xmin)/dx)*dx + array(nn/8*[0.,dx,0.,dx,0.,dx,0.,dx])
+        yg = ymin+aint(abs(y8-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
+        zg = zmin+aint(abs(z8-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
         pp = zeros(nn,'d')
 
         # --- The ixa etc are the location of the x=0 plane. This is needed

@@ -1132,7 +1132,7 @@ Arugments to :py:func:`~warpplots.ppgeneric` related to grid plotting apply.
 
         # --- Get the integer grid cell indices for the times within
         # --- the z range.
-        iz = int(zz[ii])
+        iz = aint(zz[ii])
 
         # --- Caclulate the shape function weight for each time within range.
         wz = zz[ii] - iz

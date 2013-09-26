@@ -284,7 +284,7 @@ class AMRTree(VisualizableClass):
       if Rgrad<=1: return 0*f
       fg = self.getedges_byslice(f,dx,dy,dz,threshold)
       m = maxnd(fg)
-      return where(fg>1.e-10*m,int(Rgrad),0)
+      return where(fg>1.e-10*m,aint(Rgrad),0)
 
     def getnbcell_rho(self,f,Rdens,MRfact):
       """
@@ -302,14 +302,14 @@ class AMRTree(VisualizableClass):
       if 0:
         fg=MRfact**(dim*n)*f/maxnd(f)
         fg=where(fg>1,fg,1)
-#        return MRfact**int(log(fg)/log(dim**MRfact))
-        return MRfact**int(log(fg)/log(MRfact**dim))
-#        return b**int(log(fg)/log(b**dim))
+#        return MRfact**aint(log(fg)/log(dim**MRfact))
+        return MRfact**aint(log(fg)/log(MRfact**dim))
+#        return b**aint(log(fg)/log(b**dim))
       else:
         nbpcell=4
-        fg = int(f*w3d.dx*w3d.dy*w3d.dz/(top.pgroup.sw[0]*echarge))
+        fg = aint(f*w3d.dx*w3d.dy*w3d.dz/(top.pgroup.sw[0]*echarge))
         fg = where(fg>1,fg,1)
-        fg = MRfact**int(log(fg)/log(nbpcell*MRfact**dim))
+        fg = MRfact**aint(log(fg)/log(nbpcell*MRfact**dim))
         return where(fg>n,n,fg)
 
     def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,lmax=4):
@@ -317,7 +317,7 @@ class AMRTree(VisualizableClass):
       if maxnd(abs(self.f))==0: return None
       fg1 = self.getnbcell_edges(f,dx,dy,dz,threshold,Rgrad)
       fg2 = self.getnbcell_rho(f,Rdens,MRfact)
-      f = int(where(fg1>fg2,fg1,fg2))
+      f = aint(where(fg1>fg2,fg1,fg2))
       # next loop removes isolated blocks of lmax cells or less
       # this needs improvements
       if lmax>0:

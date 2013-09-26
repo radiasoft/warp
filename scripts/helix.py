@@ -390,7 +390,7 @@ Creates helix with constant Ez in the pulse.
     vv,ez = self.getvoltage(time)
 
     # --- Interpolate from helix mesh to the field grid
-    iz  = int((w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave)
+    iz  = aint((w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave)
     wz0 =     (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave - iz
     wz1 = 1. - wz0
     
@@ -554,14 +554,14 @@ Creates helix with constant Ez in the pulse.
       wz1 = ones(1+w3d.nz,'d')
       wz0 = zeros(1+w3d.nz,'d')
     else:
-      wz0 = (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave - int(iz)
+      wz0 = (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave - aint(iz)
       wz1 = 1. - wz0
     
     # --- Zero out any points beyond the helix mesh
     wz0 = where((0. <= iz) & (iz <= self.nzwave),wz0,0.)
     wz1 = where((0. <= iz) & (iz <= self.nzwave),wz1,0.)
     iz  = where((0. <= iz) & (iz <= self.nzwave),iz,0.)
-    iz = int(iz)
+    iz = aint(iz)
     iz = where(iz == len(wave),iz-1,iz) # --- needed for ngp
     izp1 = iz + 1
     izp1 = where(izp1 > len(wave)-1,iz,izp1)
@@ -575,14 +575,14 @@ Creates helix with constant Ez in the pulse.
       wz1 = ones(1+w3d.nz,'d')
       wz0 = zeros(1+w3d.nz,'d')
     else:
-      wz0 = (w3d.zmeshlocal + top.zgrid - self.zsterm)/self.dzterm - int(iz)
+      wz0 = (w3d.zmeshlocal + top.zgrid - self.zsterm)/self.dzterm - aint(iz)
       wz1 = 1. - wz0
     
     # --- Zero out any points beyond the helix mesh
     wz0 = where((0. <= iz) & (iz <= self.nzterm),wz0,0.)
     wz1 = where((0. <= iz) & (iz <= self.nzterm),wz1,0.)
     iz  = where((0. <= iz) & (iz <= self.nzterm),iz,0.)
-    iz = int(iz)
+    iz = aint(iz)
     iz = where(iz == len(waveterm),iz-1,iz) # --- needed for ngp
     izp1 = iz + 1
     izp1 = where(izp1 > len(waveterm)-1,iz,izp1)
