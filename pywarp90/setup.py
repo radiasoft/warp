@@ -12,7 +12,7 @@ try:
     from distutils.dist import Distribution
     from distutils.command.build import build
 except:
-    raise SystemExit, 'Distutils problem'
+    raise SystemExit('Distutils problem')
 
 optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',
                              ['parallel','with-numpy',
@@ -60,25 +60,27 @@ def makeobjects(pkg):
   return [pkg+'.o',pkg+'_p.o',pkg+'pymodule.o']
 
 warpobjects = []
-for pkg in warppkgs:
-  warpobjects = warpobjects + makeobjects(pkg)
+if sys.hexversion < 0x03000000:
+  # --- With Python2, everything is put into the one warpC.so file.
+  for pkg in warppkgs:
+    warpobjects = warpobjects + makeobjects(pkg)
 
-warpobjects = warpobjects + ['top_lattice.o','top_fsl.o','dtop.o',
-                             'dw3d.o','w3d_injection.o','w3d_interp.o',
-                             'w3d_collisions.o','w3d_utilities.o','w3d_load.o',
-                             'f3d_mgrid.o','f3d_ImplicitES.o','f3d_mgrid_be.o',
-                             'f3d_conductors.o','f3d_bfield.o',
-                             'fft.o','util.o',
-                             'fxy_mgrid.o',
-                             'dwrz.o',
-                             'frz_mgrid.o','frz_mgrid_be.o','frz_ImplicitES.o',
-                             'em2d_apml.o','em2d_apml_cummer.o',
-                             'em2d_maxwell.o','em3d_maxwell.o']
-if parallel:
-  warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
-                               'w3dslave.o']
+  warpobjects = warpobjects + ['top_lattice.o','top_fsl.o','dtop.o',
+                               'dw3d.o','w3d_injection.o','w3d_interp.o',
+                               'w3d_collisions.o','w3d_utilities.o','w3d_load.o',
+                               'f3d_mgrid.o','f3d_ImplicitES.o','f3d_mgrid_be.o',
+                               'f3d_conductors.o','f3d_bfield.o',
+                               'fft.o','util.o',
+                               'fxy_mgrid.o',
+                               'dwrz.o',
+                               'frz_mgrid.o','frz_mgrid_be.o','frz_ImplicitES.o',
+                               'em2d_apml.o','em2d_apml_cummer.o',
+                               'em2d_maxwell.o','em3d_maxwell.o']
+  if parallel:
+    warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
+                                 'w3dslave.o']
 
-warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
+  warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
 
 library_dirs = fcompiler.libdirs
 libraries = fcompiler.libs

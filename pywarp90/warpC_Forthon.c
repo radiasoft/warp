@@ -15,6 +15,7 @@
 
 static PyObject *ErrorObject;
 
+#if PY_MAJOR_VERSION < 3
 extern PyMODINIT_FUNC inittoppy(void);
 extern PyMODINIT_FUNC initenvpy(void);
 extern PyMODINIT_FUNC initw3dpy(void);
@@ -28,45 +29,77 @@ extern PyMODINIT_FUNC initherpy(void);
 extern PyMODINIT_FUNC initchopy(void);
 extern PyMODINIT_FUNC initem2dpy(void);
 extern PyMODINIT_FUNC initem3dpy(void);
+#endif
 
 /* ######################################################################### */
 /* # Method list                                                             */
 static struct PyMethodDef warpC_methods[] = {
   {NULL,NULL}};
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  #ifdef MPIPARALLEL
+  "warpCparallel", /* m_name */
+  "warpCparallel", /* m_doc */
+  #else
+  "warpC", /* m_name */
+  "warpC", /* m_doc */
+  #endif
+  -1,                  /* m_size */
+  warpC_methods,    /* m_methods */
+  NULL,                /* m_reload */
+  NULL,                /* m_traverse */
+  NULL,                /* m_clear */
+  NULL,                /* m_free */
+  };
+#endif
+
 /* ######################################################################### */
 /* # The initialization function                                             */
-#ifdef MPIPARALLEL
-void initwarpCparallel(void)
+#if PY_MAJOR_VERSION >= 3
+  #ifdef MPIPARALLEL
+PyMODINIT_FUNC PyInit_warpCparallel(void)
+  #else
+PyMODINIT_FUNC PyInit_warpC(void)
+  #endif
 #else
-void initwarpC(void)
+  #ifdef MPIPARALLEL
+PyMODINIT_FUNC initwarpCparallel(void)
+  #else
+PyMODINIT_FUNC initwarpC(void)
+  #endif
 #endif
 {
   PyObject *m, *d;
   /* PyObject *pystdout; */
   PyObject *date;
-#ifdef MPIPARALLEL
-  m = Py_InitModule("warpCparallel", warpC_methods);
+#if PY_MAJOR_VERSION >= 3
+  m = PyModule_Create(&moduledef);
 #else
+  #ifdef MPIPARALLEL
+  m = Py_InitModule("warpCparallel", warpC_methods);
+  #else
   m = Py_InitModule("warpC", warpC_methods);
+  #endif
 #endif
   d = PyModule_GetDict(m);
 #ifdef MPIPARALLEL
-  ErrorObject = PyString_FromString("warpCparallel.error");
+  ErrorObject = PyErr_NewException("warpCparallel.error",NULL,NULL);
 #else
-  ErrorObject = PyString_FromString("warpC.error");
+  ErrorObject = PyErr_NewException("warpC.error",NULL,NULL);
 #endif
   PyDict_SetItemString(d, "error", ErrorObject);
 
-  date = PyString_FromString(GITORIGINDATE);
+  date = PyUnicode_FromString(GITORIGINDATE);
   PyDict_SetItemString(d, "origindate", date);
   Py_XDECREF(date);
 
-  date = PyString_FromString(GITLOCALDATE);
+  date = PyUnicode_FromString(GITLOCALDATE);
   PyDict_SetItemString(d, "localdate", date);
   Py_XDECREF(date);
 
-  date = PyString_FromString(GITCOMMITHASH);
+  date = PyUnicode_FromString(GITCOMMITHASH);
   PyDict_SetItemString(d, "commithash", date);
   Py_XDECREF(date);
 
@@ -78,6 +111,7 @@ void initwarpC(void)
 
   import_array();
 
+#if PY_MAJOR_VERSION < 3
   inittoppy();
   initenvpy();
   initw3dpy();
@@ -91,6 +125,13 @@ void initwarpC(void)
   initchopy();
   initem2dpy();
   initem3dpy();
+#endif
+
+#if PY_MAJOR_VERSION >= 3
+  return m;
+#else
+  return;
+#endif
 }
 
 
