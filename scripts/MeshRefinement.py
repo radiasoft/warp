@@ -7,6 +7,7 @@ __all__ = ['MeshRefinement',
 MeshRefinement_version = "$Id: MeshRefinement.py,v 1.177 2011/08/27 00:43:15 grote Exp $"
 from warp import *
 from find_mgparam import find_mgparam
+import types
 import collections
 try:
   import Opyndx
@@ -1816,7 +1817,7 @@ contribute within their domains of ownership.
     getdata = getattr(self,getdataname)
     array = getdata(self.fulllower,self.fullupper)
 
-    if not isinstance(comp,int):
+    if not isinstance(comp,types.IntType):
       # --- 'E','B','J','A' will give the field magnitude
       try:
         ic = ['x','y','z','E','B','J','A'].index(comp)
@@ -1829,7 +1830,7 @@ contribute within their domains of ownership.
           pass
     else:
       ic = comp
-    assert isinstance(ic,int),"Unrecognized component was input"
+    assert isinstance(ic,types.IntType),"Unrecognized component was input"
 
     if ic is not None and len(shape(array)) == 4:
       if ic > 2:

@@ -230,7 +230,7 @@ class PW:
         if self._delimiter != '@':
             name = self._fixdelimiter.sub(self._delimiter,name)
 
-        if isinstance(quantity,int):
+        if isinstance(quantity,types.IntType):
             # --- integers are put into the ints table
             origname,name = self.fixlongnames(name)
             self._ints.row['name'] = name

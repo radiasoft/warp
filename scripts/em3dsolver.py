@@ -2,6 +2,7 @@
 from warp import *
 from mkpalette import getpalhrgb
 import collections
+import types
 
 try:
   from Opyndx import *
@@ -2257,7 +2258,7 @@ class EM3D(SubcycledPoissonSolver):
             xtitle='X';ytitle='Y'
         plsys(view)
         ptitles(title,xtitle,ytitle,'t = %gs'%(top.time))
-      if isinstance(procs,int):procs=[procs]
+      if isinstance(procs,types.IntType):procs=[procs]
       if me>0 and me in procs:
         comm_world.send(self.isactive,0,3)
         if self.isactive:
@@ -2492,7 +2493,7 @@ class EM3D(SubcycledPoissonSolver):
           if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
       else:
         datag=None
-      if isinstance(procs,int):procs=[procs]
+      if isinstance(procs,types.IntType):procs=[procs]
       validdata = gatherlist(self.isactive and data is not None,bcast=1)
       validprocs = compress(validdata,arange(len(validdata)))
       alldata = gatherlist([xmin,ymin,data],dest=0,procs=validprocs)

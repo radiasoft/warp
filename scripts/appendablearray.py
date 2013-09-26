@@ -4,6 +4,7 @@ __all__ = ['AppendableArray','DynamicHistogram','DynamicHistogramIntersect']
 import sys
 import numpy
 from toppy import deposeintersect,setgrid1d,deposgrid1d
+import types
 # Class which allows an appendable array.
 # DPG 8/19/99
 appendablearray_version = "$Id: appendablearray.py,v 1.17 2009/11/25 22:28:25 jlvay Exp $"
@@ -64,7 +65,7 @@ class AppendableArray:
                 self._typecode = initunit.dtype.char
                 self._unitshape = initunit.shape
             else:
-                if isinstance(initunit,int): self._typecode = 'i'
+                if isinstance(initunit,types.IntType): self._typecode = 'i'
                 else:                        self._typecode = 'd'
                 self._unitshape = None
         self._datalen = 0

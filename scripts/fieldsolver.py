@@ -4,6 +4,7 @@ from __future__ import generators
 from warp import *
 import __main__
 import gc
+import types
 
 fieldsolver_version = "$Id: fieldsolver.py,v 1.103 2011/12/19 18:51:17 grote Exp $"
 
@@ -2268,8 +2269,8 @@ the upper edge.
   assert comp in ['x','y','z','E'],"comp must be one of 'x', 'y', 'z' or 'E'"
   if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z','E'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z','E'].index(comp)
 
   import em3dsolver
   if isinstance(solver,em3dsolver.EM3D):
@@ -2343,8 +2344,8 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
                  replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z','J'],"comp must be one of 'x', 'y', 'z' or 'J'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z','J'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z','J'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d:
     bfield = f3d.bfield
@@ -2396,8 +2397,8 @@ the upper edge.
   - iz = None:
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d:
     bfield = f3d.bfield
@@ -2439,8 +2440,8 @@ Note that 0 is the lower edge of the domain and nx, ny or nz is the upper edge.
                  replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z','B'],"comp must be one of 'x', 'y', 'z' or 'B'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z','B'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z','B'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
 
   import em3dsolver
@@ -2510,8 +2511,8 @@ the upper edge.
   - iz = None:
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d:
     bfield = f3d.bfield
@@ -2554,8 +2555,8 @@ the upper edge.
                  replicated to fill the symmetric regions of the plane.
   """
   assert comp in ['x','y','z','A'],"comp must be one of 'x', 'y', 'z' or 'A'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z','A'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z','A'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d:
     bfield = f3d.bfield
@@ -2607,8 +2608,8 @@ the upper edge.
   - iz = None:
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if isinstance(comp,int): ic = comp
-  else:                    ic = ['x','y','z'].index(comp)
+  if isinstance(comp,types.IntType): ic = comp
+  else:                              ic = ['x','y','z'].index(comp)
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d:
     bfield = f3d.bfield

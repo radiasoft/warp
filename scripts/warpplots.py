@@ -77,6 +77,7 @@
 
 """
 from warp import *
+import types
 
 import __main__
 try:
@@ -1101,7 +1102,7 @@ Simple interface to contour plotting, same arguments as plc
   if levs is not None: contours = levs
   if isinstance(contours,list): contours = array(contours)
   if isinstance(contours,tuple): contours = array(contours)
-  if isinstance(contours,int):
+  if isinstance(contours,types.IntType):
     # --- cmin and cmax are multiplied by 1. to force them to be standard
     # --- python floats, instead of zero length numpy arrays.
     if cmin is None: cmin = minnd(zz)*1.
@@ -2231,7 +2232,7 @@ values from zmin to zmax.
     # --- matches the uniform spacing of the contours. If levs is specified,
     # --- each equal sized block represents one contour level, independent of
     # --- the range of the level relative to other levels.
-    if (isinstance(zmin,int) and isinstance(zmax,int) and
+    if (isinstance(zmin,types.IntType) and isinstance(zmax,types.IntType) and
         zmin >= 0 and zmax <=199):
        plotval = arange(zmin,zmax+1,typecode=ubyte)[:,newaxis]*ones(2)
     else:
@@ -3240,7 +3241,7 @@ def ppxux(iw=0,**kw):
   "Plots X-Ux. If slope='auto', it is calculated from the moments. For particle selection options, see :py:func:`~particles.selectparticles`. For plotting options, see :py:func:`ppgeneric`."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxux,(iw,),kw): return
-  if isinstance(kw.get('slope',0.,basestring):
+  if isinstance(kw.get('slope',0.),basestring):
     (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz

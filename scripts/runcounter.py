@@ -4,6 +4,7 @@ from warp import *
 import time
 import sys, copy
 import fcntl
+import types
 runcounter_version = "$Id: runcounter.py,v 1.17 2012/01/26 23:34:20 grote Exp $"
 
 def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
@@ -39,7 +40,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
            'ensembles must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list and make sure that it is a copy since it is
     # --- appended to.
-    if isinstance(ensembles,int): ensembles = [ensembles]
+    if isinstance(ensembles,types.IntType): ensembles = [ensembles]
     ensembles = copy.copy(list(ensembles))
     # --- Add the maximum value of integers to the last value. This simplifies
     # --- the code below.
@@ -49,7 +50,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
     assert type(init) in [int,list,tuple,ndarray],\
            'init must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list
-    if isinstance(init,int): init = [init]
+    if isinstance(init,types.IntType): init = [init]
     init = list(init)
     # --- Make sure that init is the same length as ensembles by appending zeroes
     while len(init) < len(ensembles): init.append(0)
@@ -58,7 +59,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
     assert type(delta) in [int,list,tuple,ndarray],\
            'delta must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list
-    if isinstance(delta,int): delta = [delta]
+    if isinstance(delta,types.IntType): delta = [delta]
     delta = list(delta)
     # --- Make sure that delta is the same length as ensembles by appending ones
     while len(delta) < len(ensembles): delta.append(1)

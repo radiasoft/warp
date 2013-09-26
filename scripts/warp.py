@@ -878,8 +878,9 @@ def fixrestoreswitholdparticlearrays(ff):
 
 def fixrestorewithscalarefetch(ff):
   "If the dump file has efetch as a scalar, broadcast it to the efetch array"
+  import types
   efetch = ff.read('efetch@top')
-  if isinstance(efetch,int):
+  if isinstance(efetch,types.IntType):
     gchange("InPart")
     top.efetch = efetch
 

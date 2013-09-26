@@ -7,6 +7,7 @@ __all__ = ['ExtPart','dumpExtPart','restoreExtPart','ZCrossingParticles']
 from warp import *
 from appendablearray import *
 import cPickle
+import types
 extpart_version = "$Id: extpart.py,v 1.81 2011/09/29 00:16:10 grote Exp $"
 
 def extpartdoc():
@@ -124,7 +125,7 @@ self.topgroupname
     def __init__(self,iz=-1,zz=0.,laccumulate=0,lsavefields=False,
                  name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
-        assert isinstance(iz,int),"iz must be an integer"
+        assert isinstance(iz,types.IntType),"iz must be an integer"
         assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
         self.iz = iz
         self.zz = zz
@@ -2032,7 +2033,7 @@ class ExtPartDeprecated:
     def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
                  lepsaveonce=None,name=None,lautodump=0,dumptofile=0):
         # --- Save input values, getting default values when needed
-        assert isinstance(iz,int),"iz must be an integer"
+        assert isinstance(iz,types.IntType),"iz must be an integer"
         assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
         self.iz = iz
         self.zz = zz

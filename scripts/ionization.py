@@ -3,6 +3,7 @@
 __all__ = ['Ionization']
 from warp import *
 import time
+import types
 try:
   from txphysics import txionpack
   l_txphysics = True
@@ -597,7 +598,7 @@ velocity of the incident particle.
           # --- get local target density
           if ndens is None:
             ndens = self.target_dens[target_species]['ndens']
-          if isinstance(ndens,(int,float)):
+          if isinstance(ndens,(types.IntType,float)):
             dp=ones(ni,'d')*ndens
             if target_fluidvel is None:
               xmin=self.xmin
