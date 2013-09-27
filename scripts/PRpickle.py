@@ -36,7 +36,7 @@ which is useful for names that are not usable as python attributes.
     def __init__(self, filename):
         'PR(filename) opens file and reads in the pickled dictionary'
         self._filename = filename
-        ff = open(filename,'r')
+        ff = open(filename,'rb')
         self._pickledict = cPickle.load(ff)
         ff.close()
 

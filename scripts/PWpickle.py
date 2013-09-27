@@ -43,13 +43,13 @@ Note that only things which can be pickled and unpickled are written out.
         assert mode in ['w','a'],Exception("Improper mode: " + mode)
         if mode == 'a':
           # --- If append, read in all data from the file.
-          ff = open(filename,mode='r')
+          ff = open(filename,mode='rb')
           self.__dict__['_pickledict'] = cPickle.load(ff)
           ff.close()
         else:
           self.__dict__['_pickledict'] = {}
 
-        self.__dict__['_file'] = open(filename,mode='w')
+        self.__dict__['_file'] = open(filename,mode='wb')
 
     def __del__(self):
         "Close any file open when this object disappears."
