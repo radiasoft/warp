@@ -14,7 +14,7 @@ def hcplot1(ii,istep,lvss,data,
   else:
     i1 = ii
     i2 = ii
-  for i in xrange(i1,i2,istep):
+  for i in range(i1,i2,istep):
     if lvss:
       plg(data[i,:cir.jhcir+1],cir.hscir[:cir.jhcir+1])
     else:
@@ -34,7 +34,7 @@ def hcplot2(istep,jstep,hoffset,voffset,lvss,data,
     scale = hvzcir[cir.nit/2,:cir.jhcir+1]*top.clight
   else:
     scale = ones(cir.jhcir+1)
-  for j in xrange(0,cir.jhcir+1,jstep):
+  for j in range(0,cir.jhcir+1,jstep):
     if hoffset:
       plg(voffset*j + data[::istep,j],
           scale[j]*(hoffset*j + cir.htcir[::istep,j]))

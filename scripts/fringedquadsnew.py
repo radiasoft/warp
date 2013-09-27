@@ -87,7 +87,7 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadpm = []
     quadnn = []
     quadvv = []
-    for ih in xrange(firstfringe,top.nhele+1):
+    for ih in range(firstfringe,top.nhele+1):
       quadzs.append(top.helezs[ih])
       quadze.append(top.heleze[ih])
       quadap.append(top.heleap[ih])
@@ -198,7 +198,7 @@ not, then the derivatives will be done with a finite difference of fringe.
   # --- Loop over quads
   neq = -1
   nmq = -1
-  for iq in xrange(len(quadzs)):
+  for iq in range(len(quadzs)):
 
     # --- Set up the lattice elements
     if quadde[iq] != 0.:
@@ -332,7 +332,7 @@ def testfringedequads():
   tt=arctan(yy/xx)
   tt[w3d.nx/2,w3d.ny/2]=0.
   ireg=ones((w3d.nx+1,w3d.ny+1),'l')
-  for i in xrange(101):
+  for i in range(101):
     ppp[:,:,i] = top.esemlt[i,0,0]*rr**2*cos(2*(tt+top.emltpe[i]))
     pp1[:,:,i] = top.esemlt[i,1,0]*rr**4*cos(2*(tt+top.emltpe[i]))
 

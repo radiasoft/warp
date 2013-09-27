@@ -383,8 +383,8 @@ def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,yscale,xscale,
     iii = zeros((5,1+nx,1+ny),'l') - 1
     mx,px,my,py = 1,2,3,4
     # --- Flag grid points where the conductors are.
-    for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i
-    for i in xrange(len(ixs)):
+    for i in range(len(ixc)): iii[0,ixc[i],iyc[i]] = i
+    for i in range(len(ixs)):
         if abs(delmx[i]) < abs(dx): iii[mx,ixs[i],iys[i]] = i
         if abs(delpx[i]) < abs(dx): iii[px,ixs[i],iys[i]] = i
         if abs(delmy[i]) < abs(dy): iii[my,ixs[i],iys[i]] = i
@@ -644,8 +644,8 @@ def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,yscale,xscale,
     iii = zeros((5,1+nx,1+ny),'l')
     mx,px,my,py = 1,2,3,4
     # --- Flag grid points where the conductors are.
-    for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i+1
-    for i in xrange(len(ixs)):
+    for i in range(len(ixc)): iii[0,ixc[i],iyc[i]] = i+1
+    for i in range(len(ixs)):
         if abs(delmx[i]) < abs(dx): iii[mx,ixs[i],iys[i]] = i+1
         if abs(delpx[i]) < abs(dx): iii[px,ixs[i],iys[i]] = i+1
         if abs(delmy[i]) < abs(dy): iii[my,ixs[i],iys[i]] = i+1
@@ -2420,7 +2420,7 @@ def updatemgconductorsold():
 
     # --- Loop over coarsening levels, collecting and converting the data
     # --- for each level.
-    for j in xrange(len(llxy)):
+    for j in range(len(llxy)):
         ii = compress(logical_and(icondlxy >= llxy[j],icondlz >= llz[j]), \
                       arange(ncond))
         ixcondnew = ixcondnew + list(take(ixcond/llxy[j],ii))

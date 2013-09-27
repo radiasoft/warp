@@ -55,7 +55,7 @@ average of the initial and final values
   - imtch=1 the number of iterations to perform
   - s=128 the number of time steps across the region to be matched
   """
-  for i in xrange(imtch):
+  for i in range(imtch):
     top.a0=0.5*(top.a0+2.*top.xrms[0,-1])
     top.b0=0.5*(top.b0+2.*top.yrms[0,-1])
     top.ap0=sign(0.5*(abs(top.ap0) +
@@ -82,7 +82,7 @@ average of the initial and final values, then Y is set equal to X
   - imtch=1 the number of iterations to perform
   - s=128 the number of time steps across the region to be matched
   """
-  for i in xrange(imtch):
+  for i in range(imtch):
     top.a0=0.5*(top.a0+2.*top.xrms[0,-1]) #xrms[0,-1]+yrms[0,-1]
     top.b0=top.a0
     top.ap0=sign(0.5*(abs(top.ap0) +
@@ -159,7 +159,7 @@ def matchx(xf=0.,xpf=0.,yf=0.,ypf=0.,zs=None,ze=None,s=None,
                           5*[top.vbeam],5*[1.],s)
     step(s)
 
-    for ip in xrange(4):
+    for ip in range(4):
       mat[0,ip]=(top.pgroup.xp[ip+1]  - top.pgroup.xp[0])/((xx-xi)/xs*vary)
       mat[1,ip]=((top.pgroup.uxp[ip+1] - top.pgroup.uxp[0])/
                  ((vx-xpi*top.vbeam)/xps*vary))
@@ -263,7 +263,7 @@ to do, defaulting to 1."""
       s.firststepcomplete = 1
       print 'Initial error is %f'%(error)
     # --- Do more iterations
-    for i in xrange(n):
+    for i in range(n):
       error = s.nextstep()
       s.herror.append(error)
       s.niterations = s.niterations + 1

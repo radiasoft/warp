@@ -252,7 +252,7 @@ set when a current is specified"""
     _dtscaleinit=top.pgroup.dtscale+0
 
   # --- make multiple iterations
-  for i in xrange(iter):
+  for i in range(iter):
     
     # --- plot field and conductors 
     if plottraces_window>-1:
@@ -397,7 +397,7 @@ set when a current is specified"""
 
       pgroups = []
       allpgroups.append(pgroups)
-      for js in xrange(top.pgroup.ns):
+      for js in range(top.pgroup.ns):
         pgroup = ParticleGroup()
         pgroup.ns = 1
         pgroup.gchange()
@@ -449,7 +449,7 @@ set when a current is specified"""
         if max(_time_s)-gun_time>gun_iter*maxtime/(3*ntblocks):break
       # --- adjust time step according to maximum velocity and mesh size in z
       if lvariabletimestep:
-        for js in xrange(top.pgroup.ns):
+        for js in range(top.pgroup.ns):
           vzmax=globalmax(abs(getvz(js=js,gather=0)))
           newdtscale = max(_dtscaleinit[js],
                            (fvariabletimestep*w3d.dz/vzmax)/top.dt)
@@ -467,7 +467,7 @@ set when a current is specified"""
       if (i == iter-1 and _ipstep > 0):
         pgroups = []
         allpgroups.append(pgroups)
-        for js in xrange(top.pgroup.ns):
+        for js in range(top.pgroup.ns):
           pgroup = ParticleGroup()
           pgroup.ns = 1
           pgroup.gchange()

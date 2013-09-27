@@ -41,7 +41,7 @@ def match1(n=1,varsave=None,zl=None,zu=None,savehist=false,errorlimit=1.e-6):
   # --- Create a workspace
   varwork = fzeros(shape(varsave),'d')
   # --- Do iterations
-  for i in xrange(n):
+  for i in range(n):
     # --- Run the beam through to get the final data
     varwork[:,:] = varsave
     cirrun(cir.nit,varwork,zl,zu,cir.dscir,cir.nscir,
@@ -76,7 +76,7 @@ def match2(n=1,varsave=None,zl=None,zu=None,savehist=false,errorlimit=1.e-6):
   # --- Create a workspace
   varwork = fzeros(shape(varsave),'d')
   # --- Do iterations
-  for i in xrange(n):
+  for i in range(n):
     # --- Run the beam through to get the final data
     varwork[:,:] = varsave
     cirrun(cir.nit,varwork,zl,zu,cir.dscir,cir.nscir,

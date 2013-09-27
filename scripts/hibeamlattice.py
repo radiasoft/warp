@@ -158,7 +158,7 @@ def hibeamlattice(file):
             mextend = re.search('&',data[i])
         i = i + 1
     # --- Massage the data into python syntax
-    for i in xrange(len(data)):
+    for i in range(len(data)):
         # --- Replace '=' with '(' in LINE command
         # --- Replace first ',' with '(' in all except LINE commands
         mline = re.search('LINE',data[i])

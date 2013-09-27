@@ -233,7 +233,7 @@ Creates a new species of particles. All arguments are optional.
     if efetch is not None: top.efetch[self.jslist[-1]] = efetch
     if fselfb is not None: self.pgroup.fselfb[self.jslist[-1]] = fselfb
     if limplicit is not None: self.pgroup.limplicit[self.jslist[-1]] = limplicit
-    for i in xrange(nautodt-1):
+    for i in range(nautodt-1):
       self.add_group(weight=weight)
       self.pgroup.ndts[self.jslist[-1]]=2*self.pgroup.ndts[self.jslist[-2]]
       if efetch is not None: top.efetch[self.jslist[-1]] = efetch
@@ -993,7 +993,7 @@ Note that the lreturndata option doesn't work.
     if zdist=='regular':
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
-      for i in xrange(nz):
+      for i in range(nz):
         zadd=zmin+i*dz
         Nadd =max(0.,np*dz*exp(-0.5*(zadd/deltaz)**2)/(sqrt(2.*pi)*deltaz))
         if ranf()<(Nadd-int(Nadd)):

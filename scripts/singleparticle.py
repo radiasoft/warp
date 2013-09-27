@@ -219,7 +219,7 @@ class TraceParticle(object):
     to the WARP particle database since the particle's data is not saved if it
     is not alive."""
         self.live = zeros(self.nn,'l')
-        for i in xrange(self.nn):
+        for i in range(self.nn):
             ii = selectparticles(js=self.js,ssn=self.ssn[i])
             # --- If the particle is not live, then there is no particle with
             # --- that ssn.
@@ -268,7 +268,7 @@ class TraceParticle(object):
                 self.spbx = []
                 self.spby = []
                 self.spbz = []
-            for i in xrange(self.nn):
+            for i in range(self.nn):
                 self.spt.append(AppendableArray(maxsteps,typecode='d'))
                 self.spx.append(AppendableArray(maxsteps,typecode='d'))
                 self.spy.append(AppendableArray(maxsteps,typecode='d'))
@@ -294,7 +294,7 @@ class TraceParticle(object):
         self.checklive()
         if not self.savedata: return
         if (top.it - self.startit) % self.savedata != 0: return
-        for i in xrange(self.nn):
+        for i in range(self.nn):
             ii = selectparticles(js=self.js,ssn=self.ssn[i])
             np = globalsum(len(ii))
             if np > 0:
@@ -325,7 +325,7 @@ class TraceParticle(object):
                         self.spgi[0].data()))
         else:
             r = zeros((self.nn,7,len(self.spx[0])),'d')
-            for i in xrange (self.nn):
+            for i in range (self.nn):
                 r[i,0,:] = self.spx[i].data()
                 r[i,1,:] = self.spy[i].data()
                 r[i,2,:] = self.spz[i].data()
@@ -841,7 +841,7 @@ class SingleParticle:
             self.spvz = []
             self.spgi = []
             if package()[0] == 'wxy': self.spdt = []
-            for i in xrange(self.nn):
+            for i in range(self.nn):
                 self.spt.append(AppendableArray(maxsteps,typecode='d'))
                 self.spx.append(AppendableArray(maxsteps,typecode='d'))
                 self.spy.append(AppendableArray(maxsteps,typecode='d'))
@@ -860,7 +860,7 @@ class SingleParticle:
         self.checklive()
         if not self.savedata: return
         if (top.it - self.startit) % self.savedata != 0: return
-        for i in xrange(self.nn):
+        for i in range(self.nn):
             if self.live[i]:
                 self.spt[i].append(top.time)
                 self.spx[i].append(top.pgroup.xp[self.ip1 + i])
@@ -882,7 +882,7 @@ class SingleParticle:
                           self.spgi[0].data()))
         else:
             r = zeros((self.nn,7,len(self.spx[0])),'d')
-            for i in xrange (self.nn):
+            for i in range (self.nn):
                 r[i,0,:] = self.spx[i].data()
                 r[i,1,:] = self.spy[i].data()
                 r[i,2,:] = self.spz[i].data()

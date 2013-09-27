@@ -76,9 +76,9 @@ def getmeshcoordinates(mins,dds,nns):
     """
     nns = tuple(array(nns) + 1)
     cc = indices(nns,'d')
-    for i in xrange(len(mins)): cc[i] = mins[i] + cc[i]*dds[i]
+    for i in range(len(mins)): cc[i] = mins[i] + cc[i]*dds[i]
     clist = []
-    for i in xrange(len(mins)): clist.append(cc[i])
+    for i in range(len(mins)): clist.append(cc[i])
     return tuple(clist)
 
 def getmesh2d(xmin,dx,nx,ymin,dy,ny):

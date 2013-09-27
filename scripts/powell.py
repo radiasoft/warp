@@ -71,7 +71,7 @@ def brent(ax,bx,cx,f,tol=1.e-10):
     fx = f(x)
     fv = fx
     fw = fx
-    for iter in xrange(100):
+    for iter in range(100):
         xm = 0.5*(a+b)
         tol1 = tol*abs(x)+zeps
         tol2 = 2.*tol1
@@ -166,7 +166,7 @@ def powell(p,xi,localfunc,ftol=1.e-10,itmax=100):
         fp=fret
         ibig=0
         delta=0.
-        for i in xrange(len(p)):
+        for i in range(len(p)):
             xit = xi[:,i] + 0.
             (p,xit,fret) = linmin(p,xit,ftol)
             if(abs(fp-fret)>delta):

@@ -52,7 +52,7 @@ def _addelement(zs,ze,zend,dh,zele,xele,zaxis,xaxis,zz,xx,zl,xl):
 
 def _makearcs(x,z,narc):
     xx,zz = [],[]
-    for i in xrange(len(x)-1):
+    for i in range(len(x)-1):
         xx = xx + list(span(x[i],x[i+1],narc))
         zz = zz + list(span(z[i],z[i+1],narc))
     return array(xx),array(zz)
@@ -346,7 +346,7 @@ def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=None,narc=10,
     zend = zlatmin
 
     # --- loop over all elements in range
-    for n in xrange(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(iE)+len(iB)+len(ip)+len(iM)):
+    for n in range(len(iq)+len(ih)+len(id)+len(ic)+len(ia)+len(ie)+len(im)+len(iE)+len(iB)+len(ip)+len(iM)):
 
         # --- find element with minimum z and flag with ilatspc
         zqmin=zhmin=zemin=zmmin=zEmin=zBmin=zpmin=zdmin=zamin=zcmin=zMmin=zlatmax

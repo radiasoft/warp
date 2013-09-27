@@ -1702,7 +1702,7 @@ def getlattice(file):
             mextend = re.search('&',data[i])
         i = i + 1
     # --- Massage the data into python syntax
-    for i in xrange(len(data)):
+    for i in range(len(data)):
         hibeam = re.search(':',data[i])
         if hibeam:
             # --- Only reformat lines which have colons in them. They are
@@ -2316,9 +2316,9 @@ def addnewemltdataset(zlen,es,esp=None,phz=None,phpz=None,nn=None,vv=None):
         if phpz is not None: phpz = list(transpose(phpz))
 
         # --- Loop over existing multipole components
-        for i in xrange(top.nesmult):
+        for i in range(top.nesmult):
             # --- Loop over input multipole components checking if any are the same
-            for j in xrange(len(nn)):
+            for j in range(len(nn)):
                 if nn[j] == top.emlt_n[i] and vv[j] == top.emlt_v[i]:
                     # --- If so, then copy the data to the appropriate place and
                     # --- delete the data from the lists.
@@ -2532,9 +2532,9 @@ def addnewmmltdataset(zlen,ms,msp=None,phz=None,phpz=None,nn=None,vv=None):
         if phpz is not None: phpz = list(transpose(phpz))
 
         # --- Loop over existing multipole components
-        for i in xrange(top.nmsmult):
+        for i in range(top.nmsmult):
             # --- Loop over input multipole components checking if any are the same
-            for j in xrange(len(nn)):
+            for j in range(len(nn)):
                 if nn[j] == top.mmlt_n[i] and vv[j] == top.mmlt_v[i]:
                     # --- If so, then copy the data to the appropriate place and
                     # --- delete the data from the lists.
@@ -3681,7 +3681,7 @@ def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,**kw):
     else:
         i1 = ia
         i2 = ia
-    for ii in xrange(i1,i2+1):
+    for ii in range(i1,i2+1):
         tt = iota(0,top.ntaccl)*top.accldt[ii]
         if not tcentered: tt = top.acclts[ii] + tt
         plg(top.acclet[:,ii]*ascale,tt*oscale,**kw)

@@ -657,7 +657,7 @@ of the domains.
             while weight[ii] == 0. and weight[ii+1] == 0.: ii = ii + 1
         delta = 0.
         domain[0] = ii
-        for ip in xrange(1,npes):
+        for ip in range(1,npes):
             fract = 0.
             npint = 0.
             npnext = (weight[ii  ]*((1.-delta)+0.5*(delta**2-1.)) +
@@ -693,7 +693,7 @@ of the domains.
         if not lfullcoverage:
             # --- Find the last place with non-zero weight, and give the last processor
             # --- everything up to that point.
-            for ii in xrange(ii,nn):
+            for ii in range(ii,nn):
               if weight[ii] > 0.: domain[-1] = ii+1
         else:
             domain[-1] = nn

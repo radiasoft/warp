@@ -60,7 +60,7 @@ average of the initial and final values
   top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
   print ("a0 = %9.6f b0 = %9.6f ap0 = %9.6f bp0 = %9.6f" %
          (top.a0, top.b0, top.ap0, top.bp0))
-  for i in xrange(imtch):
+  for i in range(imtch):
     minit()
     step(s)
     print "-"*70
@@ -84,7 +84,7 @@ average of the initial and final values, then Y is set equal to X
   - imtch=1 the number of iterations to perform
   - s=128 the number of time steps across the region to be matched
   """
-  for i in xrange(imtch):
+  for i in range(imtch):
     top.a0=0.5*(top.a0+2.*top.xrms[0]) #xrms[0]+yrms[0]
     top.b0=top.a0
     top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
@@ -153,7 +153,7 @@ def matchx(xf=0.,xpf=0.,yf=0.,ypf=0.,zs=None,ze=None,s=None,
                           5*[top.vbeam],5*[1.],s)
     step(s)
 
-    for ip in xrange(4):
+    for ip in range(4):
       mat[0,ip]=(top.pgroup.xp[ip+1]  - top.pgroup.xp[0])/((xx-xi)/xs*vary)
       mat[1,ip]=((top.pgroup.uxp[ip+1] - top.pgroup.uxp[0])/
                  ((vx-xpi*top.vbeam)/xps*vary))

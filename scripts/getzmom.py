@@ -9,7 +9,7 @@ zmmnt  makes appropriate calls to compiled code to calculate the
 
 def zmmnt(itask=0,js=None,jslist=None,groupsize=256):
   """
-zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
+zmmnt(itask=0,js=None, jslist=range(0,top.ns))
   makes appropriate calls to compiled code to calculate the
   particle moments
   - itask=0 task to carry out
@@ -47,13 +47,13 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   # Calculate the moments
   if jslist is None:
     if js is None:
-      jslist = xrange(top.pgroup.ns)
+      jslist = range(top.pgroup.ns)
     else:
       jslist = [js]
   if (itask == 0 or itask == 2):
     for js in jslist:
       isid = top.pgroup.sid[js] + 1
-      for ipmin in xrange(top.pgroup.ins[js]-1,top.pgroup.ins[js]+top.pgroup.nps[js]-1,groupsize):
+      for ipmin in range(top.pgroup.ins[js]-1,top.pgroup.ins[js]+top.pgroup.nps[js]-1,groupsize):
          ip = min(groupsize, top.pgroup.ins[js]+top.pgroup.nps[js]-ipmin-1)
          try:
            weighted = top.wpid

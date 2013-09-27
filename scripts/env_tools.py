@@ -30,7 +30,7 @@ print 'by quads so that the envelope ends with the specified values'
 # recalculates the envelope.
 def match1(n=1):
   """Matches envelope by setting parameters to average of initial and final values"""
-  for i in xrange(n):
+  for i in range(n):
     top.a0=0.5*(env.aenv[0]+env.aenv[-1])
     top.b0=0.5*(env.benv[0]+env.benv[-1])
     top.ap0=0.5*(env.apenv[0]+env.apenv[-1])
@@ -38,7 +38,7 @@ def match1(n=1):
     step(1)
 def match2(n=1):
   """Matches envelope by setting X parameters to average of initial and final values and then setting Y params equal to X params (but b'=-a')"""
-  for i in xrange(n):
+  for i in range(n):
     top.a0=0.5*(env.aenv[0]+env.aenv[-1])
     top.b0=top.a0
     top.ap0=0.5*(env.apenv[0]+env.apenv[-1])
@@ -155,7 +155,7 @@ def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
     # --- Vary each quad
     le = env.lenvout
     env.lenvout = false
-    for iq in xrange(4):
+    for iq in range(4):
 
       if top.quadde[quads[iq]] != 0.:
         qorig = top.quadde[quads[iq]]
@@ -191,7 +191,7 @@ def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
     mati = linalg.inv(mat)
 
     # --- Get next set of quad voltages.
-    for iq in xrange(4):
+    for iq in range(4):
       delta = sum(mati[iq,:]*denv)
       if top.quadde[quads[iq]] != 0.:
         top.quadde[quads[iq]]=top.quadde[quads[iq]]+delta*top.vbeam
@@ -265,7 +265,7 @@ def matchxenv(xf=0.,xpf=0.,yf=0.,ypf=0.,zz=None,maxiter=100,tol=1.e-10):
     # --- Vary each quad
     le = env.lenvout
     env.lenvout = false
-    for iq in xrange(2):
+    for iq in range(2):
 
       if iq==0:
         xorig = top.x0

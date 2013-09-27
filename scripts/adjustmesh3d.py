@@ -322,7 +322,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0,adjustppdecomp=true):
 
   # --- Rearrange the particles
   particlegridboundaries3d(top.pgroup,-1)
-  for js in xrange(top.ns):
+  for js in range(top.ns):
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
 
   # --- Reset field solve parameters (kzsq)

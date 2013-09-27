@@ -485,7 +485,7 @@ class LatticeGenerator:
     # --- Enough points are taken to get beyond the electrostatic section.
     s.gapdt = dt
     zz = zeros(nsteps,'d')
-    for i in xrange(nsteps-1):
+    for i in range(nsteps-1):
       zz[i+1] = zz[i] + s.gapdt*s.lafvz(z=zz[i])
     # --- Now calculate voltage gradient at each of the z points, producing
     # --- the gradient as a funtion of time.
@@ -737,7 +737,7 @@ class LatticeGenerator:
     else:
       i1 = i
       i2 = i + 1
-    for i in xrange(i1,i2,istep):
+    for i in range(i1,i2,istep):
       if t:
         plg(acclet[:,i],acclts[i]+iota(0,nta)*accldt[i])
       else:
@@ -750,7 +750,7 @@ class LatticeGenerator:
     v[0] = s.hvzmid[0]
     dz = env.dzenv
     ia = 0
-    for iz in xrange(1,env.nenv+1):
+    for iz in range(1,env.nenv+1):
       zz = env.zl + iz*env.dzenv + zshift
       if zz > s.hzlast[ia+1] and ia+1 < s.ihlp:
         ia = ia + 1
@@ -764,7 +764,7 @@ class LatticeGenerator:
     d[0] = s.hvzmid[0]*s.hlinechgmid[0]
     dz = env.dzenv
     ia = 0
-    for iz in xrange(1,env.nenv+1):
+    for iz in range(1,env.nenv+1):
       zz = env.zl + iz*env.dzenv + zshift
       if zz > s.hzlast[ia+1] and ia+1 < s.ihlp:
         ia = ia + 1

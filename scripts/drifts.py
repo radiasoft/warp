@@ -11,14 +11,14 @@ def initdrifts():
   if top.bends:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nbend+1):
+    for ii in range(top.nbend+1):
       elist.append(Bend(zs=top.bendzs[ii],ze=top.bendze[ii],ap=top.bendap[ii],
                         ox=0.,oy=0.,
                         rc=top.bendrc[ii]))
   if top.dipos:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.ndipo+1):
+    for ii in range(top.ndipo+1):
       elist.append(Dipo(zs=top.dipozs[ii],ze=top.dipoze[ii],ap=top.dipoap[ii],
                         ox=0.,oy=0.,
                         ex=top.dipoex[ii],ey=top.dipoey[ii],
@@ -26,63 +26,63 @@ def initdrifts():
   if top.quads:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nquad+1):
+    for ii in range(top.nquad+1):
       elist.append(Quad(zs=top.quadzs[ii],ze=top.quadze[ii],ap=top.quadap[ii],
                         ox=top.qoffx[ii],oy=top.qoffy[ii],
                         de=top.quadde[ii],db=top.quaddb[ii]))
   if top.sexts:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nsext+1):
+    for ii in range(top.nsext+1):
       elist.append(Sext(zs=top.sextzs[ii],ze=top.sextze[ii],ap=top.sextap[ii],
                         ox=0.,oy=0.,
                         de=top.sextde[ii],db=top.sextdb[ii]))
   if top.heles:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nhele+1):
+    for ii in range(top.nhele+1):
       elist.append(Hele(zs=top.helezs[ii],ze=top.heleze[ii],ap=top.heleap[ii],
                         ox=top.heleox[ii],oy=top.heleoy[ii],
                         ae=top.heleae[ii],am=top.heleam[ii]))
   if top.accls:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.naccl+1):
+    for ii in range(top.naccl+1):
       elist.append(Accl(zs=top.acclzs[ii],ze=top.acclze[ii],ap=top.acclap[ii],
                         ox=top.acclox[ii],oy=top.accloy[ii],
                         ez=top.acclez[ii]))
   if top.emlts:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nemlt+1):
+    for ii in range(top.nemlt+1):
       elist.append(Emlt(zs=top.emltzs[ii],ze=top.emltze[ii],ap=top.emltap[ii],
                         ox=top.emltox[ii],oy=top.emltoy[ii],
                         id=top.emltid[ii]))
   if top.mmlts:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nmmlt+1):
+    for ii in range(top.nmmlt+1):
       elist.append(Mmlt(zs=top.mmltzs[ii],ze=top.mmltze[ii],ap=top.mmltap[ii],
                         ox=top.mmltox[ii],oy=top.mmltoy[ii],
                         id=top.mmltid[ii]))
   if top.egrds:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.negrd+1):
+    for ii in range(top.negrd+1):
       elist.append(Bgrd(zs=top.egrdzs[ii],ze=top.egrdze[ii],ap=top.egrdap[ii],
                         ox=top.egrdox[ii],oy=top.egrdoy[ii],
                         id=top.egrdid[ii]))
   if top.bgrds:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nbgrd+1):
+    for ii in range(top.nbgrd+1):
       elist.append(Bgrd(zs=top.bgrdzs[ii],ze=top.bgrdze[ii],ap=top.bgrdap[ii],
                         ox=top.bgrdox[ii],oy=top.bgrdoy[ii],
                         id=top.bgrdid[ii]))
   if top.pgrds:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.npgrd+1):
+    for ii in range(top.npgrd+1):
       elist.append(Pgrd(zs=top.pgrdzs[ii],ze=top.pgrdze[ii],ap=top.pgrdap[ii],
                         ox=top.pgrdox[ii],oy=top.pgrdoy[ii],
                         id=top.pgrdid[ii]))
@@ -90,7 +90,7 @@ def initdrifts():
   if top.bsqgrads:
     elist = []
     elems.append(elist)
-    for ii in xrange(top.nbsqgrad+1):
+    for ii in range(top.nbsqgrad+1):
       elist.append(Bsqgrad(zs=top.bsqgradzs[ii],ze=top.bsqgradze[ii],ap=top.bsqgradap[ii],
                         ox=top.bsqgradox[ii],oy=top.bsqgradoy[ii],
                         id=top.bsqgradid[ii]))
@@ -100,14 +100,14 @@ def initdrifts():
 
   # --- Get start and end of first element, whatever type it may be.
   elemzs = top.zlatperi
-  for ie in xrange(len(elems)):
+  for ie in range(len(elems)):
     e = elems[ie][0]
     if e.zs < elemzs:
       elemzs = e.zs
       elemze = e.ze
       celem = e
   while 1:
-    for ie in xrange(len(elems)):
+    for ie in range(len(elems)):
       if ielem[ie] < len(elems[ie]):
         e = elems[ie][ielem[ie]]
         if e.zs < elemze:
@@ -131,7 +131,7 @@ def initdrifts():
   # --- Find the rest of the drift spaces between elements.
   while 1:
     elemzs = top.zlatperi
-    for ie in xrange(len(elems)):
+    for ie in range(len(elems)):
       if ielem[ie] < len(elems[ie]):
         e = elems[ie][ielem[ie]]
         if e.zs < elemzs:
@@ -139,7 +139,7 @@ def initdrifts():
           elemze = e.ze
           celem = e
     while 1:
-      for ie in xrange(len(elems)):
+      for ie in range(len(elems)):
         if ielem[ie] < len(elems[ie]):
           e = elems[ie][ielem[ie]]
           if e.zs < elemze:
@@ -160,7 +160,7 @@ def initdrifts():
   top.ndrft = ndrft
   gchange("Lattice")
   top.drfts = 0
-  for ii in xrange(ndrft+1):
+  for ii in range(ndrft+1):
     top.drftzs[ii] = driftlist[ii].zs
     top.drftze[ii] = driftlist[ii].ze
     top.drftox[ii] = driftlist[ii].offset_x

@@ -1135,7 +1135,7 @@ each species and each one in the list. Also assign colors accordingly
             if js == -1: js = range(self.getns())
             ncolor = kw.get('ncolor',240)
             color = kw.get('color',range(0,ncolor,ncolor/len(js)))
-            for i in xrange(len(js)):
+            for i in range(len(js)):
                 args[0] = js[i]
                 kw['color'] = color[i]
                 apply(pp,args,kw)
@@ -2772,7 +2772,7 @@ each species and each one in the list. Also assign colors accordingly
             if js == -1: js = range(self.getns())
             ncolor = kw.get('ncolor',240)
             color = kw.get('color',range(0,ncolor,ncolor/len(js)))
-            for i in xrange(len(js)):
+            for i in range(len(js)):
                 args[0] = js[i]
                 kw['color'] = color[i]
                 apply(pp,args,kw)

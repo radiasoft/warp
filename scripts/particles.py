@@ -81,9 +81,9 @@ def populationsample(population,k):
     population contains repeats, then each occurrence is a possible
     selection in the sample.
 
-    To choose a sample in a range of integers, use xrange as an argument.
+    To choose a sample in a range of integers, use range as an argument.
     This is especially fast and space efficient for sampling from a
-    large population:   sample(xrange(10000000), 60)
+    large population:   sample(range(10000000), 60)
     """
 
     # Sampling without replacement entails tracking either potential
@@ -108,7 +108,7 @@ def populationsample(population,k):
     result = zeros(k,gettypecode(array([population[0]])))
     if n < 6 * k:     # if n len list takes less space than a k len dict
         pool = list(population)
-        for i in xrange(k):         # invariant:  non-selected at [0,n-i)
+        for i in range(k):         # invariant:  non-selected at [0,n-i)
             j = _int(rand() * (n-i))
             result[i] = pool[j]
             pool[j] = pool[n-i-1]   # move non-selected item into vacancy
@@ -118,7 +118,7 @@ def populationsample(population,k):
         except (TypeError, KeyError):   # handle sets and dictionaries
             population = tuple(population)
         selected = {}
-        for i in xrange(k):
+        for i in range(k):
             j = _int(rand() * n)
             while j in selected:
                 j = _int(rand() * n)

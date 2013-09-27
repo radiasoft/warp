@@ -856,7 +856,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
     # --- is most useful if the 2nd dimension of xx is 1, in which case
     # --- all of the plots use that as the abscissa.
     n = shape(xx)[1]
-    for i in xrange(yy.shape[1]):
+    for i in range(yy.shape[1]):
       if len(yy[:,i]) > 0:
         if with_gist:
           callplotfunction("plg",[yy[:,i],xx[:,i%n]],kw)
@@ -2022,9 +2022,6 @@ Note that either the x and y coordinates or the grid must be passed in.
       import Opyndx
       if not isinstance(color,list): scolor = None
       else:                       scolor = color
-      xrange = 1.5*max(abs(xmin),abs(xmax))
-      yrange = 1.5*max(abs(ymin),abs(ymax))
-      zrange = 1.5*maxnd(abs(grid))
       vo = Opyndx.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
       from gist import pl3d
@@ -2272,7 +2269,7 @@ values from zmin to zmax.
   elif uselog is not None:          ss = " %d^%%.5g"%int(uselog)
   else:                             ss = " %.5g"
   ylast = 0.
-  for i in xrange(llev):
+  for i in range(llev):
     if ys[i] - ylast > (ymax-ymin)/30:
       plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005,height=fontsize,local=1)
       ylast = ys[i]
@@ -2354,11 +2351,11 @@ Mouse actions:
       i2 = nint((y2 - ymin)/(ymax - ymin)*200)
       up = (ymax - y1)/(ymax - y2)
       down = (y1 - ymin)/(y2 - ymin)
-      for i in xrange(1,i2):
+      for i in range(1,i2):
         iold = int(i*down)
         wold =     i*down - iold
         newcc[i] = cc[iold]*(1.-wold) + cc[iold+1]*wold
-      for i in xrange(i2,199):
+      for i in range(i2,199):
         iold = 199 - int((199-i)*up)
         wold = iold - (199 -    ((199-i)*up))
         newcc[i] = cc[iold]*(1.-wold) + cc[iold-1]*wold
@@ -2375,7 +2372,7 @@ Mouse actions:
       # --- slide whole palette
       i1 = nint((y1 - ymin)/(ymax - ymin)*200)
       i2 = nint((y2 - ymin)/(ymax - ymin)*200)
-      for i in xrange(0,200):
+      for i in range(0,200):
         iold = i - (i2 - i1)
         if iold < 0: newcc[i] = cc[0]
         elif iold > 199: newcc[i] = cc[-1]
@@ -2405,7 +2402,7 @@ Mouse actions:
 
     # --- Calculate the new palette based on the position relative to the
     # --- original palette.
-    for i in xrange(0,200):
+    for i in range(0,200):
       ii = int(newcc[i])
       ww =     newcc[i]  - ii
       iip1 = min(ii+1,199)
@@ -2555,7 +2552,7 @@ def ppmultispecies(pp,args,kw):
       if js == -1: js = range(top.ns)
       ncolor = kw.get('ncolor',240)
       color = kw.get('color',range(0,ncolor,ncolor//len(js)))
-      for i in xrange(len(js)):
+      for i in range(len(js)):
         kw['js'] = js[i]
         kw['color'] = color[i]
         apply(pp,args,kw)
@@ -3669,7 +3666,7 @@ For particle selection options, see :py:func:`~particles.selectparticles`. For p
     if not isinstance(pplimits[0],tuple):
       pplimits = 4*[pplimits]
     else:
-      for i in xrange(4):
+      for i in range(4):
         if i == len(pplimits): pplimits.append(defaultpplimits[i])
         if not pplimits[i]: pplimits[i] = defaultpplimits[i]
 
@@ -3921,7 +3918,7 @@ Plots y versus x with color based in z
 
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
-  for ic in xrange(ncolor):
+  for ic in range(ncolor):
     ii = compress(logical_and(less(zmin+ic*dd,rz),
                               less(rz,zmin+(ic+1)*dd)), iota(0,len(rx)))
     if usepalette:
@@ -5019,31 +5016,31 @@ field domain.
   y = []
   dd = 1.*scale/top.nprocs
   mm = 1. - gap
-  for i in xrange(top.nprocs):
+  for i in range(top.nprocs):
     z = z + [1.]
     zmin = top.izfsslave[i]*w3d.dz + w3d.zmmin
     zmax = (top.izfsslave[i] + top.nzfsslave[i])*w3d.dz + w3d.zmmin
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
-  for i in xrange(top.nprocs):
+  for i in range(top.nprocs):
     z = z + [2.]
     zmin = top.zpslmin[i]
     zmax = top.zpslmax[i]
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([0,0,mm,mm,0]))
-  for i in xrange(top.nprocs):
+  for i in range(top.nprocs):
     z = z + [3.]
     zmin = top.izfsslave[i]*w3d.dz
     zmax = top.izfsslave[i]*w3d.dz + top.nzfsslave[i]*w3d.dz
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,0,0,-mm]))
   plfp(array(z),y,x,5*ones(len(z),'l'),cmin=0,cmax=4,local=1)
-  for i in xrange(len(z)):
+  for i in range(len(z)):
     pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5],local=1)
 
 def _ppdecomposition_work(ix,nx,iz,nz):
-  for izproc in xrange(len(iz)):
-    for ixproc in xrange(len(ix)):
+  for izproc in range(len(iz)):
+    for ixproc in range(len(ix)):
       ix1 = ix[ixproc]
       ix2 = ix[ixproc]+nx[ixproc]
       iz1 = iz[izproc]
@@ -5114,7 +5111,7 @@ def pltfld3d(fld='phi',freqflag=always):
   currentwindow = active_window()
   active_window(_base_winnum)
   nwindows = 9
-  for i in xrange(nwindows):
+  for i in range(nwindows):
     if (w3d.icrhoxy[i] == freqflag and fld == "rho"): pcrhoxy[i]
     if (w3d.icrhozx[i] == freqflag and fld == "rho"): pcrhozx[i]
     if (w3d.icrhozy[i] == freqflag and fld == "rho"): pcrhozy[i]
@@ -5172,7 +5169,7 @@ def psplots(freqflag=always,js=0):
   nsubsets = 3
   nwindows = 9
 
-  for i in xrange(-nsubsets,1):
+  for i in range(-nsubsets,1):
     if (top.ipzxy[i] == freqflag):
       ppzxy(i,lframe=true)
       fma()
@@ -5188,19 +5185,19 @@ def psplots(freqflag=always,js=0):
     fma()
 
   # --- Do x-xp in color, skipping NSKIPCOL particles
-  for i in xrange(nwindows+1):
+  for i in range(nwindows+1):
    if (top.ipxxpco[i] == freqflag):
      ppxxpco(i,lframe=true)
      fma()
 
   # --- Do y-yp in color, skipping NSKIPCOL particles
-  for i in xrange(nwindows+1):
+  for i in range(nwindows+1):
    if (top.ipyypco[i] == freqflag):
      ppyypco(i,lframe=true)
      fma()
 
   # --- Do z-x and z-xp subset and y-window plots
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipzx[i] == freqflag):
       ppzx(i,lframe=true)
       fma()
@@ -5208,7 +5205,7 @@ def psplots(freqflag=always,js=0):
     #ppzx4
     #fma()
 
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipzxp[i] == freqflag):
       ppzxp(i,lframe=true)
       fma()
@@ -5216,7 +5213,7 @@ def psplots(freqflag=always,js=0):
     #ppzxp4
 
   # --- Do z-y and z-yp subset and x-window plots
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipzy[i] == freqflag):
       ppzy(i,lframe=true)
       fma()
@@ -5224,7 +5221,7 @@ def psplots(freqflag=always,js=0):
     #ppzy4
     #fma()
 
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipzyp[i] == freqflag):
       ppzyp(i,lframe=true)
       fma()
@@ -5233,7 +5230,7 @@ def psplots(freqflag=always,js=0):
     #fma()
 
   # --- Do z-vz subset and r-window plots
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipzvz[i] == freqflag):
       ppzvz(i,lframe=true)
       fma()
@@ -5242,7 +5239,7 @@ def psplots(freqflag=always,js=0):
     #fma()
 
   # --- Do transverse phase-space subset and z-window plots
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipxy[i] == freqflag):
       ppxy(i,lframe=true)
       fma()
@@ -5250,7 +5247,7 @@ def psplots(freqflag=always,js=0):
     #ppxy4
     #fma()
 
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipxxp[i] == freqflag):
       ppxxp(i,lframe=true)
       fma()
@@ -5258,7 +5255,7 @@ def psplots(freqflag=always,js=0):
     #ppxxp4
     #fma()
 
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipyyp[i] == freqflag):
       ppyyp(i,lframe=true)
       fma()
@@ -5266,7 +5263,7 @@ def psplots(freqflag=always,js=0):
     #ppyyp4
     #fma()
 
-  for i in xrange(-nsubsets,nwindows+1):
+  for i in range(-nsubsets,nwindows+1):
     if (top.ipxpyp[i] == freqflag):
       ppxpyp(i,lframe=true)
       fma()
@@ -5275,7 +5272,7 @@ def psplots(freqflag=always,js=0):
     #fma()
 
   # --- Do trace-space z-window plots
-  for i in xrange(nwindows+1):
+  for i in range(nwindows+1):
     if (top.iptrace[i] == freqflag and i >= 0):
       pptrace(i,lframe=true)
       fma()
