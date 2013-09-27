@@ -427,7 +427,7 @@ the area of the dual cell.
             # --- The direction of the surface is along the E field lines.
             qsign = sign(top.pgroup.sq[self.js])
             emag = sqrt(exc**2 + eyc**2 + ezc**2)
-            de = qsign*self.getinj_d()*dxyz/emag
+            de = qsign*self.getinj_d()*dxyz/dvnz(emag)
             xvc = xi + de*exc
             yvc = yi + de*eyc
             zvc = zi + de*ezc
