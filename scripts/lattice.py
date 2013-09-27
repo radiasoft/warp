@@ -3468,12 +3468,13 @@ def addgriddedgap(zcenter=None,gaplength=None,ap=None,apleft=None,apright=None,
 pyelemfunctionsdict = {}
 def pyelemfunctions():
     """This function is called from fortran"""
-    for id in unique(top.idpyelem[:top.nppyelem]):
-        ip = (top.idpyelem[:top.nppyelem] == id)
+    for elemid in unique(top.idpyelem[:top.nppyelem]):
+        ip = (top.idpyelem[:top.nppyelem] == elemid)
         x = top.xpyelem[ip]
         y = top.ypyelem[ip]
         z = top.zpyelem[ip]
-        (ex,ey,ez,bx,by,bz) = pyelemfunctionsdict[id](x,y,z)
+        # --- The conversion to int is needed since a numpy.int64 is different than an int.
+        (ex,ey,ez,bx,by,bz) = pyelemfunctionsdict[int(elemid)](x,y,z)
         top.expyelem[ip] = ex
         top.eypyelem[ip] = ey
         top.ezpyelem[ip] = ez
