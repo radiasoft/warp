@@ -403,7 +403,7 @@ Class for generating secondaries
      for js in incident_species.jslist:
       if self.l_verbose:print 'js',js
       if top.npslost[js]==0:continue
-#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js]<>0:continue
+#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js] != 0:continue
       stride=top.pgroup.ndts[js]
       i1 = top.inslost[js] - 1 
       i2 = top.inslost[js] + top.npslost[js] - 1
@@ -655,7 +655,7 @@ Class for generating secondaries
                # --- In case that the mass of electrons was artificially changed for 
                # --- numerical convenience, the velocity of emitted electrons is scaled 
                # --- so that energy is conserved.
-               if top.pgroup.sm[js_new] <> Electron.mass:
+               if top.pgroup.sm[js_new] != Electron.mass:
                  mfact = sqrt(Electron.mass/top.pgroup.sm[js_new])
                  ut*=mfact
                  un*=mfact
@@ -936,7 +936,7 @@ Class for generating secondaries
       costhav = globalsum(costhav)
       ek0max = globalmax(ek0max)
       if me==0:
-       if weighttot<>0.:
+       if weighttot != 0.:
         self.htime.append(top.time)
         self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
         self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
@@ -998,7 +998,7 @@ Class for generating secondaries
      for js in incident_species.jslist:
       if self.l_verbose:print 'js',js
       if top.npslost[js]==0:continue
-#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js]<>0:continue
+#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js] != 0:continue
       stride=top.pgroup.ndts[js]
       i1 = top.inslost[js] - 1 
       i2 = top.inslost[js] + top.npslost[js] - 1
@@ -1303,7 +1303,7 @@ Class for generating secondaries
             # --- In case that the mass of electrons was artificially changed for 
             # --- numerical convenience, the velocity of emitted electrons is scaled 
             # --- so that energy is conserved.
-            if top.pgroup.sm[js_new] <> Electron.mass:
+            if top.pgroup.sm[js_new] != Electron.mass:
                mfact = sqrt(Electron.mass/top.pgroup.sm[js_new])
                uxsec[:]*=mfact
                uysec[:]*=mfact
@@ -1572,7 +1572,7 @@ Class for generating secondaries
       costhav = globalsum(costhav)
       ek0max = globalmax(ek0max)
       if me==0:
-       if weighttot<>0.:
+       if weighttot != 0.:
         self.htime.append(top.time)
         self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
         self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
@@ -1959,12 +1959,12 @@ Class for generating secondaries
 
   def prepare_secondaries(self,itype,maxsec):
 
-   if(maxsec<>pos.maxsec):
+   if(maxsec != pos.maxsec):
     pos.maxsec = maxsec
     pos.gchange("bincoeff")
     init_pascal_triangle(pos.nbc,pos.maxsec)
  
-   if  itype<>self.mat_number:
+   if  itype != self.mat_number:
     self.mat_number=itype
     self.call_set_params_user(maxsec,self.mat_number)
 
@@ -2053,7 +2053,7 @@ components of the secondaries (dimensionless).
 
   def generate_probabilities(self,mye0,mycostheta,mymaterial,maxsec=10,iprob=4):
 
-    if(maxsec<>pos.maxsec):
+    if(maxsec != pos.maxsec):
       pos.maxsec = maxsec
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
@@ -2101,7 +2101,7 @@ components of the secondaries (dimensionless).
   def sey2(self,energy):
     maxsec=10
 
-    if(maxsec<>pos.maxsec):
+    if(maxsec != pos.maxsec):
       pos.maxsec = maxsec
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
@@ -2128,19 +2128,19 @@ components of the secondaries (dimensionless).
     return self.htime[...],self.costhav[...]
 
   def plek0av(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
-    if me<>0:return
+    if me != 0:return
     htime,ek0av=self.getek0av()
     plg(ek0av,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','ek0av (eV)')
 
   def plek0max(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
-    if me<>0:return
+    if me != 0:return
     htime,ek0max=self.getek0max()
     plg(ek0max,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','ek0max (eV)')
 
   def plcosthav(self,color=black,width=1,type='solid',marker='o',marks=0,msize=1):
-    if me<>0:return
+    if me != 0:return
     htime,costhav=self.getcosthav()
     plg(costhav,htime,color=color,width=width,type=type,marker=marker,marks=marks,msize=msize)
     ptitles('','time (s)','costhav')

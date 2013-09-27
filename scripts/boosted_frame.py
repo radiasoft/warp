@@ -140,7 +140,7 @@ to be lifted in the future.
         if top.uyoldpid>0:self.pgroup.pid[ilpr:iupr,top.uyoldpid-1]=self.pgroup.uyp[ilpr:iupr]
         if top.uzoldpid>0:self.pgroup.pid[ilpr:iupr,top.uzoldpid-1]=self.pgroup.uzp[ilpr:iupr]
       pg.nps[js]=0
-#      if pg.fselfb[js]<>0.:
+#      if pg.fselfb[js] != 0.:
 #        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
       self.pgroup.fselfb[jspr] = pg.fselfb[js]
     # --- check for particle out of bounds and exchange particles among processors if needed
@@ -181,7 +181,7 @@ to be lifted in the future.
    else:
     pg=top.pgroup
     for jspr,js in enumerate(species.jslist):
-#      if pg.fselfb[js]<>0.:
+#      if pg.fselfb[js] != 0.:
 #        pg.fselfb[js]=(pg.fselfb[js]-self.betaframe*clight)/(1.-pg.fselfb[js]*self.betaframe/clight)
       il=top.pgroup.ins[js]-1
       iu=il+top.pgroup.nps[js]
@@ -217,7 +217,7 @@ to be lifted in the future.
    print 'exit boost',top.pgroup.nps
    
   def add_boosted_species(self):
-    if self.pgroup.npid <> top.pgroup.npid:
+    if self.pgroup.npid != top.pgroup.npid:
       self.pgroup.npid = top.pgroup.npid
       self.pgroup.gchange()
     for js in range(self.pgroup.ns):
@@ -304,7 +304,7 @@ to be lifted in the future.
         processlostpart(self.pgroup,js+1,top.clearlostpart,top.time+top.dt*self.pgroup.ndts[js],top.zbeam)
 
   def add_boosted_rho(self):
-    if self.pgroup.npid <> top.pgroup.npid:
+    if self.pgroup.npid != top.pgroup.npid:
       self.pgroup.npid = top.pgroup.npid
       self.pgroup.gchange()
 #    if rstrip(top.depos.tostring())=='none': return

@@ -1404,11 +1404,11 @@ class lmap(Elem):
         self.dispy = dispy
         self.disppx = disppx
         self.disppy = disppy
-        if betax is None and nux<>0.:
+        if betax is None and nux != 0.:
             self.betax = self.length/(2.*pi*nux)
         else:
             self.betax = betax
-        if betay is None and nuy<>0.:
+        if betay is None and nuy != 0.:
             self.betay = self.length/(2.*pi*nuy)
         else:
             self.betay = betay
@@ -4120,7 +4120,7 @@ class Emitter:
         self.f=f
         self.voltage=voltage
 
-        if top.ainject[0]<>0:
+        if top.ainject[0] != 0:
             top.ninject+=1
             gchange('InjectVars')
         self.iinject=top.ninject-1

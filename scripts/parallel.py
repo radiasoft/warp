@@ -193,7 +193,7 @@ def gatherlog(obj,dest=0,procs=None,bcast=0,comm=None):
     if bcast:
         obj = comm.bcast(obj,procs[0])
     else:
-        if dest<>procs[0]:
+        if dest != procs[0]:
             if comm.rank==procs[0]:
                 comm.send(obj,dest)
             if comm.rank==dest:

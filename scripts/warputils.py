@@ -13,6 +13,17 @@ def warputilsdoc():
     import warputils
     print warputils.__doc__
 
+if sys.hexversion >= 0x03000000:
+    # --- Hacky replacement of execfile which is not included in python3.
+    # --- I'll probably regret having this.
+    def execfile(filename, globals=None, locals=None):
+        if globals is None:
+            globals = sys._getframe(1).f_globals
+        if locals is None:
+            locals = sys._getframe(1).f_locals
+        with open(filename, "r") as fh:
+            exec(fh.read()+"\n", globals, locals)
+
 # --- Make a wrapper around the Forthon doc function, which cleans up
 # --- reStructuredText markup.
 def doc(name,printit=1):
@@ -567,7 +578,7 @@ def bisection(f,a,b,f0=0.,xtol=1.e-10,maxiter=100):
 
     mid = lo + (hi-lo)/2
     iter = 0
-    while (abs(hi-lo)>xtol) or ((mid <> lo) and (mid <> hi)) and iter < maxiter:
+    while (abs(hi-lo)>xtol) or ((mid != lo) and (mid != hi)) and iter < maxiter:
         iter += 1
         if f(mid)-f0 <= 0.:
             lo = mid

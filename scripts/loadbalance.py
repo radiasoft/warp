@@ -728,7 +728,7 @@ of the domains.
             # --- Regenerate the data for the particles. This needs to be done
             # --- locally, from the redistributed field grid data.
             solver.setebp()
-            if top.efetch[0]<>4:solver.yee2node3d()
+            if top.efetch[0] != 4:solver.yee2node3d()
             if solver.l_smooth_particle_fields and any(solver.npass_smooth>0):
                 solver.smoothfields()
 

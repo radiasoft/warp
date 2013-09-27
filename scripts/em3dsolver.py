@@ -276,7 +276,7 @@ class EM3D(SubcycledPoissonSolver):
         self.ncyclesperstep=sibling.ncyclesperstep
     self.dtinit = top.dt
     
-    if  top.vbeamfrm<>0.:self.bounds[-2:]=-1
+    if  top.vbeamfrm != 0.:self.bounds[-2:]=-1
     
     self.setbcparallel(0) # x
     self.setbcparallel(1) # y
@@ -1211,7 +1211,7 @@ class EM3D(SubcycledPoissonSolver):
   def allocatedataarrays(self):
     if self.l_verbose:print 'allocatedataarrays'
     # --- reallocate Jarray if needed
-    if self.fields.ntimes<>top.nsndts:
+    if self.fields.ntimes != top.nsndts:
       self.fields.ntimes=top.nsndts
       self.fields.gchange()
 
@@ -1805,7 +1805,7 @@ class EM3D(SubcycledPoissonSolver):
       self.solve2ndhalfmode2()
       return
     if self.l_verbose:print 'solve 2nd half',self
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_b_part_2()
     if self.l_pushf:self.exchange_f()
     em3d_exchange_b(self.block)
@@ -1818,9 +1818,9 @@ class EM3D(SubcycledPoissonSolver):
     if self.mode==2:
       self.dosolvemode2()
       return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_e()
     self.exchange_e()
     for i in range(int(self.ncyclesperstep)-1):
@@ -1833,7 +1833,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_pushf:self.exchange_f()
     self.exchange_b()
     self.setebp()
-    if top.efetch[0]<>4:self.yee2node3d()
+    if top.efetch[0] != 4:self.yee2node3d()
     if self.l_smooth_particle_fields and any(self.npass_smooth>0):
        self.smoothfields()
     # --- for fields that are overcycled, they need to be pushed backward every ncyclesperstep
@@ -1910,7 +1910,7 @@ class EM3D(SubcycledPoissonSolver):
       self.__class__.__bases__[1].push_b_part_1(self.field_coarse,dir)
 
   def push_b_part_2(self):
-    if top.efetch[0]<>4 and (self.refinement is None):self.node2yee3d()
+    if top.efetch[0] != 4 and (self.refinement is None):self.node2yee3d()
     dt = top.dt/self.ncyclesperstep
     if self.ncyclesperstep<1.:
       self.novercycle = nint(1./self.ncyclesperstep)
@@ -1983,9 +1983,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def dosolvemode2(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt=top.dt*2
     if self.odd:
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
@@ -2004,15 +2004,15 @@ class EM3D(SubcycledPoissonSolver):
     self.odd = 1-self.odd
     if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
     self.setebp()
-    if top.efetch[0]<>4:self.yee2node3d()
+    if top.efetch[0] != 4:self.yee2node3d()
     if self.l_smooth_particle_fields and any(self.npass_smooth>0):
        self.smoothfields()
     
   def solve2ndhalfmode2(self):
     if self.solveroff:return
     if self.l_verbose:print 'solve 2nd half',self
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
-#    if top.efetch[0]<>4:node2yee3d(self.block.core.yf)
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+#    if top.efetch[0] != 4:node2yee3d(self.block.core.yf)
     self.move_window_fields()
     if self.ncyclesperstep<1.:
       self.novercycle = nint(1./self.ncyclesperstep)
@@ -2034,9 +2034,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def dosolvemode2old(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt = top.dt*2
     if self.odd:
       push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
@@ -2047,7 +2047,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
     if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
-    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
+    if top.efetch[0] != 4:yee2node3d(self.block.core.yf)
     if self.l_smooth_particle_fields:
       if self.refinement is None and any(self.npass_smooth>0):
         self.fields.Exp[...] = self.fields.Ex[...]
@@ -2060,9 +2060,9 @@ class EM3D(SubcycledPoissonSolver):
     
   def dosolvemode2vold(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if self.l_verbose:print 'solve 1st half'
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     dt = top.dt*2
     if self.odd:
       push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
@@ -2073,7 +2073,7 @@ class EM3D(SubcycledPoissonSolver):
       push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
     self.odd = 1-self.odd
     if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
-    if top.efetch[0]<>4:yee2node3d(self.block.core.yf)
+    if top.efetch[0] != 4:yee2node3d(self.block.core.yf)
     if self.l_smooth_particle_fields:
       if self.refinement is None and any(self.npass_smooth>0):
         self.fields.Exp[...] = self.fields.Ex[...]
@@ -2371,7 +2371,7 @@ class EM3D(SubcycledPoissonSolver):
 #        dxob = [e3d,colorbar]
         dxob = [e3d]
         for i in procs:#range(1,npes):
-         if i <> me:
+         if i != me:
           xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
           origins = [xminp*xscale,yminp*yscale,zminp*zscale]
           deltas = [dxp*xscale,dyp*yscale,dzp*zscale]
@@ -2548,7 +2548,7 @@ class EM3D(SubcycledPoissonSolver):
         comm_world.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
       else:
         for i in range(0,npes):
-          if i<>me:
+          if i != me:
             xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
           else:
             xminp = xmin
@@ -2759,18 +2759,18 @@ class EM3D(SubcycledPoissonSolver):
   def getdive(self,guards=0,overlap=0):
       dive = zeros(shape(self.fields.Ex),'d')
       f = self.fields
-      if top.efetch[0]<>4:node2yee3d(f)
+      if top.efetch[0] != 4:node2yee3d(f)
       getdive(f.Ex,f.Ey,f.Ez,dive,f.dx,f.dy,f.dz,
               f.nx,f.ny,f.nz,f.nxguard,f.nyguard,f.nzguard,
               f.xmin,
               self.l_2dxz,self.l_2drz)
-      if top.efetch[0]<>4:yee2node3d(f)
+      if top.efetch[0] != 4:yee2node3d(f)
       return self.getarray(dive,guards,overlap)
 
   def getdiveold(self,guards=0,overlap=0):
       dive = zeros(shape(self.fields.Ex),'d')
       f = self.fields
-      if top.efetch[0]<>4:node2yee3d(f)
+      if top.efetch[0] != 4:node2yee3d(f)
       if self.l_2dxz:
            dive[1:-1,0,1:-1] = (f.Ex[1:-1,0,1:-1]-f.Ex[:-2,0,1:-1])/f.dx \
                             + (f.Ez[1:-1,0,1:-1]-f.Ez[1:-1,0,:-2])/f.dz 
@@ -2778,7 +2778,7 @@ class EM3D(SubcycledPoissonSolver):
         dive[1:-1,1:-1,1:-1] = (f.Ex[1:-1,1:-1,1:-1]-f.Ex[:-2,1:-1,1:-1])/f.dx \
                              + (f.Ey[1:-1,1:-1,1:-1]-f.Ey[1:-1,:-2,1:-1])/f.dy \
                              + (f.Ez[1:-1,1:-1,1:-1]-f.Ez[1:-1,1:-1,:-2])/f.dz 
-      if top.efetch[0]<>4:yee2node3d(f)
+      if top.efetch[0] != 4:yee2node3d(f)
       return dive
       
   def gete(self,guards=0,overlap=0):
@@ -2890,7 +2890,7 @@ class EM3D(SubcycledPoissonSolver):
       flist += [self.field_coarse.block.core.yf]
     q = []
     for f in flist:
-      if top.efetch[0]<>4:node2yee3d(f)
+      if top.efetch[0] != 4:node2yee3d(f)
       Ex = f.Ex#self.getarray(f.Ex)
       Ey = f.Ey#self.getarray(f.Ey)
       Ez = f.Ez#self.getarray(f.Ez)
@@ -2906,7 +2906,7 @@ class EM3D(SubcycledPoissonSolver):
                 +  sum(Ey[1:-1,1:-1,1:-1]-Ey[1:-1,:-2,1:-1])/f.dy \
                 +  sum(Ez[1:-1,1:-1,1:-1]-Ez[1:-1,1:-1,:-2])/f.dz) \
                 * eps0*(f.dx*f.dy*f.dz))
-      if top.efetch[0]<>4:yee2node3d(f)
+      if top.efetch[0] != 4:yee2node3d(f)
     return q
 
   def sumq(self):
@@ -2933,11 +2933,11 @@ class EM3D(SubcycledPoissonSolver):
       up   = top.procneighbors[1,dir]
       # --- check lower bound in z
       if self.bounds[ib+1] == periodic:
-        condu = up<>me
+        condu = up != me
       else:
         condu = up>me
       if self.bounds[ib] == periodic:
-        condd = down<>me
+        condd = down != me
       else:
         condd = down<me
       if condu:
@@ -3706,11 +3706,11 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nxf = f.nx
     f.nyf = f.ny
     f.nzf = f.nz
-  if f.theta_damp<>0.:
+  if f.theta_damp != 0.:
     f.nxdamp=f.nx
     f.nydamp=f.ny
     f.nzdamp=f.nz
-  if f.sigmae<>0. or f.sigmab<>0.:
+  if f.sigmae != 0. or f.sigmab != 0.:
     f.nxext=f.nx
     f.nyext=f.ny
     f.nzext=f.nz

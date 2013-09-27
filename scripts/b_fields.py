@@ -244,7 +244,7 @@ yplot, zplot define coords of desired plot axis
              'width': 2.0, 'marks': 1, 'msize': 1.0,
              'titleb': "X (cm)", 'titlel': "B (Gauss)",
              'titlet': "B-field of Bgrd element vs. x", 'titler': "", 'titles': 1}
-    if plot_title <> "": pldef['titlet'] = plot_title
+    if plot_title != "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     for key in pldef:    exec key+"=pldef['"+key+"']"
     #
@@ -286,7 +286,7 @@ yplot, zplot define coords of desired plot axis
              'width': 2.0, 'marks': 1, 'msize': 1.0,
              'titleb': "X (cm)", 'titlel': "B (Gauss)",
              'titlet': "B-field of Bgrd element vs. x", 'titler': "", 'titles': 1}
-    if plot_title <> "": pldef['titlet'] = plot_title
+    if plot_title != "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     for key in pldef:    exec key+"=pldef['"+key+"']"
     #
@@ -328,7 +328,7 @@ xplot, yplot define coords of desired plot axis
              'width': 2.0, 'marks': 1, 'msize': 1.0,
              'titleb': "Z (cm)", 'titlel': "B (Gauss)",
              'titlet': "B-field of Bgrd element vs. z", 'titler': "", 'titles': 1}
-    if plot_title <> "": pldef['titlet'] = plot_title
+    if plot_title != "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     for key in pldef:    exec key+"=pldef['"+key+"']"
     #
@@ -370,7 +370,7 @@ xplot, yplot define coords of desired plot axis
              'width': 2.0, 'marks': 1, 'msize': 1.0,
              'titleb': "Z (cm)", 'titlel': "B (Gauss)",
              'titlet': "B-field of Bgrd element vs. z", 'titler': "", 'titles': 1}
-    if plot_title <> "": pldef['titlet'] = plot_title
+    if plot_title != "": pldef['titlet'] = plot_title
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     for key in pldef:    exec key+"=pldef['"+key+"']"
     #

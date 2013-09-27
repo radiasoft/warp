@@ -76,8 +76,8 @@ class Maps:
                         ay1,ay2,by1,by2,dy1,dy2,
                         dpy1,dpy2,Qy,ychrom,phasey,self.ytunechirp,
                         eta,omegaz,phz,self.zoffsetchirp)
-    if l_push_z and zbeam<>0.:
-      if zbeam<>0.:
+    if l_push_z and zbeam != 0.:
+      if zbeam != 0.:
         z+=zbeam
       pg.zp[il:iu]=z
 
@@ -179,7 +179,7 @@ class Maps_simple:
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
 
   def apply_synchrotron_motion(self,pg,il,iu,dt):
-   if self.omegaz<>0.:
+   if self.omegaz != 0.:
     uzb =  top.gammabar*top.vbeam
     Beta_z = -self.eta/(self.omegaz*top.gammabar)
     Cn = cos(self.omegaz*dt)

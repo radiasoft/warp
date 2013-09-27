@@ -49,7 +49,7 @@ class Quasistatic(SubcycledPoissonSolver):
                freeze_beam_list = [],
                nde=None,demax=0.1,l_zdediag=0,ke0=0.,
                **kw):
-    assert top.grid_overlap<>2,"Error: the quasistatic class needs top.grid_overlap==1."
+    assert top.grid_overlap != 2,"Error: the quasistatic class needs top.grid_overlap==1."
     assert (float(npes)/float(nbuckets))==float(npes/nbuckets),"Error in Quasistatic:the number of processors must be proportional to the number of buckets."
     self.nbuckets=nbuckets
     ntgroups=top.nxprocs*top.nyprocs
@@ -1810,7 +1810,7 @@ class Quasistatic(SubcycledPoissonSolver):
                    pg.gaminv[il:iu],top.dt)      
 
       # --- apply transverse electric field kick
-      if self.Ekick<>0.:
+      if self.Ekick != 0.:
         if self.Bkick==self.bucketid and (top.it-(npes-1-me))%self.maps.nstations==0:
           E = self.Ekick
           if self.Akick is not None:
@@ -2160,7 +2160,7 @@ class Quasistatic(SubcycledPoissonSolver):
        top.pgroup = self.pgelec
        frz.basegrid = self.gridions[1]
        mk_grids_ptr()
-       if top.bx0<>0. or top.by0<>0.:
+       if top.bx0 != 0. or top.by0 != 0.:
          bx0 = ones(self.nparpgrp,'d')*top.bx0
          by0 = ones(self.nparpgrp,'d')*top.by0
          bz0 = ones(self.nparpgrp,'d')*top.bz0

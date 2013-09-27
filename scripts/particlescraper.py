@@ -325,9 +325,9 @@ class ParticleScraper(object):
             self.updateconductors()
 
             if top.chdtspid>0:
-                if (w3d.nxc<>self.grid.nxlocal or
-                    w3d.nyc<>self.grid.nylocal or
-                    w3d.nzc<>self.grid.nzlocal):
+                if (w3d.nxc != self.grid.nxlocal or
+                    w3d.nyc != self.grid.nylocal or
+                    w3d.nzc != self.grid.nzlocal):
                     w3d.nxc=self.grid.nxlocal
                     w3d.nyc=self.grid.nylocal
                     w3d.nzc=self.grid.nzlocal
@@ -889,7 +889,7 @@ class ParticleScraper(object):
                 for c in self.conductors:
                     # --- This parallelsum coordinates with the ones below.
                     w=parallelsum(0.)
-                    if w<>0.:
+                    if w != 0.:
                         c.lostparticles_data.append(array([top.time,
                                                            w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                            top.dt,
@@ -989,7 +989,7 @@ class ParticleScraper(object):
                 if self.lcollectlpdata and not local:
                     # --- This parallelsum coordinates with the other processors
                     w=parallelsum(0.)
-                    if w<>0.:
+                    if w != 0.:
                         c.lostparticles_data.append(array([top.time,
                                                            w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                            top.dt,
@@ -1006,7 +1006,7 @@ class ParticleScraper(object):
                 if self.lcollectlpdata and not local:
                     # --- This parallelsum coordinates with the other processors
                     w=parallelsum(0.)
-                    if w<>0.:
+                    if w != 0.:
                         c.lostparticles_data.append(array([top.time,
                                                            w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                                            top.dt,

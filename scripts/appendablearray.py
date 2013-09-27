@@ -269,7 +269,7 @@ class DynamicHistogramIntersect(DynamicHistogram):
         deposeintersect(z1,d1,ssn1,w1,n1,z2,d2,ssn2,w2,n2,z0,self.data,fminmax,self.n-1,True,self.overfrac)
         self.min = fminmax[0]
         self.max = fminmax[1]
-        if self.min<>minold or self.max<>maxold:
+        if self.min != minold or self.max != maxold:
             self.bins = self.min+numpy.arange(self.n)*(self.max-self.min)/(self.n-1)
 
     def getave(self):

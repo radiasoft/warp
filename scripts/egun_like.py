@@ -330,7 +330,7 @@ set when a current is specified"""
     if rhoparam is not None:
       solver = getregisteredsolver()
       if solver is None:
-        if(w3d.solvergeom<>w3d.RZgeom):
+        if(w3d.solvergeom != w3d.RZgeom):
           rhoprevious = w3d.rho + 0.
         else:
           for ig in range(frz.ngrids):
@@ -522,7 +522,7 @@ set when a current is specified"""
     if rhoparam is not None:
       solver = getregisteredsolver()
       if solver is None:
-        if(w3d.solvergeom<>w3d.RZgeom): 
+        if(w3d.solvergeom != w3d.RZgeom): 
          w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
         else:
          frz.distribute_rho_rz()
@@ -795,7 +795,7 @@ Performs steady-state iterations in a cascade using different resolutions.
     gunnz[i] = int(gunnz[i+1]/2)
     gundt[i] = gundt[i+1]*2
     gunnpinject[i] = int(gunnpinject[i+1]/2)
-  if(w3d.solvergeom<>w3d.RZgeom):
+  if(w3d.solvergeom != w3d.RZgeom):
     raise Exception('function not yet implemented')
   else:
     # mg loop

@@ -1229,7 +1229,7 @@ class SubcycledPoissonSolver(FieldSolver):
       # --- This is dummy code and it never executed! This should probably
       # --- be deleted to avoid confusion. getpotentialpforparticles is
       # --- redefined in the inheriting classes.
-      if type(self.potential)<>type(0.):
+      if type(self.potential) != type(0.):
         potentialp = self.returnpotentialp(indts,iselfb)
         potentialp[...] = self.potential
         

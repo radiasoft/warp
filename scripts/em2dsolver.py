@@ -409,7 +409,7 @@ class EM2D(object):
       fields = [self.field,self.fpatchcoarse,self.fpatchfine]    
 
     # --- reallocate Jarray if needed
-    if self.field.ntimes<>top.nsndts:
+    if self.field.ntimes != top.nsndts:
       self.field.ntimes=top.nsndts
       self.field.gchange()
       force_deposition=true
@@ -426,7 +426,7 @@ class EM2D(object):
     # --- loop over species
     for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,top.pgroup.nps,
                        top.pgroup.sq,top.pgroup.sw):
-      if n == 0 or ((top.it-1)%top.pgroup.ndts[js]<>0 and not force_deposition): continue
+      if n == 0 or ((top.it-1)%top.pgroup.ndts[js] != 0 and not force_deposition): continue
       x,y,ux,uy,uz,xold,yold = self.transformparticles(
             top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],top.pgroup.zp[i:i+n],
             top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n],
@@ -671,8 +671,8 @@ class EM2D(object):
       field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)*(1.-self.laser_source_v/clight)/clight
 
   def solve(self,iwhich=0):
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM2D.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM2D.')
     # --- Set nxl and nyl if using large stencil
     if(not self.l_onegrid):
       project_j(self.field,self.fpatchcoarse,self.fpatchfine)
@@ -681,7 +681,7 @@ class EM2D(object):
     else:
       fields = [self.field,self.fpatchcoarse,self.fpatchfine]    
     for field in fields:
-      if field.l_uselargestencil and field.nxl<>field.nx:
+      if field.l_uselargestencil and field.nxl != field.nx:
         field.nxl=field.nx
         field.nyl=field.ny
         field.gchange()

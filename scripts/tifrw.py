@@ -32,7 +32,7 @@ def save_tif(matrix, filename = None):
 
     min_val = float(numpy.minimum.reduce(S))
     max_val = float(numpy.maximum.reduce(S))
-    if max_val <> min_val:
+    if max_val != min_val:
         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
     matrix = matrix.astype(numpy.ubyte)					#Convert to binary
     matrix = numpy.transpose(matrix)			#Preprocess for tif-ization

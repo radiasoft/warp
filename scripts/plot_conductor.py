@@ -882,7 +882,7 @@ def pfxy(iz=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
             iz = nint(-solver.zmmin/solver.dz)
         else:
             iz = 0
-    if w3d.solvergeom<>w3d.XYgeom:
+    if w3d.solvergeom != w3d.XYgeom:
         if iz < 0 or solver.nz < iz: return
     if scale:
         dx = solver.dx

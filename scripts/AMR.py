@@ -98,7 +98,7 @@ class AMRTree(VisualizableClass):
       # --- on the mesh refined blocks to save time.
       ifcond = w3d.AMRgenerate_periodicity==0
       if not ifcond:
-        ifcond = top.it%w3d.AMRgenerate_periodicity<>0
+        ifcond = top.it%w3d.AMRgenerate_periodicity != 0
       if (ifcond or not lzero): lrootonly = 0
       else:                     lrootonly = 1
       if self.solvergeom == w3d.XYZgeom:
@@ -835,7 +835,7 @@ class AMRTree(VisualizableClass):
 
       ifcond = w3d.AMRgenerate_periodicity==0
       if not ifcond:
-        ifcond = top.it%w3d.AMRgenerate_periodicity<>0
+        ifcond = top.it%w3d.AMRgenerate_periodicity != 0
       if ifcond:
         self.beforefs()
         return
@@ -981,7 +981,7 @@ class AMRTree(VisualizableClass):
             r=(float(self.MRfact)**i)/f
             nx = nint(l*r)
             ny = nint(h*r)
-            if self.solvergeom<>w3d.RZgeom:
+            if self.solvergeom != w3d.RZgeom:
               xmin=w3d.xmmin
               ymin=w3d.ymmin
               dx=w3d.dx

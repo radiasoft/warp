@@ -533,7 +533,7 @@ class Assembly(VisualizableClass):
         - width=1      : line width
         - type='solid' : line type
         """
-        if me<>0:return
+        if me != 0:return
         time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_image=l_image,tmin=tmin,tmax=tmax,nt=nt)
         plg(current,time,color=color,width=width,type=type)
         ptitles('Current history at '+self.name,'time (s)','I (A)')
@@ -6221,7 +6221,7 @@ class SRFRVLApart:
       Draw lines and arcs of SRFRVLA conductor part. Arcs are decomposed
       into ncirc segments.
         """
-        if(color <> 'none'):
+        if(color != 'none'):
             colort=color
             colorb=color
 
@@ -6330,13 +6330,13 @@ class SRFRVLAcond:
                     nsrmax += 1
                 elif(d[-1]=='b'):
                     nsrmin += 1
-            if(nsrmax<>0):
+            if(nsrmax != 0):
                 l_t = 1
                 r_srmax = zeros(nsrmax+1,'d')
                 z_srmax = zeros(nsrmax+1,'d')
                 rc_srmax = zeros(nsrmax,'d')
                 zc_srmax = zeros(nsrmax,'d')
-            if(nsrmin<>0):
+            if(nsrmin != 0):
                 l_b = 1
                 r_srmin = zeros(nsrmin+1,'d')
                 z_srmin = zeros(nsrmin+1,'d')
@@ -6475,7 +6475,7 @@ class SRFRVLAcond:
         """
       Draws a list of conductor parts.
         """
-        if(color <> 'none'):
+        if(color != 'none'):
             colort=color
             colorb=color
         for part in self.parts:
@@ -6544,7 +6544,7 @@ class SRFRVLAsystem:
         """
       Draws a list of conductors.
         """
-        if(color <> 'none'):
+        if(color != 'none'):
             colort=color
             colorb=color
         for parts in self.SRFRVLAconds:

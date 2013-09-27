@@ -3033,17 +3033,17 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
 
   def dosolveem(self,iwhich=0,*args):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_e()
     self.exchange_e()
     self.push_eb_subcycle()
     self.push_b_part_1()
     self.exchange_f()
     self.exchange_b()
-    if top.efetch[0]<>4:self.node2yee3d()
+    if top.efetch[0] != 4:self.node2yee3d()
     self.setebp()
-    if top.efetch[0]<>4:self.yee2node3d()
+    if top.efetch[0] != 4:self.yee2node3d()
     self.addsubstractfieldfromparent()
     self.smoothfields()
     # --- for fields that are overcycled, they need to be pushed backward every ncyclesperstep
@@ -3055,8 +3055,8 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
     
   def solve2ndhalf(self):
     if self.solveroff:return
-    if any(top.fselfb<>0.):raise Exception('Error:EM solver does not work if fselfb<>0.')
-    if top.dt<>self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
+    if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
+    if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
     self.push_b_part_2()
     self.exchange_f()
     self.exchange_b()
@@ -3169,7 +3169,7 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
       l = maximum(plower,self.fulllower)
       u = minimum(pupper,self.fullupper)
       lp = (l-plower)/self.refinement
-      if top.efetch[0]<>4:
+      if top.efetch[0] != 4:
         addsubstractfields_nodal(self.block,self.block_coarse,parent.block,lp,self.refinement,self.l_2dxz)
       else:
         addsubstractfields(self.block,self.block_coarse,parent.block,lp,self.refinement,self.l_2dxz)
@@ -3177,7 +3177,7 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
       child.addsubstractfieldfromparent()
 
   def move_window_fields(self):
-      if top.it%self.novercycle<>0:return
+      if top.it%self.novercycle != 0:return
       # --- move window in x
       self.xgridcont+=self.vxgrid*top.dt/self.ncyclesperstep
       while (abs(self.xgrid-self.xgridcont)>=0.5*self.dx):
