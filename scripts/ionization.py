@@ -680,7 +680,7 @@ velocity of the incident particle.
 
           # --- Get a count of the number of collisions for each particle. A random number is added to
           # --- ncol so that a fractional value has chance to result in a collision.
-          ncoli=int(ncol + ranf(ncol))
+          ncoli=aint(ncol + ranf(ncol))
 
           # --- Select the particles that will collide
           io=compress(ncoli>0,arange(ni))

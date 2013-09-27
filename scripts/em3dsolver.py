@@ -107,8 +107,8 @@ class EM3D(SubcycledPoissonSolver):
     self.npass_smooth  = array(self.npass_smooth)
     self.alpha_smooth  = array(self.alpha_smooth)
     self.stride_smooth  = array(self.stride_smooth)
-#    minguards = array([1+int(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
-    minguards = 0+2+int(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
+#    minguards = array([1+aint(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
+    minguards = 0+2+aint(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
     if self.nxguard==1:self.nxguard = minguards[0]
     if self.nyguard==1:self.nyguard = minguards[1]
     if self.nzguard==1:self.nzguard = minguards[2]
