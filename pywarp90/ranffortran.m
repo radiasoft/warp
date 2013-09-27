@@ -3,15 +3,15 @@
 
 /* This is needed since the ranf in ranlib is single precision */
 extern double Ranf(void);
-%'double '+fname(py_ifelse(f90 or f90f,1,'w','')+'ranf')+'(void)'
+%'double '+fname('wranf')+'(void)'
 {
   return Ranf();
 }
 
-%py_ifelse(machine,'T3E','extern void RANSET(double *x);','extern void Seedranf(double *x);')
+extern void Seedranf(double *x);
 %'void '+fname('seedranf')+'(double* x)'
 {
-%py_ifelse(machine,'T3E','RANSET(x);','Seedranf(x);')
+Seedranf(x);
 }
 
 extern void Mixranf();
