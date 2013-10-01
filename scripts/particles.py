@@ -1230,7 +1230,7 @@ The product slope*vz gives the slope for x-vx.
   else:
     wz = 0.
   nzmmnt = getattrwithsuffix(object,'nzmmnt',suffix)
-  if 0 <= iz <= nzmmnt:
+  if iz is not None and 0 <= iz <= nzmmnt:
     izp1 = iz + 1
     if iz == nzmmnt: izp1 = iz
     xxpbarz = getattrwithsuffix(object,'xxpbarz',suffix)
@@ -1302,7 +1302,7 @@ The product slope*vz gives the slope for y-vy.
   else:
     wz = 0.
   nzmmnt = getattrwithsuffix(object,'nzmmnt',suffix)
-  if 0 <= iz <= nzmmnt:
+  if iz is not None and 0 <= iz <= nzmmnt:
     izp1 = iz + 1
     if iz == nzmmnt: izp1 = iz
     yypbarz = getattrwithsuffix(object,'yypbarz',suffix)

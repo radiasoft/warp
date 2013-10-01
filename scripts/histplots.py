@@ -128,6 +128,15 @@ def _extractvarkw(name,kw,pkg='top',attr=None):
                        ff=kw.get('ff',None))
 
 ###########################################################################
+_hpbasic_kwdefaults = {'absc':None,'js':-1,'perspecies':1,
+     'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+     'titlet':'','titleb':'','titlel':'','titler':'',
+     'xscale':1.0,'xoffset':0.0,'yscale':array([1.0]),'yoffset':0.0,
+     'lnormalized':0,'istart':0,'iend':'jhist','istep':1,
+     'lhzbeam':0,'lvsz':0,'logplot':0,
+     'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
+     'plsysval':1,'width':1.,'linetype':'solid',
+     'varsuffix':None,'ff':None}
 def hpbasic(oord,kwdict={},**kw):
     """
   This is the basic history plot with all of its possible arguments. The
@@ -136,21 +145,44 @@ def hpbasic(oord,kwdict={},**kw):
   only required argument of course is the data to be plotted.
     """
     if me > 0: return
-    kwdefaults = {'absc':None,'js':-1,'perspecies':1,
-                  'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
-                  'titlet':'','titleb':'','titlel':'','titler':'',
-                  'xscale':1.0,'xoffset':0.0,'yscale':array([1.0]),'yoffset':0.0,
-                  'lnormalized':0,'istart':0,'iend':'jhist','istep':1,
-                  'lhzbeam':0,'lvsz':0,'logplot':0,
-                  'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
-                  'plsysval':1,'width':1.,'linetype':'solid',
-                  'varsuffix':None,'ff':None}
-    kwvalues = kwdefaults.copy()
+    kwvalues = _hpbasic_kwdefaults.copy()
     kwvalues.update(kw)
     kwvalues.update(kwdict)
-    badargs = checkarguments(kwvalues,kwdefaults)
+    badargs = checkarguments(kwvalues,_hpbasic_kwdefaults)
     if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
-    for arg in kwvalues: exec(arg+" = kwvalues['"+arg+"']")
+    #for arg in kwvalues: exec(arg+" = kwvalues['"+arg+"']")
+    absc = kwvalues['absc']
+    js = kwvalues['js']
+    perspecies = kwvalues['perspecies']
+    xmin = kwvalues['xmin']
+    xmax = kwvalues['xmax']
+    ymin = kwvalues['ymin']
+    ymax = kwvalues['ymax']
+    titlet = kwvalues['titlet']
+    titleb = kwvalues['titleb']
+    titlel = kwvalues['titlel']
+    titler = kwvalues['titler']
+    xscale = kwvalues['xscale']
+    xoffset = kwvalues['xoffset']
+    yscale = kwvalues['yscale']
+    yoffset = kwvalues['yoffset']
+    lnormalized = kwvalues['lnormalized']
+    istart = kwvalues['istart']
+    iend = kwvalues['iend']
+    istep = kwvalues['istep']
+    lhzbeam = kwvalues['lhzbeam']
+    lvsz = kwvalues['lvsz']
+    logplot = kwvalues['logplot']
+    color = kwvalues['color']
+    marks = kwvalues['marks']
+    marker = kwvalues['marker']
+    msize = kwvalues['msize']
+    titles = kwvalues['titles']
+    plsysval = kwvalues['plsysval']
+    width = kwvalues['width']
+    linetype = kwvalues['linetype']
+    varsuffix = kwvalues['varsuffix']
+    ff = kwvalues['ff']
 
     iend = _extractvar(iend,varsuffix,ff=ff)
     oord = _extractvar(oord,varsuffix,ff=ff)
@@ -233,23 +265,57 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
 # history plot functions (declared further down) just pass most of the
 # arguments into this function. The only required argument of course of the
 # data to be plotted.
+_hpbasiccont_kwdefaults = {'absc':None,'js':-1,'perspecies':1,
+      'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+      'titlet':'','titleb':'','titlel':'','titler':'',
+      'xscale':1.0,'xoffset':0.0,'yscale':1.0,'yoffset':0.0,
+      'istart':0,'iend':'jhist','istep':None,'jstart':0,
+      'jend':'nzzarr','jstep':None,'lhzbeam':0,'logplot':0,
+      'color':'fg','marks':0,'marker':None,'msize':1.0,
+      'titles':1,'levs':10,'filled':0,'width':1.,'linetype':'solid',
+      'varsuffix':None,'ff':None}
 def hpbasiccont(oord,oordmesh,kwdict={},**kw):
     if me > 0: return
-    kwdefaults = {'absc':None,'js':-1,'perspecies':1,
-                  'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
-                  'titlet':'','titleb':'','titlel':'','titler':'',
-                  'xscale':1.0,'xoffset':0.0,'yscale':1.0,'yoffset':0.0,
-                  'istart':0,'iend':'jhist','istep':None,'jstart':0,
-                  'jend':'nzzarr','jstep':None,'lhzbeam':0,'logplot':0,
-                  'color':'fg','marks':0,'marker':None,'msize':1.0,
-                  'titles':1,'levs':10,'filled':0,'width':1.,'linetype':'solid',
-                  'varsuffix':None,'ff':None}
-    kwvalues = kwdefaults.copy()
+    kwvalues = _hpbasiccont_kwdefaults.copy()
     kwvalues.update(kw)
     kwvalues.update(kwdict)
-    for arg in kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
-    badargs = checkarguments(kwvalues,kwdefaults)
+    badargs = checkarguments(kwvalues,_hpbasiccont_kwdefaults)
     if badargs: raise TypeError,"bad argument %s"%' '.join(badargs.keys())
+    #for arg in _hpbasiccont_kwdefaults: exec(arg+" = kwvalues['"+arg+"']")
+    absc = kwvalues['absc']
+    js = kwvalues['js']
+    perspecies = kwvalues['perspecies']
+    xmin = kwvalues['xmin']
+    xmax = kwvalues['xmax']
+    ymin = kwvalues['ymin']
+    ymax = kwvalues['ymax']
+    titlet = kwvalues['titlet']
+    titleb = kwvalues['titleb']
+    titlel = kwvalues['titlel']
+    titler = kwvalues['titler']
+    xscale = kwvalues['xscale']
+    xoffset = kwvalues['xoffset']
+    yscale = kwvalues['yscale']
+    yoffset = kwvalues['yoffset']
+    istart = kwvalues['istart']
+    iend = kwvalues['iend']
+    istep = kwvalues['istep']
+    jstart = kwvalues['jstart']
+    jend = kwvalues['jend']
+    jstep = kwvalues['jstep']
+    lhzbeam = kwvalues['lhzbeam']
+    logplot = kwvalues['logplot']
+    color = kwvalues['color']
+    marks = kwvalues['marks']
+    marker = kwvalues['marker']
+    msize = kwvalues['msize']
+    titles = kwvalues['titles']
+    levs = kwvalues['levs']
+    filled = kwvalues['filled']
+    width = kwvalues['width']
+    linetype = kwvalues['linetype']
+    varsuffix = kwvalues['varsuffix']
+    ff = kwvalues['ff']
 
     iend = _extractvar(iend,varsuffix,ff=ff)
     jend = _extractvar(jend,varsuffix,ff=ff)
