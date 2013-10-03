@@ -5,7 +5,6 @@ __all__ = ['InjectionGaussLaw',
 from warp import *
 import generateconductors
 import copy
-from em2dsolver import EM2D
 
 particleinjection_version = "$Id: particleinjection.py,v 1.17 2011/11/11 21:52:26 rcohen Exp $"
 def particleinjection_doc():
@@ -30,6 +29,9 @@ extends from i-1/2 to i+1/2.
               rnn =  relax*rnn + (1.-relax)*rnn_old
  - includebadparticles=False: Sometimes, particles cannot be interpolated to the emitting surface.
                               Set this to true to include those particles (not recommended).
+ - solvers=None: optional list of solvers to use when obtaining the E fields. When not given,
+                 the solvers returned by registeredsolvers will be used. If multiple solvers
+                 are given, they must all have the same grid.
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -37,7 +39,8 @@ conductors are an argument.
     """
     def __init__(self,js=None,conductors=None,vthermal=0.,
                  lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
-                 grid=None,inj_d=None,rnnmax=None,relax=None,includebadparticles=False):
+                 grid=None,inj_d=None,rnnmax=None,relax=None,includebadparticles=False,
+                 solvers=None):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
@@ -45,6 +48,8 @@ conductors are an argument.
         self.inj_d = inj_d
         self.relax = relax
         self.includebadparticles = includebadparticles
+        self.solvers = solvers
+
         self.inj_np = 0.   # initial "old" value of number of particles to inject
 
         #if js is None: js = range(top.ns)
@@ -102,7 +107,16 @@ conductors are an argument.
         else:
             return top.inj_param
 
-    def getEfields(self,solver):
+    def getEfields(self,solvers):
+        Ex,Ey,Ez = self.getEfieldsfromsolver(solvers[0])
+        for solver in solvers[1:]:
+            Ex1,Ey1,Ez1 = self.getEfieldsfromsolver(solver)
+            Ex += Ex1
+            Ey += Ey1
+            Ez += Ez1
+        return Ex,Ey,Ez
+
+    def getEfieldsfromsolver(self,solver):
         """Get the E fields from the active field solver.
 This gets the E fields at the face centers of the dual cells. With the
 grid cells at ijk, the fields are obtained at the following locations:
@@ -227,7 +241,14 @@ The sizes of the E arrays will be:
         #self.Ez = Ez
         return Ex,Ey,Ez
 
-    def getintegratedcharge(self,solver):
+    def getintegratedcharge(self,solvers):
+        Qold = self.getintegratedchargefromsolver(solvers[0])
+        for solver in solvers[1:]:
+            Qold1 = self.getintegratedchargefromsolver(solver)
+            Qold += Qold1
+        return Qold
+
+    def getintegratedchargefromsolver(self,solver):
         """Get the charge, integrated over the dual cell. This is simply
 the charge density at the grid point at the center of the dual cell times
 the area of the dual cell.
@@ -249,13 +270,23 @@ the area of the dual cell.
 
         return Irho
 
+    def getsolvers(self):
+        if self.solvers is None:
+            solvers = getregisteredsolvers()
+        else:
+            solvers = self.solvers
+
+        if len(solvers) == 0:
+            solvers = [w3d]
+        return solvers
+
     def doinjection(self):
         # --- This is true when the egun model is being used
         if top.inject == 100: return
 
         self.updategrid()
-        solver = getregisteredsolver()
-        if solver is None: solver = w3d
+        solvers = self.getsolvers()
+        solver = solvers[0]
         self.l_2d = (solver.solvergeom in [w3d.XYgeom,w3d.RZgeom])
         self.lcylindrical = (solver.solvergeom==w3d.RZgeom)
 
@@ -265,10 +296,10 @@ the area of the dual cell.
         dxyz = sqrt(dx**2 + dy**2 + dz**2)
 
         # --- Get the E fields on the face centers of the dual cell
-        Ex,Ey,Ez = self.getEfields(solver)
+        Ex,Ey,Ez = self.getEfields(solvers)
 
         # --- Get the charge integrated over the dual cell
-        Qold = self.getintegratedcharge(solver)
+        Qold = self.getintegratedcharge(solvers)
 
         # --- Do the integrals of E normal over the sides of the dual cell
         Enorm  = Ex[1:,:,:]*dy*dz
@@ -611,9 +642,9 @@ for example after load balancing.
         """
         if self.grid is None: lforce = 1
         if self.usergrid and not lforce: return
-        solver = getregisteredsolver()
-        if solver is None:
-            solver = w3d
+        solvers = self.getsolvers()
+        solver = solvers[0]
+        if solver is w3d:
             solvertop = top
         else:
             solvertop = solver
