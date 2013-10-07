@@ -377,6 +377,16 @@ the area of the dual cell.
             yy += solver.ymminp
         zz += solver.zmminp
 
+        # --- Apply symmetries
+        if solver.l4symtry:
+            xsign = where(random.random(nn) < 0.5,-1.,+1.)
+            xx *= xsign
+            ex *= xsign
+        if solver.l4symtry or solver.l2symtry:
+            ysign = where(random.random(nn) < 0.5,-1.,+1.)
+            yy *= ysign
+            ey *= ysign
+
         # --- Give particles a thermal velocity.
         # --- This now ignores the fact the roughly half the particles will be
         # --- headed back into the conductor.
