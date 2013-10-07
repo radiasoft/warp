@@ -4858,8 +4858,16 @@ c     --- Calculate some temporaries.
           ynext = yp(1)
         endif
 
-        xinext = (xnext - xmmin)*dxi
-        yjnext = (ynext - ymmin)*dyi
+        if (l4symtry) then
+          xinext = (abs(xnext) - xmmin)*dxi
+        else
+          xinext = (xnext - xmmin)*dxi
+        endif
+        if (l4symtry .or. l2symtry) then
+          yjnext = (abs(ynext) - ymmin)*dyi
+        else
+          yjnext = (ynext - ymmin)*dyi
+        endif
         zknext = (zp(1) - zgrid - zmmin)*dzi
         if (l4symtry) xinext = abs(xinext)
         if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
@@ -4884,11 +4892,17 @@ c     --- Calculate some temporaries.
               xnext = xp(ip+1)
               ynext = yp(ip+1)
             endif
-            xinext = (xnext - xmmin)*dxi
-            yjnext = (ynext - ymmin)*dyi
+            if (l4symtry) then
+              xinext = (abs(xnext) - xmmin)*dxi
+            else
+              xinext = (xnext - xmmin)*dxi
+            endif
+            if (l4symtry .or. l2symtry) then
+              yjnext = (abs(ynext) - ymmin)*dyi
+            else
+              yjnext = (ynext - ymmin)*dyi
+            endif
             zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-            if (l4symtry) xinext = abs(xinext)
-            if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
             inext = xinext
             jnext = yjnext
             knext = zknext
@@ -5003,7 +5017,7 @@ c     --- Calculate some temporaries.
           endif
 
           if (xp(ip) < 0. .and. l4symtry) ext = -ext
-          if (yp(ip) < 0. .and. (l4symtry .or. l2symtry)) ext = -eyt
+          if (yp(ip) < 0. .and. (l4symtry .or. l2symtry)) eyt = -eyt
 
           if (lcylindrical) then
             if (x > 0.) then
