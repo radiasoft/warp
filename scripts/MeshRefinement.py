@@ -3225,7 +3225,7 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
   def finalizesourcep(self):
     if self.l_verbose:print 'finalizesourcep',self.sourcepfinalized
     if self.sourcepfinalized: return
-    self.sourcepfinalized = 1
+    self.sourcepfinalized = True
     self.add_source_ndts_slices()
     self.aftersetsourcep()
     # --- smooth current density 

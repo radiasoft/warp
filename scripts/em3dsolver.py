@@ -1254,7 +1254,7 @@ class EM3D(SubcycledPoissonSolver):
 
   def finalizesourcep(self):
     if self.sourcepfinalized: return
-    self.sourcepfinalized = 1
+    self.sourcepfinalized = True
     if self.l_verbose:print 'finalizesourcep'
     # --- add slices
     self.add_source_ndts_slices()

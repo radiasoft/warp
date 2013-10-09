@@ -441,7 +441,7 @@ the diagnostic is of interest and is meaningfull.
     self.setupparallelneighbors()
 
     # --- Some flags
-    self.sourcepfinalized = 1
+    self.sourcepfinalized = False
 
   def processdefaultsfrompackage(self,defaults,package,kw):
     for name in defaults:
@@ -1388,12 +1388,12 @@ class SubcycledPoissonSolver(FieldSolver):
 
     # --- Only finalize the source if lzero is true, which means the this
     # --- call to loadsource should be a complete operation.
-    self.sourcepfinalized = 0
+    self.sourcepfinalized = False
     if lzero and lfinalize_rho: self.finalizesourcep()
 
   def finalizesourcep(self):
     if self.sourcepfinalized: return
-    self.sourcepfinalized = 1
+    self.sourcepfinalized = True
     for indts in range(top.nsndts):
       if top.ldts[indts]:
         for iselfb in range(top.nsselfb):

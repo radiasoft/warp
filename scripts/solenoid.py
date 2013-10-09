@@ -446,7 +446,7 @@ Input arguments:
 
   # --- Set this, so that the solver thinks that a loadj has been done
   # --- (which is effectively correct since sourcep was set above).
-  Bsolver.sourcepfinalized = 0
+  Bsolver.sourcepfinalized = False
 
   # --- Set convergence tolerence (in Tesla)
   Bsolver.mgtol = abs(bzmax)*tol*ones(3)
