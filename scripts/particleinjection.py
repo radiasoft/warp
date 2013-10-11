@@ -32,6 +32,9 @@ extends from i-1/2 to i+1/2.
  - solvers=None: optional list of solvers to use when obtaining the E fields. When not given,
                  the solvers returned by registeredsolvers will be used. If multiple solvers
                  are given, they must all have the same grid.
+ - doloadrho=False: When true, loadrho is called for the solver. If solvers is given, it is assumed
+                    that they are not registered solvers and that the charge density is not otherwise
+                    loaded, and this defaults to True.
 
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
@@ -40,7 +43,7 @@ conductors are an argument.
     def __init__(self,js=None,conductors=None,vthermal=0.,
                  lcorrectede=None,l_inj_addtempz_abs=None,lsmooth121=0,
                  grid=None,inj_d=None,rnnmax=None,relax=None,includebadparticles=False,
-                 solvers=None):
+                 solvers=None,doloadrho=None):
         self.vthermal = vthermal
         self.lcorrectede = lcorrectede
         self.l_inj_addtempz_abs = l_inj_addtempz_abs
@@ -49,6 +52,12 @@ conductors are an argument.
         self.relax = relax
         self.includebadparticles = includebadparticles
         self.solvers = solvers
+        if doloadrho is None:
+            if solvers is None:
+                doloadrho = False
+            else:
+                doloadrho = True
+        self.doloadrho = doloadrho
 
         self.inj_np = 0.   # initial "old" value of number of particles to inject
 
@@ -88,6 +97,9 @@ conductors are an argument.
             uninstalluserinjection(self.doinjection)
         if isinstalleduserinjection2(self.finishinjection):
             uninstalluserinjection2(self.finishinjection)
+        if self.doloadrho:
+            if isinstalledafterloadrho(self.callloadrho):
+                uninstallafterloadrho(self.callloadrho)
 
     def getlcorrectede(self):
         if self.lcorrectede is not None:
@@ -106,6 +118,20 @@ conductors are an argument.
             return self.relax
         else:
             return top.inj_param
+
+    def getsolvers(self):
+        if self.solvers is None:
+            solvers = getregisteredsolvers()
+        else:
+            solvers = self.solvers
+
+        if len(solvers) == 0:
+            solvers = [w3d]
+        return solvers
+
+    def callloadrho(self):
+        for solver in self.getsolvers():
+            solver.loadrho()
 
     def getEfields(self,solvers):
         Ex,Ey,Ez = self.getEfieldsfromsolver(solvers[0])
@@ -269,16 +295,6 @@ the area of the dual cell.
         Irho = rhop*dx*dy*dz
 
         return Irho
-
-    def getsolvers(self):
-        if self.solvers is None:
-            solvers = getregisteredsolvers()
-        else:
-            solvers = self.solvers
-
-        if len(solvers) == 0:
-            solvers = [w3d]
-        return solvers
 
     def doinjection(self):
         # --- This is true when the egun model is being used
