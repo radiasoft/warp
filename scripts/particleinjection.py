@@ -52,11 +52,6 @@ conductors are an argument.
         self.relax = relax
         self.includebadparticles = includebadparticles
         self.solvers = solvers
-        if doloadrho is None:
-            if solvers is None:
-                doloadrho = False
-            else:
-                doloadrho = True
         self.doloadrho = doloadrho
 
         self.inj_np = 0.   # initial "old" value of number of particles to inject
@@ -83,6 +78,7 @@ conductors are an argument.
         if self.usergrid: self.updateconductors()
 
         self.rnnmax = rnnmax
+        self.solverwithrho = None
 
         self.injectedparticlesid = nextpid() - 1
 
@@ -97,9 +93,9 @@ conductors are an argument.
             uninstalluserinjection(self.doinjection)
         if isinstalleduserinjection2(self.finishinjection):
             uninstalluserinjection2(self.finishinjection)
-        if self.doloadrho:
-            if isinstalledafterloadrho(self.callloadrho):
-                uninstallafterloadrho(self.callloadrho)
+        if self.doloadrho is None or self.doloadrho:
+            if isinstalledbeforeloadrho(self.callloadrho):
+                uninstallbeforeloadrho(self.callloadrho)
 
     def getlcorrectede(self):
         if self.lcorrectede is not None:
@@ -130,8 +126,57 @@ conductors are an argument.
         return solvers
 
     def callloadrho(self):
-        for solver in self.getsolvers():
-            solver.loadrho()
+        # --- A complicated set of checks is needed to determine if loadrho
+        # --- needs to be called. This also determines which solver to get
+        # --- rho from. Rho is only obtained from one solver to avoid
+        # --- duplication.
+        solvers = self.getsolvers()
+        regsolvers = getregisteredsolvers()
+        self.solverwithrho = None
+        if self.solvers is None and len(regsolvers) == 0:
+            # --- A built in solver is being used, so loadrho would have
+            # --- already been called. Do nothing.
+            self.solverwithrho = w3d
+            return
+        else:
+            for solver in solvers:
+                if solver in regsolvers:
+                    # --- A registered solver may have had loadrho already called.
+                    if isinstance(solver,EM3D):
+                        # --- If using the EM solver, loadrho has already been called
+                        # --- only if the l_deposit_rho flag is true.
+                        if solver.l_deposit_rho:
+                            self.solverwithrho = solver
+                            return
+                        else:
+                            # --- Use the EM solver, but only if no other solver is found.
+                            if self.solverwithrho is None: self.solverwithrho = solver
+                    else:
+                        # --- All other solvers, currently electrostatic solvers,
+                        # --- already call loadrho. This will probably break at
+                        # --- some point if a new type of solver is used.
+                        self.solverwithrho = solver
+                        return
+                else:
+                    # --- If the solver is not registered, then loadrho will have
+                    # --- to be called here. There is a preference for an ES solver,
+                    # --- so don't reset solverwithrho to an EM solver if it is
+                    # --- already set.
+                    if isinstance(solver,EM3D):
+                        if self.solverwithrho is None: self.solverwithrho = solver
+                    else:
+                        self.solverwithrho = solver
+
+        if isinstance(self.solverwithrho,EM3D) and self.solverwithrho in regsolvers:
+            # --- The EM solver is being used, but the l_deposit_rho is not set.
+            # --- Set the flag to true - BUT - don't load rho here.
+            # --- Loading rho with the EM solver is better done as part of normal
+            # --- operations. This will happen during the remainder of the loadrho call.
+            self.solverwithrho.l_deposit_rho = True
+            return
+
+        # --- If this point is reached, then an explicit call to loadrho is needed.
+        self.solverwithrho.loadrho(lzero=True,lfinalize_rho=True)
 
     def getEfields(self,solvers):
         Ex,Ey,Ez = self.getEfieldsfromsolver(solvers[0])
@@ -267,11 +312,10 @@ The sizes of the E arrays will be:
         #self.Ez = Ez
         return Ex,Ey,Ez
 
-    def getintegratedcharge(self,solvers):
-        Qold = self.getintegratedchargefromsolver(solvers[0])
-        for solver in solvers[1:]:
-            Qold1 = self.getintegratedchargefromsolver(solver)
-            Qold += Qold1
+    def getintegratedcharge(self):
+        if self.solverwithrho is None:
+            self.callloadrho()
+        Qold = self.getintegratedchargefromsolver(self.solverwithrho)
         return Qold
 
     def getintegratedchargefromsolver(self,solver):
@@ -296,6 +340,30 @@ the area of the dual cell.
 
         return Irho
 
+    def fetche3dfrompositionsfromsolvers(self,pgroup,x,y,z,ex,ey,ez,bx,by,bz):
+        solvers = self.getsolvers()
+        regsolvers = getregisteredsolvers()
+        for solver in solvers:
+            if solver in regsolvers or solver is w3d:
+                # --- The field from registered solvers is fetched elsewhere
+                continue
+            w3d.jsfsapi = self.js
+            w3d.npfsapi = len(x)
+            w3d.xfsapi = x
+            w3d.yfsapi = y
+            w3d.zfsapi = z
+            w3d.exfsapi = ex
+            w3d.eyfsapi = ey
+            w3d.ezfsapi = ez
+            w3d.bxfsapi = bx
+            w3d.byfsapi = by
+            w3d.bzfsapi = bz
+            w3d.pgroupfsapi = pgroup
+            w3d.ndtsfsapi = pgroup.ndts[self.js]
+            solver.fetchfield()
+            w3d.xfsapi = w3d.yfsapi = w3d.zfsapi = w3d.exfsapi = w3d.eyfsapi = w3d.ezfsapi = None
+            w3d.bxfsapi = w3d.byfsapi = w3d.bzfsapi = w3d.pgroupfsapi = None
+
     def doinjection(self):
         # --- This is true when the egun model is being used
         if top.inject == 100: return
@@ -315,7 +383,7 @@ the area of the dual cell.
         Ex,Ey,Ez = self.getEfields(solvers)
 
         # --- Get the charge integrated over the dual cell
-        Qold = self.getintegratedcharge(solvers)
+        Qold = self.getintegratedcharge()
 
         # --- Do the integrals of E normal over the sides of the dual cell
         Enorm  = Ex[1:,:,:]*dy*dz
@@ -559,6 +627,7 @@ the area of the dual cell.
         # --- The self fields are gathered at the virtual surface.
         ex,ey,ez = zeros((3,nn),'d')
         bx,by,bz = zeros((3,nn),'d')
+        self.fetche3dfrompositionsfromsolvers(top.pgroup,xv,yv,zv,ex,ey,ez,bx,by,bz)
         fetche3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xv,yv,zv,ex,ey,ez,bx,by,bz)
         fetchb3dfrompositions(top.pgroup.sid[self.js],top.pgroup.ndts[self.js],nn,xv,yv,zv,bx,by,bz)
         exap,eyap,ezap,bxap,byap,bzap = getappliedfields(xx,yy,zz,time=top.time,js=self.js)
