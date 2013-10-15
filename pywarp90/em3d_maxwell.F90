@@ -8112,7 +8112,6 @@ end subroutine em3d_exchange_bndrho_zrecv
 
 subroutine em3d_exchange_e(b)
 use mod_emfield3d
-use Parallel,Only:my_index
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
