@@ -149,8 +149,8 @@ package('top')
 tval = zeros(1,'l')
 fval = zeros(1,'l')
 getfortantruefalse(tval,fval)
-true = tval[0]
-false = fval[0]
+true = int(tval[0])
+false = int(fval[0])
 del tval,fval
 
 # --- Set default runid to first filename in the command line, stripping off
