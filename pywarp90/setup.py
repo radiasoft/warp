@@ -40,7 +40,7 @@ dummybuild = dummydist.get_command_obj('build')
 dummybuild.finalize_options()
 builddir = dummybuild.build_temp
 
-if 'install' in dummydist.commands:
+if dummydist.commands[-1] == 'install':
     # --- When an install is being done, set packagename so that the warpC.so
     # --- will get installed into the site-packages/warp directory.
     packagename = 'warp.'
@@ -49,7 +49,7 @@ else:
     # --- which will typically be the pywarp90 directory.
     packagename = ''
 
-if 'install' in dummydist.commands:
+if dummydist.commands[-1] == 'install':
     # --- During an install, remove the build/lib directory, since distutils
     # --- doesn't update an older warpC.so even if there were changes.
     os.system('rm -rf build/lib*')
@@ -120,7 +120,7 @@ else:
 # --- source file is, rather than relative to the main build directory.
 # --- This tells distutils to put the objects in the same directory
 # --- as the source files.
-if sys.hexversion >= 0x020300f0 and args[0] == 'build':
+if sys.hexversion >= 0x020300f0 and dummydist.commands[-1] == 'build':
     sys.argv += ['--build-temp','']
 
 if machine == 'darwin':
@@ -189,9 +189,10 @@ machines that are space-charge dominated.""",
                                 #library_dirs=library_dirs+['SuperLU'],
                                 #libraries=libraries+['superlu_3.0','blas'],
 
-# --- Copy .so files to the script directory
-if sys.hexversion >= 0x03000000:
-    os.system('cp %s/*.so ../scripts'%dummybuild.build_platlib)
-else:
-    os.system('mv %s/%s.so ../scripts'%(dummybuild.build_platlib,name))
+if dummydist.commands[-1] == 'build':
+    # --- Copy .so files to the script directory
+    if sys.hexversion >= 0x03000000:
+        os.system('cp %s/*.so ../scripts'%dummybuild.build_platlib)
+    else:
+        os.system('mv %s/%s.so ../scripts'%(dummybuild.build_platlib,name))
 

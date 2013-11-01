@@ -1,4 +1,5 @@
 DEBUG = #-g --farg "-O0"
+FARGS =
 FCOMP =
 SO = so
 VERBOSE = #-v
@@ -6,48 +7,55 @@ FORTHON = Forthon
 PYTHON = python
 BUILDBASEDIR = build
 -include Makefile.local
+BUILDBASE = --build-base $(BUILDBASEDIR)
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	$(PYTHON) setup.py $(FCOMP) build
+	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE)
+
+installso: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
+	$(PYTHON) setup.py build $(BUILDBASE) install
+
+install: installso
+	(cd ../scripts;$(PYTHON) setup.py install)
 
 toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F util.F top.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) top top_lattice.F top_fsl.F dtop.F util.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F util.F $(BUILDBASE)
 
 envpy.$(SO): toppy.$(SO) env.F env.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) env
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) env $(BUILDBASE)
 
 w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_utilities.F w3d_load.F w3d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_load.F w3d_utilities.F 
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_load.F w3d_utilities.F $(BUILDBASE)
 
 f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F $(BUILDBASE)
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) wxy
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) wxy $(BUILDBASE)
 
 fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) fxy fxy_mgrid.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) fxy fxy_mgrid.F $(BUILDBASE)
 
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) --macros top.v wrz dwrz.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v wrz dwrz.F $(BUILDBASE)
 
 frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F frz.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F $(BUILDBASE)
 
 herpy.$(SO): toppy.$(SO) her.F her.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) her
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) her $(BUILDBASE)
 
 cirpy.$(SO): toppy.$(SO) cir.F cir.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) cir
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) cir $(BUILDBASE)
 
 chopy.$(SO): toppy.$(SO) cho.F cho.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) cho
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) cho $(BUILDBASE)
 
 em2dpy.$(SO): toppy.$(SO) em2d.F90 em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 em2d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 $(BUILDBASE)
 
 em3dpy.$(SO): toppy.$(SO) em3d.F90 em3d_maxwell.F90 em3d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(DEBUG) em3d em3d_maxwell.F90
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) em3d em3d_maxwell.F90 $(BUILDBASE)
 
 ranffortran.c: ranffortran.m
 	$(PYTHON) -c "from Forthon.preprocess import main;main()" ranffortran.m ranffortran.c
