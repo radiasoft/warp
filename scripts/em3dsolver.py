@@ -53,7 +53,8 @@ class EM3D(SubcycledPoissonSolver):
                     'l_coarse_patch':false,'stencil':false,
                     'l_esirkepov':true,'theta_damp':0.,
                     'sigmae':0.,'sigmab':0.,
-                    'colecoefs':None,'l_setcowancoefs':False}
+                    'colecoefs':None,'l_setcowancoefs':False,
+                    'excoef':None,'bycoef':None}
 
   def __init__(self,**kw):
     self.solveroff=False # flag to turn off the solver, for testing purpose
@@ -406,7 +407,9 @@ class EM3D(SubcycledPoissonSolver):
                                    self.l_2drz,
                                    self.theta_damp,
                                    self.sigmae,
-                                   self.sigmab)
+                                   self.sigmab,
+                                   self.excoef,
+                                   self.bycoef)
     self.fields = self.block.core.yf
     if self.l_2drz:    
       self.vol = 2.*pi*(arange(self.nx+1)*self.dx+self.block.xmin)*self.dx*self.dz
@@ -1403,6 +1406,15 @@ class EM3D(SubcycledPoissonSolver):
         if self.l_pushf or self.l_deposit_rho:
           smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
        
+  def smoothfields_poly(self):
+    nx,ny,nz = shape(self.fields.Exp)
+    smooth_poly(self.fields.Exp,nx-1,ny-1,nz-1,self.fields.ex_stencil)
+    smooth_poly(self.fields.Eyp,nx-1,ny-1,nz-1,self.fields.ex_stencil)
+    smooth_poly(self.fields.Ezp,nx-1,ny-1,nz-1,self.fields.by_stencil)
+    smooth_poly(self.fields.Bxp,nx-1,ny-1,nz-1,self.fields.by_stencil)
+    smooth_poly(self.fields.Byp,nx-1,ny-1,nz-1,self.fields.by_stencil)
+    smooth_poly(self.fields.Bzp,nx-1,ny-1,nz-1,self.fields.ex_stencil)
+
   def getsmoothx(self):
     nx = w3d.nx
     ny = 1
@@ -1836,6 +1848,7 @@ class EM3D(SubcycledPoissonSolver):
     if top.efetch[0] != 4:self.yee2node3d()
     if self.l_smooth_particle_fields and any(self.npass_smooth>0):
        self.smoothfields()
+    if self.excoef is not None:self.smoothfields_poly()
     # --- for fields that are overcycled, they need to be pushed backward every ncyclesperstep
     self.push_e(dir=-1)
     self.exchange_e(dir=-1)
@@ -3616,7 +3629,9 @@ def pyinit_3dem_block(nx, ny, nz,
                       l_2drz,
                       theta_damp,
                       sigmae,
-                      sigmab):
+                      sigmab,
+                      excoef,
+                      bycoef):
                       
   if xlb == em3d.otherproc:
     procxl = top.procneighbors[0,0]
@@ -3768,6 +3783,20 @@ def pyinit_3dem_block(nx, ny, nz,
 
   f.gchange()
   
+  if excoef is not None:
+    # --- sets field deposition transformation stencil
+    f.ex_stencil[0] =  (256+128*excoef[0]+96*excoef[1]+80*excoef[2]+70*excoef[3])/256
+    f.ex_stencil[1] = -(     64*excoef[0]+64*excoef[1]+60*excoef[2]+56*excoef[3])/256
+    f.ex_stencil[2] =  (                  16*excoef[1]+24*excoef[2]+28*excoef[3])/256
+    f.ex_stencil[3] = -(                                4*excoef[2]+ 8*excoef[3])/256
+    f.ex_stencil[4] =  (                                             1*excoef[3])/256
+  if bycoef is not None:
+    f.by_stencil[0] =  (256+128*bycoef[0]+96*bycoef[1]+80*bycoef[2]+70*bycoef[3])/256
+    f.by_stencil[1] = -(     64*bycoef[0]+64*bycoef[1]+60*bycoef[2]+56*bycoef[3])/256
+    f.by_stencil[2] =  (                  16*bycoef[1]+24*bycoef[2]+28*bycoef[3])/256
+    f.by_stencil[3] = -(                                4*bycoef[2]+ 8*bycoef[3])/256
+    f.by_stencil[4] =  (                                             1*bycoef[3])/256
+
   if 0:#refinement is None and  (all(npass_smooth==0) or not l_smooth_particle_fields):
     f.nxp = f.nx
     f.nyp = f.ny
