@@ -6420,10 +6420,10 @@ c       --- Make sure there is space allocated for the new particles.
         call chckpart(pgroup,js+1,0,npm)
 !$OMP END MASTER
 
-        ip = pgroup%ins(js+1) - 1
+        ip = pgroup%ins(js+1) + pgroup%nps(js+1) - 1
 !$OMP SINGLE
 #ifdef _OPENMP
-        iptotal = pgroup%ins(js+1) - 1
+        iptotal = pgroup%ins(js+1) + pgroup%nps(js+1) - 1
 #endif
 !$OMP END SINGLE
 
