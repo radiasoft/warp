@@ -1382,7 +1382,9 @@ smooth3d_121_stride_mask(q(0:nx,0:ny,0:nz):real,mask(0:nx,0:ny,0:nz):real,
                     nx:integer,ny:integer,nz:integer,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
    # three points linear smoothing with stride
-
+smooth_poly(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,sten(0:4):real) subroutine
+   # performs smoothing in z with nine points stencil 
+   
 ******** Subtimersw3d dump:
 lw3dtimesubs logical /.false./
 timew3dinit real /0./

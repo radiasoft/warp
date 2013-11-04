@@ -1157,6 +1157,7 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
        real(kind=8) :: temp0, temp1, alpha(3), a, b
 
 !     x smoothing
+        if (nx>0) then
         a = alpha(1)
         b = (1.-a)/2.
         do i=1,npass(1)
@@ -1173,8 +1174,10 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
             end do
           end do
         end do
+        end if
 
 !      y smoothing
+        if (ny>0) then
         a = alpha(2)
         b = (1.-a)/2.
         do i=1,npass(2)
@@ -1191,8 +1194,10 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
             end do
           end do
         end do
+        end if
 
 !     z smoothing
+        if (nz>0) then
         a = alpha(3)
         b = (1.-a)/2.
         do i=1,npass(3)
@@ -1209,6 +1214,7 @@ c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or 
             end do
           end do
         end do
+        end if
 
         return
       end subroutine smooth3d_121
@@ -1370,6 +1376,7 @@ c     --- with a stride.
        real(kind=8) :: tempx(0:nx), tempy(0:ny), tempz(0:nz), alpha(3), a, b
 
 !           x smoothing
+        if (nx>1) then
         a = alpha(1)
         b = (1.-a)/2.
         do i=1,npass(1)
@@ -1388,8 +1395,10 @@ c     --- with a stride.
             end do
           end do
         end do
+        end if
 
 !           y smoothing
+        if (ny>1) then
         a = alpha(2)
         b = (1.-a)/2.
         do i=1,npass(2)
@@ -1408,8 +1417,10 @@ c     --- with a stride.
             end do
           end do
         end do
+        end if
 
 !           z smoothing
+        if (nz>1) then
         a = alpha(3)
         b = (1.-a)/2.
         do i=1,npass(3)
@@ -1428,6 +1439,7 @@ c     --- with a stride.
             end do
           end do
         end do
+        end if
 
         return
       end subroutine smooth3d_121_stride
@@ -1535,6 +1547,29 @@ c     --- with a stride.
 
         return
       end subroutine smooth3d_121_stride_mask
+c===========================================================================
+      subroutine smooth_poly(q,nx,ny,nz,sten)
+!     --- performs smoothing in z with nine points stencil 
+       implicit none
+
+       integer(ISZ) :: nx,ny,nz,i,j,k,l
+       real(kind=8), dimension(0:nx,0:ny,0:nz) :: q
+       real(kind=8), dimension(0:nz) :: tmp
+       real(kind=8), dimension(0:4) :: sten
+         do  k=0,ny
+           do  j=0,nx
+             tmp = q(j,k,:)
+             do l=4,nz-4
+               q(j,k,l)=sten(0)*tmp(l)
+               do i=1,4
+                 q(j,k,l)=q(j,k,l)+sten(i)*(tmp(l-i)+tmp(l+i))
+               end do
+             end do
+           end do
+         end do
+
+        return
+      end subroutine smooth_poly
 c===========================================================================
       subroutine flagparticlesbysortedssn(flag,np,ssn,pflag,
      &                                    nflagged,ssnflagged)
