@@ -2243,9 +2243,9 @@ class Intercept:
             ii = logical_and(selfdist.distance<-surffuzz,rightdist.distance<-surffuzz)
             # --- For each of these points, choose the intercept that is closest
             # --- to the surface of the combined object.
-            xx = choose(selfdist.distance<rightdist.distance,[self.xi[ii],right.xi[ii]])
-            yy = choose(selfdist.distance<rightdist.distance,[self.yi[ii],right.yi[ii]])
-            zz = choose(selfdist.distance<rightdist.distance,[self.zi[ii],right.zi[ii]])
+            xx = where(selfdist.distance[ii]>rightdist.distance[ii],self.xi[ii],right.xi[ii])
+            yy = where(selfdist.distance[ii]>rightdist.distance[ii],self.yi[ii],right.yi[ii])
+            zz = where(selfdist.distance[ii]>rightdist.distance[ii],self.zi[ii],right.zi[ii])
             # --- The v's are the same in both self and right.
             vx = self.vx[ii]
             vy = self.vy[ii]
