@@ -182,9 +182,11 @@ conductors are an argument.
         Ex,Ey,Ez = self.getEfieldsfromsolver(solvers[0])
         for solver in solvers[1:]:
             Ex1,Ey1,Ez1 = self.getEfieldsfromsolver(solver)
-            Ex += Ex1
-            Ey += Ey1
-            Ez += Ez1
+            # --- Note that the addition is done in a way that creates new arrays
+            # --- so that the E from the first solver are not corrupted.
+            Ex = Ex + Ex1
+            Ey = Ey + Ey1
+            Ez = Ez + Ez1
         return Ex,Ey,Ez
 
     def getEfieldsfromsolver(self,solver):
