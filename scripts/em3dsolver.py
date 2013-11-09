@@ -299,7 +299,7 @@ class EM3D(SubcycledPoissonSolver):
                                xmminlocal=self.xmminlocal,xmmaxlocal=self.xmmaxlocal,
                                ymminlocal=self.ymminlocal,ymmaxlocal=self.ymmaxlocal,
                                zmminlocal=self.zmminlocal,zmmaxlocal=self.zmmaxlocal,
-                               bounds=self.bounds,
+                               #bounds=self.bounds,
                                isactiveem=self.isactive,
                                ncyclesperstep=self.root.listofblocks[self.parents[0]].ncyclesperstep,
                                **self.kw)
