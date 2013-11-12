@@ -3123,35 +3123,19 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
     for i in range(int(ncyclesperstep)-1):
       for c in children:
         self.__class__.__bases__[1].push_b_full(c)
-    for i in range(int(ncyclesperstep)-1):
-      for c in children:
         if c.l_pushf:
           self.__class__.__bases__[1].exchange_f(c)
-    for i in range(int(ncyclesperstep)-1):
-      for c in children:
         self.__class__.__bases__[1].exchange_b(c)
-    for i in range(int(ncyclesperstep)-1):
-      for c in children:
         self.__class__.__bases__[1].push_e_full(c,i)
-    for i in range(int(ncyclesperstep)-1):
-      for c in children:
         self.__class__.__bases__[1].exchange_e(c)
     if c0.refinement is not None:
       ncyclesperstep = c0.field_coarse.ncyclesperstep
       for i in range(int(ncyclesperstep)-1):
         for c in children:
           self.__class__.__bases__[1].push_b_full(c.field_coarse)
-      for i in range(int(ncyclesperstep)-1):
-        for c in children:
           self.__class__.__bases__[1].exchange_f(c.field_coarse)
-      for i in range(int(ncyclesperstep)-1):
-        for c in children:
           self.__class__.__bases__[1].exchange_b(c.field_coarse)
-      for i in range(int(ncyclesperstep)-1):
-        for c in children:
           self.__class__.__bases__[1].push_e_full(c.field_coarse,i)
-      for i in range(int(ncyclesperstep)-1):
-        for c in children:
           self.__class__.__bases__[1].exchange_e(c.field_coarse)
     
   def addsubstractfieldfromparent(self):
