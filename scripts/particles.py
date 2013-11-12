@@ -989,6 +989,48 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
+def getbr(iw=0,gather=1,bcast=None,**kw):
+  "Returns the Br field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    bx = getattrwithsuffix(pgroup,'bx',suffix)
+    by = getattrwithsuffix(pgroup,'by',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
+    theta = arctan2(y[ii],x[ii])
+    result = bx[ii]*cos(theta) + by[ii]*sin(theta)
+  elif ii.size > 0:
+    theta = arctan2(y[ii],x[ii])
+    result = bx[ii]*cos(theta) + by[ii]*sin(theta)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getbtheta(iw=0,gather=1,bcast=None,**kw):
+  "Returns the Btheta field applied to the particles. For particle selection options, see :py:func:`~particles.selectparticles`."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if (isinstance(ii,slice) and ii.stop > ii.start) or ii.size > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    bx = getattrwithsuffix(pgroup,'bx',suffix)
+    by = getattrwithsuffix(pgroup,'by',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
+    theta = arctan2(y[ii],x[ii])
+    result = -bx[ii]*sin(theta) + by[ii]*cos(theta)
+  elif ii.size > 0:
+    theta = arctan2(y[ii],x[ii])
+    result = -bx[ii]*sin(theta) + by[ii]*cos(theta)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
 def getpid(id=0,iw=0,gather=1,bcast=None,**kw):
   """Returns particle id information.
   - id=0: which pid value to return
@@ -1186,6 +1228,8 @@ getetheta.__doc__ += _paralleldoc
 getbx.__doc__ += _paralleldoc
 getby.__doc__ += _paralleldoc
 getbz.__doc__ += _paralleldoc
+getbr.__doc__ += _paralleldoc
+getbtheta.__doc__ += _paralleldoc
 getpid.__doc__ += _paralleldoc
 getvdrifts.__doc__ += _paralleldoc
 getw.__doc__ += _paralleldoc
