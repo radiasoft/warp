@@ -19,7 +19,7 @@ The function changecycle can be called to change the number of steps between
 fieldsolves.
   """
   # --------------------------------------------------------------------
-  def __init__(s,nsubcycle=25):
+  def __init__(s,nsubcycle=25,laccumulate_between_fs=0):
     if nsubcycle < 1:
       print "Warning, number of steps must be greater than zero."
       print "         Default value of 25 will be used."
@@ -28,6 +28,7 @@ fieldsolves.
     s.enabled = 0
     s.enable()
     s.fstypesave = top.fstype
+    s.laccumulate_between_fs = laccumulate_between_fs
     if top.fstype < 0:
       print "Warning, no fieldsolve type defined. Subcycling will continue"
       print "as normal, except that no fieldsolves will be done."
@@ -105,8 +106,12 @@ Turns on the field solver by restoring the field solve type.
 Turns off charge deposition when not needed for optimization. Turns off field
 solve so that it is only explicitly done after the step.
     """
-    if (top.it+1)%s.nsubcycle == 0: s.turnondeposition()
-    else:                           s.turnoffdeposition()
+    if s.laccumulate_between_fs:
+      if (top.it)%s.nsubcycle == 0: top.laccumulate_rho = false
+      else:                           top.laccumulate_rho = true
+    else:
+      if (top.it+1)%s.nsubcycle == 0: s.turnondeposition()
+      else:                           s.turnoffdeposition()
     s.turnofffieldsolve()
   # --------------------------------------------------------------------
   def doafterstep(s):
