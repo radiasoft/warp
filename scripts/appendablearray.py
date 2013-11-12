@@ -274,3 +274,7 @@ class DynamicHistogramIntersect(DynamicHistogram):
 
     def getave(self):
         return numpy.sum(self.data[:]*self.bins[:])/numpy.sum(self.data[:])
+
+    def getrms(self):
+        b=self.bins-self.getave()
+        return numpy.sqrt(numpy.sum(self.data[:]*b*b)/numpy.sum(self.data[:]))
