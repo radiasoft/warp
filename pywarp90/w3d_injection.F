@@ -4699,6 +4699,7 @@ c=============================================================================
       use Subtimersw3d
       use Constant,Only: pi
       use Particles,Only: wpid
+      use InGen,Only: laccumulate_rho
       use InGen3d
       use InjectVars,Only: ninject,inj_d,injpid,rinject
       use InjectVars3d
@@ -4764,7 +4765,7 @@ c Calculate the charge density in the region of the injector mesh refinement.
       dz_local(inj_nz) = dz_local(inj_nz-1)
 
 c     --- zero out the array
-      inj_q = 0.
+      if (.not. laccumulate_rho) inj_q = 0.
 
 c     --- Loop over species and particles
       if(.not. l_inj_rz .and. .not. l_inj_rz_grid) then
