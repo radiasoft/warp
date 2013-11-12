@@ -668,6 +668,8 @@ Ez_inz(-nxguard:nx+nxguard,-nyguard:ny+nyguard) _real
 dmaskx(-nxguard:nx+nxguard) _real
 dmasky(-nyguard:ny+nyguard) _real
 dmaskz(-nzguard:nz+nzguard) _real
+ex_stencil(0:4) _real
+by_stencil(0:4) _real
 
 %%%%%%%% EM3D_FIELDtype:
 fieldtype integer /0/
