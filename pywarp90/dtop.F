@@ -4474,7 +4474,7 @@ c           --- point is inside if a conductor can be ignored.
       end subroutine digital_filter_1d
       
       subroutine deposeintersect(z1,f1,ssn1,w1,n1,z2,f2,ssn2,w2,n2,z0,hist,fminmax,nf,autoscale,overfrac)
-      integer(ISZ) :: n1,n2,nf
+      integer(ISZ) :: n1,n2,nf,l_auto
       real(kind=8) :: ssn1(n1), ssn2(n2)
       real(kind=8) :: z1(n1), f1(n1), w1(n1), z2(n2), f2(n2), w2(n2), z0, fminmax(2), hist(0:nf), overfrac
       logical(ISZ) :: autoscale
@@ -4498,6 +4498,7 @@ c ssn1 and ssn2 are SORTED social security numbers
           i2 = i2+1
           cycle
         end if
+        l_auto=0
         if (z1(i1)<=z0 .and. z2(i2)>=z0) then
           w = (z0-z1(i1))/(z2(i2)-z1(i1))
           fw = f1(i1)*(1.-w)+f2(i2)*w
@@ -4524,6 +4525,7 @@ c ssn1 and ssn2 are SORTED social security numbers
             end if
             if (j<0 .or. j>(nf-1)) then
               if (autoscale) then
+                l_auto=1
                 allocate(newf(0:nf),fbins(0:nf))
                 newf = 0.
                 df = (fmax-fmin)/nf
@@ -4542,15 +4544,16 @@ c ssn1 and ssn2 are SORTED social security numbers
                 hist = newf
                 deallocate(newf,fbins)
               else
+                l_auto=-1
                 i1=i1+1
                 i2=i2+1
                 cycle
               end if
             end if
           end if
-          w = (fw-j*df-fmin)/df
+          w = (fw-fmin)/df-j
           if (w<0. .or. w>1.) then
-            write(0,*) 'Error in deposeintersect, w<0 or w>1: ',w,fmin,df,fw,j
+            write(0,*) 'Error in deposeintersect, w<0 or w>1: ',w,fmin,fmax,df,fw,j,nf,l_auto
             stop
           end if
           hist(j)   = hist(j)   + (1.-w)*w0
