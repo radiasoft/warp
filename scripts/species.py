@@ -6,6 +6,8 @@ types that are passed into Species. These include all of the atomic elements
 Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
+import PWpickle as PW
+import PRpickle as PR
 
 species_version = "$Id: species.py,v 1.93 2011/12/20 19:41:59 grote Exp $"
 
@@ -155,6 +157,7 @@ periodic_table['Ununpentium']={'A': 288.0, 'Symbol': 'Uup', 'Z': 115, 'Group': 1
 periodic_table['Ununquadium']={'A': 289.0, 'Symbol': 'Uuq', 'Z': 114, 'Group': 14, 'Period': 7}
 periodic_table['Ununhexium']={'A': 292.0, 'Symbol': 'Uuh', 'Z': 116, 'Group': 16, 'Period': 7}
 
+elements=[]
 for k in periodic_table:
   S=periodic_table[k]['Symbol']
   A=periodic_table[k]['A']
@@ -162,6 +165,7 @@ for k in periodic_table:
   G=periodic_table[k]['Group']
   P=periodic_table[k]['Period']
   exec(k+"=Atom(S,A,Z,G,P,name='%s')"%k)
+  exec('elements.append('+k+')')
 #  exec(k+"=periodic_table['"+k+"']")
 del k
 
@@ -181,6 +185,225 @@ Dioxygen   = Molecule(composition=[Oxygen,Oxygen], Symbol='O2',name='Dioxygen')
 Carbon_Monoxide = Molecule(composition=[Carbon,Oxygen], Symbol='CO',name='Carbon_Monoxide')
 Carbon_Dioxide  = Molecule(composition=[Carbon,Oxygen,Oxygen], Symbol='CO2',name='Carbon_Dioxide')
 Water           = Molecule(composition=[Hydrogen,Hydrogen,Oxygen], Symbol='H2O',name='Water')
+
+for elemt in elements:
+   elemt.ionization_levels=zeros(elemt.Z)
+   Ionization_Levels=elemt.ionization_levels
+   Z = elemt.Z
+   if Z==1:#----- Hydrogen
+      Ionization_Levels[0] = 13.6;
+   if Z==2:#---- Helium
+      Ionization_Levels[0] = 24.58;
+      Ionization_Levels[1] = 54.4;
+   if Z==3:#----Lithium
+      Ionization_Levels[0] = 5.392;
+      Ionization_Levels[1] = 75.638;
+      Ionization_Levels[2] = 122.451;
+   if Z==5:#---Boron
+      Ionization_Levels[0] = 8.297;
+      Ionization_Levels[1] = 25.154;
+      Ionization_Levels[2] = 37.929;
+      Ionization_Levels[3] = 259.367;
+      Ionization_Levels[4] = 340.216;
+   if Z==6:#---Carbon
+      Ionization_Levels[0] = 11.261;
+      Ionization_Levels[1] = 24.383;
+      Ionization_Levels[2] = 47.887;
+      Ionization_Levels[3] = 64.492;
+      Ionization_Levels[4] = 392.081;
+      Ionization_Levels[5] = 489.979;
+   if Z==7:#--N
+      Ionization_Levels[0] = 14.534;
+      Ionization_Levels[1] = 29.601;
+      Ionization_Levels[2] = 47.448;
+      Ionization_Levels[3] = 77.472;
+      Ionization_Levels[4] = 97.888;
+      Ionization_Levels[5] = 552.057;
+      Ionization_Levels[6] = 667.029;
+   if Z==10:#--Ne
+      Ionization_Levels[0] = 21.564;
+      Ionization_Levels[1] = 40.962;
+      Ionization_Levels[2] = 63.45;
+      Ionization_Levels[3] = 97.11;
+      Ionization_Levels[4] = 126.21;
+      Ionization_Levels[5] = 157.93;
+      Ionization_Levels[6] = 207.27;
+      Ionization_Levels[7] = 239.09;
+      Ionization_Levels[8] = 1195.79;
+      Ionization_Levels[9] = 1362.164;
+   if Z==13:#--Aluminium
+      Ionization_Levels[0] = 5.968;
+      Ionization_Levels[1] = 18.796;
+      Ionization_Levels[2] = 28.399;
+      Ionization_Levels[3] = 119.78;
+      Ionization_Levels[4] = 153.561;
+      Ionization_Levels[5] = 190.156;
+      Ionization_Levels[6] = 241.34;
+      Ionization_Levels[7] = 284.163;
+      Ionization_Levels[8] = 329.564;
+      Ionization_Levels[9] = 398.057;
+      Ionization_Levels[10] = 441.232;
+      Ionization_Levels[11] = 2082.379;
+      Ionization_Levels[12] = 2300.16;
+   if Z==14:#Silicon:
+      Ionization_Levels[0] = 7.264E0;
+      Ionization_Levels[1] = 1.695E1;
+      Ionization_Levels[2] = 3.427E1;
+      Ionization_Levels[3] = 4.665E1;
+      Ionization_Levels[4] = 1.598E2;
+      Ionization_Levels[5] = 2.105E2;
+      Ionization_Levels[6] = 2.613E2;
+      Ionization_Levels[7] = 3.120E2;
+      Ionization_Levels[8] = 3.640E2;
+      Ionization_Levels[9] = 4.151E2;
+      Ionization_Levels[10] = 5.037E2;
+      Ionization_Levels[11] = 5.522E2;
+      Ionization_Levels[12] = 2.324E3;
+      Ionization_Levels[13] = 2.569E3;
+   if Z==18:#----Argon
+      Ionization_Levels[0] = 15.759;
+      Ionization_Levels[1] = 27.6;
+      Ionization_Levels[2] = 40.7;
+      Ionization_Levels[3] = 59.81;
+      Ionization_Levels[4] = 75.02;
+      Ionization_Levels[5] = 91.007;
+      Ionization_Levels[6] = 124.319;
+      Ionization_Levels[7] = 143.456;
+      Ionization_Levels[8] = 422.44;
+      Ionization_Levels[9] = 478.68;
+      Ionization_Levels[10] = 538.95;
+      Ionization_Levels[11] = 618.24;
+      Ionization_Levels[12] = 686.09;
+      Ionization_Levels[13] = 755.73;
+      Ionization_Levels[14] = 854.75;
+      Ionization_Levels[15] = 918;
+      Ionization_Levels[16] = 4120.778;
+      Ionization_Levels[17] = 4426.114;
+   if Z==29:#Copper:
+      Ionization_Levels[0] = 7.70;
+      Ionization_Levels[1] = 20.234;
+      Ionization_Levels[2] = 36.739;
+      Ionization_Levels[3] = 57.213;
+      Ionization_Levels[4] = 79.577;
+      Ionization_Levels[5] = 102.313;
+      Ionization_Levels[6] = 138.48;
+      Ionization_Levels[7] = 165.354;
+      Ionization_Levels[8] = 198.425;
+      Ionization_Levels[9] = 231.492;
+      Ionization_Levels[10] = 264.566;
+      Ionization_Levels[11] = 367.913;
+      Ionization_Levels[12] = 399.951;
+      Ionization_Levels[13] = 434.055;
+      Ionization_Levels[14] = 482.627;
+      Ionization_Levels[15] = 518.798;
+      Ionization_Levels[16] = 554.970;
+      Ionization_Levels[17] = 631.446;
+      Ionization_Levels[18] = 668.672;
+      Ionization_Levels[19] = 1691.78;
+      Ionization_Levels[20] = 1799.261;
+      Ionization_Levels[21] = 1916.0;
+      Ionization_Levels[22] = 2060.0;
+      Ionization_Levels[23] = 2182.0;
+      Ionization_Levels[24] = 2308.0;
+      Ionization_Levels[25] = 2478.0;
+      Ionization_Levels[26] = 2587.5;
+      Ionization_Levels[27] = 11062.38;
+      Ionization_Levels[28] = 11567.617;
+   if Z==36:#Krypton
+      Ionization_Levels[0] = 1.3999e1;
+      Ionization_Levels[1] = 2.4359e1;
+      Ionization_Levels[2] = 3.695e1;
+      Ionization_Levels[3] = 5.25e1;
+      Ionization_Levels[4] = 6.47e1;
+      Ionization_Levels[5] = 7.85e1;
+      Ionization_Levels[6] = 1.11e2;
+      Ionization_Levels[7] = 1.258e2;
+      Ionization_Levels[8] = 2.3085e2;
+      Ionization_Levels[9] = 2.682e2;
+      Ionization_Levels[10] = 3.08e2;
+      Ionization_Levels[11] = 3.50e2;
+      Ionization_Levels[12] = 3.91e2;
+      Ionization_Levels[13] = 4.47e2;
+      Ionization_Levels[14] = 4.92e2;
+      Ionization_Levels[15] = 5.41e2;
+      Ionization_Levels[16] = 5.92e2;
+      Ionization_Levels[17] = 6.41e2;
+      Ionization_Levels[18] = 7.86e2;
+      Ionization_Levels[19] = 8.33e2;
+      Ionization_Levels[20] = 8.84e2;
+      Ionization_Levels[21] = 9.37e2;
+      Ionization_Levels[22] = 9.98e2;
+      Ionization_Levels[23] = 1.051e3;
+      Ionization_Levels[24] = 1.151e3;
+      Ionization_Levels[25] = 1.2053e3;
+      Ionization_Levels[26] = 2.928e3;
+      Ionization_Levels[27] = 3.07e3;
+      Ionization_Levels[28] = 3.227e3;
+      Ionization_Levels[29] = 3.381e3;
+      Ionization_Levels[30] = 0.0;
+      Ionization_Levels[31] = 0.0;
+      Ionization_Levels[32] = 0.0;
+      Ionization_Levels[33] = 0.0;
+      Ionization_Levels[34] = 0.0;
+      Ionization_Levels[35] = 0.0;
+   if Z==54:#Xenon
+      Ionization_Levels[0] = 1.197e1;
+      Ionization_Levels[1] = 2.354e1;
+      Ionization_Levels[2] = 3.511e1;
+      Ionization_Levels[3] = 4.668e1;
+      Ionization_Levels[4] = 5.969e1;
+      Ionization_Levels[5] = 7.183e1;
+      Ionization_Levels[6] = 9.805e1;
+      Ionization_Levels[7] = 1.123e2;
+      Ionization_Levels[8] = 1.708e2;
+      Ionization_Levels[9] = 2.017e2;
+      Ionization_Levels[10] = 2.326e2;
+      Ionization_Levels[11] = 2.635e2;
+      Ionization_Levels[12] = 2.944e2;
+      Ionization_Levels[13] = 3.253e2;
+      Ionization_Levels[14] = 3.583e2;
+      Ionization_Levels[15] = 3.896e2;
+      Ionization_Levels[16] = 4.209e2;
+      Ionization_Levels[17] = 4.522e2;
+      Ionization_Levels[18] = 5.725e2;
+      Ionization_Levels[19] = 6.077e2;
+      Ionization_Levels[20] = 6.429e2;
+      Ionization_Levels[21] = 6.781e2;
+      Ionization_Levels[22] = 7.260e2;
+      Ionization_Levels[23] = 7.627e2;
+      Ionization_Levels[24] = 8.527e2;
+      Ionization_Levels[25] = 8.906e2;
+      Ionization_Levels[26] = 1.394e3;
+      Ionization_Levels[27] = 1.491e3;
+      Ionization_Levels[28] = 1.587e3;
+      Ionization_Levels[29] = 1.684e3;
+      Ionization_Levels[30] = 1.781e3;
+      Ionization_Levels[31] = 1.877e3;
+      Ionization_Levels[32] = 1.987e3;
+      Ionization_Levels[33] = 2.085e3;
+      Ionization_Levels[34] = 2.183e3;
+      Ionization_Levels[35] = 2.281e3;
+      Ionization_Levels[36] = 2.548e3;
+      Ionization_Levels[37] = 2.637e3;
+      Ionization_Levels[38] = 2.726e3;
+      Ionization_Levels[39] = 2.814e3;
+      Ionization_Levels[40] = 3.001e3;
+      Ionization_Levels[41] = 3.093e3;
+      Ionization_Levels[42] = 3.296e3;
+      Ionization_Levels[43] = 3.386e3;
+      Ionization_Levels[44] = 7.224e3;
+      Ionization_Levels[45] = 7.491e3;
+      Ionization_Levels[46] = 7.758e3;
+      Ionization_Levels[47] = 8.024e3;
+      Ionization_Levels[48] = 8.617e3;
+      Ionization_Levels[49] = 8.899e3;
+      Ionization_Levels[50] = 9.330e3;
+      Ionization_Levels[51] = 9.569e3;
+      Ionization_Levels[52] = 3.925e4;
+      Ionization_Levels[53] = 4.027e4;
+   if Z==55:#----Cesium
+      Ionization_Levels[0] = 3.894;
+
 
 class Species(object):
   """
@@ -1653,6 +1876,14 @@ Note that the lreturndata option doesn't work.
     """Calls :py:func:`~particles.getez` for this species."""
     return getez(jslist=self.jslist,**kw)
 
+  def geter(self,**kw):
+    """Calls :py:func:`~particles.geter` for this species."""
+    return geter(jslist=self.jslist,**kw)
+
+  def getetheta(self,**kw):
+    """Calls :py:func:`~particles.getetheta` for this species."""
+    return getetheta(jslist=self.jslist,**kw)
+
   def getbx(self,**kw):
     """Calls :py:func:`~particles.getbx` for this species."""
     return getbx(jslist=self.jslist,**kw)
@@ -1664,6 +1895,14 @@ Note that the lreturndata option doesn't work.
   def getbz(self,**kw):
     """Calls :py:func:`~particles.getbz` for this species."""
     return getbz(jslist=self.jslist,**kw)
+
+  def getbr(self,**kw):
+    """Calls :py:func:`~particles.getbr` for this species."""
+    return getbr(jslist=self.jslist,**kw)
+
+  def getbtheta(self,**kw):
+    """Calls :py:func:`~particles.getbtheta` for this species."""
+    return getbtheta(jslist=self.jslist,**kw)
 
   def getxp(self,**kw):
     """Calls :py:func:`~particles.getxp` for this species."""
