@@ -476,6 +476,7 @@ end subroutine depose_jxjy_esirkepov_linear_serial_2d
 subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
                                                  dt,dx,dz,nx,nz,nxguard,nzguard, &
                                                  nox,noz,l_particles_weight,l4symtry,l_2drz)
+   use Constant, only: clight
    implicit none
    integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
@@ -484,18 +485,27 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
    logical(ISZ) :: l_particles_weight,l4symtry,l_2drz
 
    real(kind=8) :: dxi,dzi,dtsdx,dtsdz,xint,yint,zint
-   real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
-                          -int(noz/2)-1:int((noz+1)/2)+1) :: sdx,sdz
+   real(kind=8),dimension(:,:), allocatable :: sdx,sdz
    real(kind=8) :: xold,yold,zold,rold,xmid,zmid,x,y,z,r,c,s,wq,wqx,wqz, &
                    tmp,vx,vy,vz,dts2dx,dts2dz, &
                    s1x,s2x,s1z,s2z,invvol,invdtdx,invdtdz, &
                    oxint,ozint,xintsq,zintsq,oxintsq,ozintsq, &
                    dtsdx0,dtsdz0,dts2dx0,dts2dz0
    real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
-   real(kind=8), DIMENSION(-int(nox/2)-1:int((nox+1)/2)+1) :: sx, sx0, dsx
-   real(kind=8), DIMENSION(-int(noz/2)-1:int((noz+1)/2)+1) :: sz, sz0, dsz
+   real(kind=8), dimension(:), allocatable :: sx, sx0, dsx, sz, sz0, dsz
    integer(ISZ) :: iixp0,ikxp0,iixp,ikxp,ip,dix,diz,idx,idz,i,k,ic,kc, &
-                   ixmin, ixmax, izmin, izmax, icell, ncells
+                   ixmin, ixmax, izmin, izmax, icell, ncells, ndtodx, ndtodz, &
+                   xl,xu,zl,zu
+
+    ndtodx = int(clight*dt/dx)
+    ndtodz = int(clight*dt/dz)
+    xl = -int(nox/2)-1-ndtodx
+    xu = int((nox+1)/2)+1+ndtodx
+    zl = -int(noz/2)-1-ndtodz
+    zu = int((noz+1)/2)+1+ndtodz
+    allocate(sdx(xl:xu,zl:zu),sdz(xl:xu,zl:zu))
+    allocate(sx(xl:xu), sx0(xl:xu), dsx(xl:xu))
+    allocate(sz(zl:zu), sz0(zl:zu), dsz(zl:zu))
 
     sx0=0.;sz0=0.
     sdx=0.;sdz=0.
@@ -747,6 +757,8 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
       end do
 
     end do
+    
+    deallocate(sdx,sdz,sx,sx0,dsx,sz,sz0,dsz)
 
   return
 end subroutine depose_jxjyjz_esirkepov_n_2d
