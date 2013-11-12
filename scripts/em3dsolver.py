@@ -265,14 +265,13 @@ class EM3D(SubcycledPoissonSolver):
             self.dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
             top.dt=self.dtcourant*self.dtcoef
+          if top.dt>(self.dtcourant):
+#              self.ncyclesperstep = (nint(top.dt/(self.dtcourant))+0)
+              self.ncyclesperstep = int(top.dt/(self.dtcourant)+0.)
+              print '#1', self.ncyclesperstep,top.dt,self.dtcourant
           else:
-            if top.dt>(self.dtcoef*self.dtcourant):
-#              self.ncyclesperstep = (nint(top.dt/(self.dtcoef*self.dtcourant))+0)
-              self.ncyclesperstep = int(top.dt/(self.dtcoef*self.dtcourant)+1.)
-              print '#1', self.ncyclesperstep,top.dt,self.dtcoef,self.dtcourant
-            else:
-              self.ncyclesperstep = 1./(nint((self.dtcoef*self.dtcourant)/top.dt)+0)
-              print '#2', self.ncyclesperstep,top.dt,self.dtcoef,self.dtcourant
+              self.ncyclesperstep = 1./(nint((self.dtcourant)/top.dt)+0)
+              print '#2', self.ncyclesperstep,top.dt,self.dtcourant
       else:
         self.ncyclesperstep=sibling.ncyclesperstep
     self.dtinit = top.dt
