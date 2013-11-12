@@ -299,7 +299,7 @@ class AMRTree(VisualizableClass):
       n = nint(log(Rdens)/log(MRfact))
       # get nb cells proportional to f
 #      fg=MRfact**(dim*(n+1))*f/maxnd(f)
-      if 0:
+      if 1:
         fg=MRfact**(dim*n)*f/maxnd(f)
         fg=where(fg>1,fg,1)
 #        return MRfact**aint(log(fg)/log(dim**MRfact))
@@ -307,7 +307,10 @@ class AMRTree(VisualizableClass):
 #        return b**aint(log(fg)/log(b**dim))
       else:
         nbpcell=4
-        fg = aint(f*w3d.dx*w3d.dy*w3d.dz/(top.pgroup.sw[0]*echarge))
+        if dim==2:
+          fg = aint(f*w3d.dx*w3d.dy/(top.pgroup.sw[0]*echarge))
+        else:
+          fg = aint(f*w3d.dx*w3d.dy*w3d.dz/(top.pgroup.sw[0]*echarge))
         fg = where(fg>1,fg,1)
         fg = MRfact**aint(log(fg)/log(nbpcell*MRfact**dim))
         return where(fg>n,n,fg)
@@ -393,9 +396,13 @@ class AMRTree(VisualizableClass):
       else:
         nz=0; iz=0; izm=0; l=0
 
+      try:
+        self.f0
+      except:
+        self.f0=[]
       # loop all refinement levels
       for i in range(nlevels-1,0,-1):
-        r = rl[min(i-1,len(rl)-1)]
+        r = 1.-rl[min(i-1,len(rl)-1)]
         ib = b**i
         if(progressive and i<nlevels-1):
           f0 = where(self.sumpatch(listpatches,nx,ny,nz,dim)>0,ib,f)
@@ -416,8 +423,13 @@ class AMRTree(VisualizableClass):
         for n in listnodes:
           ix  = 1
           iy  = 1
-          ixm = 0
-          iym = 0
+          ixm = 1#0
+          iym = 1#0
+          if w3d.l2symtry:
+            iym=0
+          if w3d.l4symtry:
+            ixm=0
+            iym=0
           if dim==2:
             j = n/ny
             k = n%ny
@@ -444,7 +456,7 @@ class AMRTree(VisualizableClass):
              iym0 = iym+0
              if dim==2:
               # x up
-              if(j+ix<nx):
+              if (j+ix<nx):
                 cond,cond2=self.getconds2d(f0,fno,ib,j+ix,j+ix+1,k-iym,k+iy,progressive,nooverlap)
                 if(cond and cond2):
                   if(self.get_area_fraction(f0,j,k,l,ix+1,iy,iz,ixm,iym,izm,ib,p)>=r):ix+=1
@@ -971,7 +983,8 @@ class AMRTree(VisualizableClass):
       print 'Generated ',self.nblocks,' blocks.'
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
-      for i,blocks in enumerate(self.listblocks[1:]):
+      for ii,blocks in enumerate(self.listblocks[1:]):
+        i=ii+1
         if level is None or level==i:
           for patch in blocks:
             j=patch[0]
@@ -987,18 +1000,18 @@ class AMRTree(VisualizableClass):
               dx=w3d.dx
               dy=w3d.dy
               if(allmesh):
-                self.draw_mesh(nx,ny,xmin+j*dx,ymin+k*dy,dx/r,dy/r,color=self.colors[i],width=width)
+                self.draw_mesh(nx,ny,xmin+j*dx,ymin+k*dy,dx/r,dy/r,color=self.colors[i%len(self.colors)],width=width)
               else:
-                self.draw_box(ymin+k*dy, ymin+k*dy+h*dy, xmin+j*dx, xmin+j*dx+l*dx, color=self.colors[i],width=width)
+                self.draw_box(ymin+k*dy, ymin+k*dy+h*dy, xmin+j*dx, xmin+j*dx+l*dx, color=self.colors[i%len(self.colors)],width=width)
             else:
               xmin=w3d.xmmin
               ymin=w3d.zmmin
               dx=w3d.dx
               dy=w3d.dz
               if(allmesh):
-                self.draw_mesh(ny,nx,ymin+k*dy,xmin+j*dx,dy/r,dx/r,color=self.colors[i],width=width)
+                self.draw_mesh(ny,nx,ymin+k*dy,xmin+j*dx,dy/r,dx/r,color=self.colors[i%len(self.colors)],width=width)
               else:
-                self.draw_box(xmin+j*dx, xmin+j*dx+l*dx, ymin+k*dy, ymin+k*dy+h*dy, color=self.colors[i],width=width)
+                self.draw_box(xmin+j*dx, xmin+j*dx+l*dx, ymin+k*dy, ymin+k*dy+h*dy, color=self.colors[i%len(self.colors)],width=width)
 
     def draw_mesh(self,nx,ny,xmin,ymin,dx,dy,color='black',width=1):
       x = xmin+arange(nx+1)*dx
@@ -1055,7 +1068,8 @@ class AMRTree(VisualizableClass):
                                             max(zmin,zminp),min(zmax,zmaxp),
                                             self.colors[i]))
       self.dxobject = Opyndx.DXCollection(*dxlist)
-    def draw(self,level=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
+    def draw(self,level=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None, \
+             color='black',width=1.,allmesh=0):
         if self.solvergeom==w3d.XYZgeom:#MR:
           self.createdxobject(level=level,
                               xmin=xmin,xmax=xmax,
@@ -1063,7 +1077,7 @@ class AMRTree(VisualizableClass):
                               zmin=zmin,zmax=zmax)
           Opyndx.DXImage(self)
         else:
-          self.draw_blocks2d(level=level)
+          self.draw_blocks2d(level=level,color=color,width=width,allmesh=allmesh)
 
 
 def draw_mesh(nx,ny,xmin,ymin,dx,dy,color='black',width=1):
@@ -1075,8 +1089,8 @@ def draw_mesh(nx,ny,xmin,ymin,dx,dy,color='black',width=1):
       pldj(xxmin,y,xxmin+nx*dx,y,color=color,width=width)
 
 def plphirz(grid=None,which='phi',cmin=None,cmax=None,
-                 border=1,bordercolor='yellow',borderwidth=1,
-                 mesh=0,meshcolor='white',meshwidth=1,meshr=1,
+                 border=1,bordercolor=None,borderwidth=1,
+                 mesh=0,meshcolor=None,meshwidth=1,meshr=1,
                  siblings=1,children=1,firstcall=1,level=1,maxlevel=0,
                  delay=0,transit=0,l_transpose=0):
     if grid is None:
@@ -1084,15 +1098,33 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
     else:
         g = grid
 
+    colors = ['red','blue','yellow','green','cyan','magenta','white']
+    i=g.levelref
+    if bordercolor is None:
+      bordercoloru=colors[i%len(colors)]
+    else:
+      bordercoloru=bordercolor
+    if meshcolor is None:
+      meshcoloru=colors[i%len(colors)]
+    else:
+      meshcoloru=meshcolor
+    
     zmin = g.zmin-0.5*g.dz
     rmin = g.rmin-0.5*g.dr
     zmax = zmin+(g.nz+1)*g.dz
     rmax = rmin+(g.nr+1)*g.dr
+    dr=g.dr
+    dz=g.dz
+    nr=g.nr
+    nz=g.nz
+    
     if not transit:
       zmin = zmin+g.transit_min_z*g.dz
       zmax = zmax-g.transit_max_z*g.dz
       rmin = rmin+g.transit_min_r*g.dr
       rmax = rmax-g.transit_max_r*g.dr
+      nz -= 2*g.transit_min_z
+      nr -= 2*g.transit_min_r
     if(which=='phi'):
       f = g.phi[g.nguardx:-g.nguardx,g.nguardz:-g.nguardz]
     if(which=='rho'):
@@ -1118,19 +1150,25 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
     else:
       pli(transpose(f),rmin,zmin,rmax,zmax,cmin=cmin,cmax=cmax)
     if(mesh):
-        nr = nint(float(g.nr)/meshr)
-        nz = nint(float(g.nz)/meshr)
-        dr = g.dr*meshr
-        dz = g.dz*meshr
+#        nr = nint(float(g.nr)/meshr)
+#        nz = nint(float(g.nz)/meshr)
+#        dr = g.dr*meshr
+#        dz = g.dz*meshr
+        nr/=meshr
+        nz/=meshr
+        dr*=meshr
+        dz*=meshr
         if not l_transpose:
-          draw_mesh(nz,nr,g.zmin,g.rmin,dz,dr,color=meshcolor,width=meshwidth)
+#          draw_mesh(nz,nr,g.zmin,g.rmin,dz,dr,color=meshcoloru,width=meshwidth)
+          draw_mesh(nz+1,nr+1,zmin,rmin,dz,dr,color=meshcoloru,width=meshwidth)
         else:
-          draw_mesh(nr,nz,g.rmin,g.zmin,dr,dz,color=meshcolor,width=meshwidth)
+#          draw_mesh(nr,nz,g.rmin,g.zmin,dr,dz,color=meshcoloru,width=meshwidth)
+          draw_mesh(nr+1,nz+1,rmin,zmin,dr,dz,color=meshcoloru,width=meshwidth)
     if(border):
         if not l_transpose:
-          draw_box(rmin, rmax, zmin, zmax, color=bordercolor,width=borderwidth)
+          draw_box(rmin, rmax, zmin, zmax, color=bordercoloru,width=borderwidth)
         else:
-          draw_box(zmin, zmax, rmin, rmax, color=bordercolor,width=borderwidth)
+          draw_box(zmin, zmax, rmin, rmax, color=bordercoloru,width=borderwidth)
     time.sleep(delay)
     pyg_pending()
     pyg_idler()
