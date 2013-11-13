@@ -38,7 +38,8 @@ class EM3D(SubcycledPoissonSolver):
                     'laser_depos_order_x':3,
                     'laser_depos_order_y':3,
                     'laser_depos_order_z':3,
-                    'ncyclesperstep':1,'ncyclesperstep':None,
+                    'ncyclesperstep':None,
+                    'l_enableovercycle':False,
                     'l_2dxz':0,'l_2drz':0,'l_1dz':0,'l_sumjx':0,
                     'l_lower_order_in_v':True,
                     'npass_smooth':array([[0],[0],[0]]),
@@ -269,7 +270,7 @@ class EM3D(SubcycledPoissonSolver):
 #              self.ncyclesperstep = (nint(top.dt/(self.dtcourant))+0)
               self.ncyclesperstep = int(top.dt/(self.dtcourant)+0.)
               print '#1', self.ncyclesperstep,top.dt,self.dtcourant
-          else:
+          elif self.l_enableovercycle:
               self.ncyclesperstep = 1./(nint((self.dtcourant)/top.dt)+0)
               print '#2', self.ncyclesperstep,top.dt,self.dtcourant
       else:
@@ -1328,17 +1329,41 @@ class EM3D(SubcycledPoissonSolver):
         Rhocopy = self.fields.Rho.copy()
     for js in range(nsm):
       if self.mask_smooth[js] is None or l_mask_method==2:
-        smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,
+                            self.npass_smooth[:,js].copy(),
+                            self.alpha_smooth[:,js].copy(),
+                            self.stride_smooth[:,js].copy())
+        smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,
+                            self.npass_smooth[:,js].copy(),
+                            self.alpha_smooth[:,js].copy(),
+                            self.stride_smooth[:,js].copy())
+        smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,
+                            self.npass_smooth[:,js].copy(),
+                            self.alpha_smooth[:,js].copy(),
+                            self.stride_smooth[:,js].copy())
         if self.l_pushf or self.l_deposit_rho:
-          smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+          smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,
+                              self.npass_smooth[:,js].copy(),
+                              self.alpha_smooth[:,js].copy(),
+                              self.stride_smooth[:,js].copy())
       else:
-        smooth3d_121_stride_mask(self.fields.J[...,0],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride_mask(self.fields.J[...,1],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
-        smooth3d_121_stride_mask(self.fields.J[...,2],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+        smooth3d_121_stride_mask(self.fields.J[...,0],self.mask_smooth[js],nx-1,ny-1,nz-1,
+                                 self.npass_smooth[:,js].copy(),
+                                 self.alpha_smooth[:,js].copy(),
+                                 self.stride_smooth[:,js].copy())
+        smooth3d_121_stride_mask(self.fields.J[...,1],self.mask_smooth[js],nx-1,ny-1,nz-1,
+                                 self.npass_smooth[:,js].copy(),
+                                 self.alpha_smooth[:,js].copy(),
+                                 self.stride_smooth[:,js].copy())
+        smooth3d_121_stride_mask(self.fields.J[...,2],self.mask_smooth[js],nx-1,ny-1,nz-1,
+                                 self.npass_smooth[:,js].copy(),
+                                 self.alpha_smooth[:,js].copy(),
+                                 self.stride_smooth[:,js].copy())
         if self.l_pushf or self.l_deposit_rho:
-          smooth3d_121_stride_mask(self.fields.Rho[...],self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+          smooth3d_121_stride_mask(self.fields.Rho[...],self.mask_smooth[js],nx-1,ny-1,nz-1,
+                                 self.npass_smooth[:,js].copy(),
+                                 self.alpha_smooth[:,js].copy(),
+                                 self.stride_smooth[:,js].copy())
     if l_mask_method==2:
         for i in range(3):
           self.fields.J[...,i] *= self.mask_smooth
@@ -1355,9 +1380,15 @@ class EM3D(SubcycledPoissonSolver):
       jslist=[js]
     for js in jslist:
      if mask is None:
-      smooth3d_121_stride(f,nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride(f,nx-1,ny-1,nz-1,
+                          self.npass_smooth[:,js].copy(),
+                          self.alpha_smooth[:,js].copy(),
+                          self.stride_smooth[:,js].copy())
      else:
-      smooth3d_121_stride_mask(f,self.mask_smooth[js],nx-1,ny-1,nz-1,self.npass_smooth[:,js],self.alpha_smooth[:,js],self.stride_smooth[:,js])
+      smooth3d_121_stride_mask(f,self.mask_smooth[js],nx-1,ny-1,nz-1,
+                               self.npass_smooth[:,js].copy(),
+                               self.alpha_smooth[:,js].copy(),
+                               self.stride_smooth[:,js].copy())
 
   def smoothfields(self):
     nx,ny,nz = shape(self.fields.J[...,0])
@@ -1403,7 +1434,7 @@ class EM3D(SubcycledPoissonSolver):
         self.smootharray(self.fields.By,js)
         self.smootharray(self.fields.Bz,js)
         if self.l_pushf or self.l_deposit_rho:
-          smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js])
+          smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js].copy())
        
   def smoothfields_poly(self):
     nx,ny,nz = shape(self.fields.Exp)
@@ -1988,6 +2019,8 @@ class EM3D(SubcycledPoissonSolver):
     dt = top.dt/self.ncyclesperstep
     if self.l_pushf or self.l_deposit_rho:
       w = float(i+2)/self.ncyclesperstep
+      w=0.5
+      print 'W = ',w
       self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0] 
     if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
     if self.laser_mode==1:self.add_laser(self.fields)
