@@ -2142,6 +2142,91 @@ supplied.
     plv(gridy,gridx,ymesh,xmesh,scale=scale,**kw)
 
 #############################################################################
+def arrowplot(vx,vy,scale=1.,xmin=None,xmax=None,ymin=None,ymax=None,
+              arrowheight=1./4.,arrowwidth=1./2.,baseheight=None,
+              arrowtype=0,filled=False,fcolor=0,**kw):
+    """Plots vectors as arrows.
+     - vx,vy: vector data. Must be 2D and of the same dimensions.
+     - scale=1.: Max arrow length relative to grid cell diagonal size.
+     - xmin,xmax,ymin,ymax: Extrema of data.
+     - arrowheight=1./4.: Height of arrowhead relative to arrow length.
+     - arrowwidth=1./2.: Width of arrowhead relative to arrow length.
+     - baseheight: Length of arrow shaft relative to arrow length.
+     - arrowtype=0: 0 is a simple arrow
+                    1 is a closed arrow head
+     - filled=False: When True the arrowhead is filled in.
+     - fcolor=0: Fill color. Must be an integer referring to a palette index.
+    Also accepts any arguments of plg.
+    """
+    nxp1,nyp1 = vx.shape
+    nx = nxp1 - 1
+    ny = nyp1 - 1
+    if xmin is None: xmin = 0.
+    if xmax is None: xmax = nx
+    if ymin is None: ymin = 0.
+    if ymax is None: ymax = ny
+    dx = (xmax - xmin)/nx
+    dy = (ymax - ymin)/ny
+
+    griddiag = sqrt(dx**2 + dy**2)
+
+    if filled: arrowtype = 1
+
+    if baseheight is None:
+        if arrowtype == 1:
+            baseheight = 1. - arrowheight
+        else:
+            baseheight = 1.
+
+    vmag = sqrt(vx**2 + vy**2)
+    vmax = maxnd(vmag)
+    vsx = vx/vmax*scale*griddiag
+    vsy = vy/vmax*scale*griddiag
+
+    xm,ym = getmesh2d(xmin,dx,nx,ymin,dy,ny)
+
+    vbasex0 = xm
+    vbasey0 = ym
+    vbasex1 = xm + vsx*baseheight
+    vbasey1 = ym + vsy*baseheight
+    pldj(vbasex0,vbasey0,vbasex1,vbasey1,**kw)
+
+    vtipx0 = xm + vsx
+    vtipy0 = ym + vsy
+    vlx1 = xm + vsx - arrowheight*vsx + arrowwidth*vsy/2.
+    vly1 = ym + vsy - arrowheight*vsy - arrowwidth*vsx/2.
+    vrx1 = xm + vsx - arrowheight*vsx - arrowwidth*vsy/2.
+    vry1 = ym + vsy - arrowheight*vsy + arrowwidth*vsx/2.
+
+    if filled:
+        z = (zeros((nxp1,nyp1)) + fcolor).astype(ubyte)
+        x = zeros((nxp1,nyp1,4))
+        y = zeros((nxp1,nyp1,4))
+        n = zeros((nxp1,nyp1),dtype=long) + 4
+        x[:,:,0] = vlx1
+        x[:,:,1] = vtipx0
+        x[:,:,2] = vrx1
+        x[:,:,3] = vbasex1
+        y[:,:,0] = vly1
+        y[:,:,1] = vtipy0
+        y[:,:,2] = vry1
+        y[:,:,3] = vbasey1
+        z.shape = nxp1*nyp1
+        x.shape = nxp1*nyp1*4
+        y.shape = nxp1*nyp1*4
+        n.shape = nxp1*nyp1
+        plfp(z,y,x,n)
+
+    if arrowtype == 0:
+        pldj(vtipx0,vtipy0,vlx1,vly1,**kw)
+        pldj(vtipx0,vtipy0,vrx1,vry1,**kw)
+    elif arrowtype == 1:
+        pldj(vtipx0,vtipy0,vlx1,vly1,**kw)
+        pldj(vlx1,vly1,vbasex1,vbasey1,**kw)
+        pldj(vtipx0,vtipy0,vrx1,vry1,**kw)
+        pldj(vrx1,vry1,vbasex1,vbasey1,**kw)
+
+#############################################################################
 #############################################################################
 # ed williams' colorbar stuff / modified for Warp by J.-L. Vay on 01/22/2001
 def nicelevels(z,n=8) :
