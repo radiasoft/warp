@@ -52,7 +52,7 @@ else:
 if dummydist.commands[-1] == 'install':
     # --- During an install, remove the build/lib directory, since distutils
     # --- doesn't update an older warpC.so even if there were changes.
-    os.system('rm -rf build/lib*')
+    os.system('rm -rf %s'%dummybuild.build_platlib)
 
 warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d','em3d']
 
