@@ -1332,6 +1332,8 @@ potential array gives a better initial guess for the field solver.
         self.__class__.__bases__[1].setfieldpforparticles(block,*args)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
+    # --- Before fetching the field, make sure that the mesh refinement is setup.
+    self.finalize()
     # --- The fetchfield without sorting everything is faster, so use it.
     # --- It is faster because the extra sorting takes a not insignificant
     # --- amount of time, more than unsorting the E arrays.
