@@ -1825,9 +1825,8 @@ def addnewdrft(zs,ze,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.):
            top.drftzs[ie] != top.drftze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.ndrft or top.drftzs[-1] != top.drftze[-1]:
         top.ndrft = top.ndrft + 100
         gchange("Lattice")
@@ -1892,9 +1891,8 @@ def addnewbend(zs,ze,rc,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.):
            top.bendzs[ie] != top.bendze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.nbend or top.bendzs[-1] != top.bendze[-1]:
         top.nbend = top.nbend + 100
         gchange("Lattice")
@@ -1956,9 +1954,8 @@ def addnewdipo(zs,ze,by=0.,bx=0.,ta=0.,tb=0.,ex=0.,ey=0.,ap=0.,ax=0.,ay=0.,
            top.dipozs[ie] != top.dipoze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.ndipo or top.dipozs[-1] != top.dipoze[-1]:
         top.ndipo = top.ndipo + 100
         gchange("Lattice")
@@ -2029,7 +2026,8 @@ def addnewquad(zs,ze,db=0.,de=0.,et=0.,bt=0.,ts=0.,dt=0.,vx=0.,vy=0.,
            top.quadzs[ie] != top.quadze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays if it is needed.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.nquad or top.quadzs[-1] != top.quadze[-1]:
         top.nquad = top.nquad + 100
         top.nqerr = top.nqerr + 100
@@ -2111,9 +2109,8 @@ def addnewsext(zs,ze,db=0.,de=0.):
            top.sextzs[ie] != top.sextze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.nsext or top.sextzs[-1] != top.sextze[-1]:
         top.nsext = top.nsext + 100
         gchange("Lattice")
@@ -2204,9 +2201,8 @@ def addnewhele(zs,ze,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,
            top.helezs[ie] != top.heleze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.nhele or top.helezs[-1] != top.heleze[-1]:
         top.nhele = top.nhele + 100
         gchange("Lattice")
@@ -2409,10 +2405,9 @@ def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
     while ie <= top.nemlt and top.emltzs[ie] <= zs and top.emltze[ie] != top.emltzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.nemlt:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.nemlt or (top.emltzs[-1] != top.emltze[-1] or top.emltid[-1] > 0):
         top.nemlt = top.nemlt + 100
         top.neerr = top.neerr + 100
         gchange("Lattice")
@@ -2620,10 +2615,9 @@ def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
     while ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltze[ie] != top.mmltzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.nmmlt:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.nmmlt or (top.mmltzs[-1] != top.mmltze[-1] or top.mmltid[-1] > 0):
         top.nmmlt = top.nmmlt + 100
         top.nmerr = top.nmerr + 100
         gchange("Lattice")
@@ -2709,7 +2703,8 @@ def addnewaccl(zs,ze,ez=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,xw=0.,sw=0.,
            top.acclzs[ie] != top.acclze[ie]):
         ie = ie + 1
 
-    # --- Increase the size of the arrays if it is needed.
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
     if ie > top.naccl or top.acclzs[-1] != top.acclze[-1]:
         top.naccl = top.naccl + 100
         gchange("Lattice")
@@ -2870,10 +2865,9 @@ def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
     while ie <= top.negrd and top.egrdzs[ie] <= zs and top.egrdze[ie] != top.egrdzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.negrd:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.negrd or (top.egrdzs[-1] != top.egrdze[-1] or top.egrdid[-1] > 0):
         top.negrd = top.negrd + 100
         gchange("Lattice")
 
@@ -3020,10 +3014,9 @@ def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
     while ie <= top.nbgrd and top.bgrdzs[ie] <= zs and top.bgrdze[ie] != top.bgrdzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.nbgrd:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.nbgrd or (top.bgrdzs[-1] != top.bgrdze[-1] or top.bgrdid[-1] > 0):
         top.nbgrd = top.nbgrd + 100
         gchange("Lattice")
 
@@ -3122,10 +3115,9 @@ def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
     while ie <= top.nbsqgrad and top.bsqgradzs[ie] <= zs and top.bsqgradze[ie] != top.bsqgradzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.nbsqgrad:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.nbsqgrad or (top.bsqgradzs[-1] != top.bsqgradze[-1] or top.bsqgradid[-1] > 0):
         top.nbsqgrad = top.nbsqgrad + 100
         gchange("Lattice")
 
@@ -3237,10 +3229,9 @@ def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
     while ie <= top.npgrd and top.pgrdzs[ie] <= zs and top.pgrdze[ie] != top.pgrdzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.npgrd:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.npgrd or (top.pgrdzs[-1] != top.pgrdze[-1] or top.pgrdid[-1] > 0):
         top.npgrd = top.npgrd + 100
         gchange("Lattice")
 
@@ -3528,10 +3519,9 @@ def addnewpyelem(zs,ze,fn,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
     while ie <= top.npyelem and top.pyelemzs[ie] <= zs and top.pyelemze[ie] != top.pyelemzs[ie]:
         ie = ie + 1
 
-    # --- Increase the size of the arrays by one. Except for the case when
-    # --- there are no elements yet defined, which is true when the not'ed
-    # --- statement is true.
-    if ie > top.npyelem:
+    # --- Increase the size of the arrays if the element will go past the end
+    # --- or if the array is full (i.e. the last element is used).
+    if ie > top.npyelem or (top.pyelemzs[-1] != top.pyelemze[-1] or top.pyelemid[-1] > 0):
         top.npyelem = top.npyelem + 100
         gchange("Lattice")
 
