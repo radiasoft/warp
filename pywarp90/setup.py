@@ -84,11 +84,13 @@ if sys.hexversion < 0x03000000:
 
 library_dirs = fcompiler.libdirs
 libraries = fcompiler.libs
+extra_link_args = ['-g'] + fcompiler.extra_link_args
 if parallel:
     # --- This are things which might be defined in setup.local.py
-    #library_dirs = library_dirs + ['/usr/lpp/ppe.poe/lib']
-    #libraries = fcompiler.libs + ['mpi','mpi_f77']
-    #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
+    #library_dirs += ['/usr/lpp/ppe.poe/lib']
+    #libraries += ['mpi','mpi_f77']
+    #extra_link_args += ['-Wl,--eh-frame-hdr']
+    #warpobjects += ['/usr/local/mpi/ifc_farg.o']
     pass
 
 include_dirs = [builddir]
@@ -178,8 +180,7 @@ machines that are space-charge dominated.""",
                                 libraries=libraries,
                                 define_macros=define_macros,
                                 extra_objects=warpobjects,
-                                extra_link_args=['-g']+
-                                             fcompiler.extra_link_args,
+                                extra_link_args=extra_link_args,
                                 extra_compile_args=fcompiler.extra_compile_args
                                )]
 
