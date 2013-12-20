@@ -112,6 +112,8 @@ define_macros += [('GITLOCALDATE','"'+datestring+'"')]
 commithash = os.popen('git log -n 1 --pretty=%h').read().strip()
 define_macros += [('GITCOMMITHASH','"'+commithash+'"')]
 
+define_macros.append(('FORTHON_PKGNAME','"warp"'))
+
 if parallel:
     name = 'warpCparallel'
 else:
