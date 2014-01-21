@@ -14,10 +14,12 @@ extern void Seedranf(double *x);
 Seedranf(x);
 }
 
+/* Mixranf is never used
 extern void Mixranf();
 %'void '+fname('mixranf')+'(int* x)'
 {
   double seed[2];
   Mixranf(x,&seed);
 }
+*/
 
