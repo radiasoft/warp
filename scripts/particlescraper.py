@@ -622,7 +622,7 @@ class ParticleScraper(object):
             nd = 1
             gdy = [0.,dy]
             yg = ymin+aint(abs(yy-ymin)/dy)*dy
-        elif w3d.solvergeom == w3d.zgeom:
+        elif w3d.solvergeom == w3d.Zgeom:
             nd = 1
             gdz = [0.,dz]
             zg = zmin+aint(abs(zz-zmin)/dz)*dz
@@ -865,7 +865,7 @@ class ParticleScraper(object):
                 yy = take(yy,itempclose)
                 zz = take(zz,itempclose)
                 pp = take(pp,itempclose)
-                if w3d.solvergeom in [w3d.XYZgeom,w3d.XYgeom,w3d.RZgeom,w3d.Rgeom]:
+                if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom,w3d.XYgeom,w3d.RZgeom,w3d.Rgeom]:
                     xg = take(xg,itempclose)
                 if w3d.solvergeom in [w3d.XYZgeom,w3d.XYgeom,w3d.Ygeom]:
                     yg = take(yg,itempclose)
