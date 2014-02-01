@@ -5025,7 +5025,7 @@ class ZSrfrvIn(Srfrv,Assembly):
         self.kwlist = kwlistsave
         return result
 
-    def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
+    def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,ltranspose=False,**kw):
         """
     Plots the r versus z
      - color='fg': color of outline, set to None to not plot the outline
@@ -5046,7 +5046,10 @@ class ZSrfrvIn(Srfrv,Assembly):
         if rmin is None: rmin = self.rmin
         r = [rmin] + list(r) + [rmin]
         z = [self.zmin-self.zcent] + list(z) + [self.zmax-self.zcent]
-        self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
+        if not ltranspose:
+            self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane,**kw)
+        else:
+            self.plotdata(z,r,color=color,filled=filled,fullplane=fullplane,**kw)
 
     def createdxobject(self,kwdict={},**kw):
         """
