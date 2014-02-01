@@ -3644,6 +3644,146 @@ class EM3D(SubcycledPoissonSolver):
     cd[xl+xlguard:xu-xrguard,
        yl+ylguard:yu-yrguard,
        zl+zlguard:zu-zrguard]=self.blocknumber
+
+  def initstaticfields(self):
+      # --- This is needed because of the order in which things are imported in warp.py.
+      # --- There, MagnetostaticMG is imported after em3dsolver.
+      from magnetostaticMG import MagnetostaticMG
+
+      # --- This is needed to create the arrays.
+      # --- This should be done to make sure that the EM arrays are set up
+      self.allocatedataarrays()
+
+      # --- Calculate the static fields.
+      top.grid_overlap = 2
+      if self.solvergeom == w3d.XYZgeom:
+          ESolver = MultiGrid3D
+      else:
+          ESolver = MultiGrid2D
+      esolver = ESolver(nxguardphi=self.nxguard+1,
+                        nyguardphi=self.nyguard+1,
+                        nzguardphi=self.nzguard+1,
+                        nxguarde=self.nxguard,
+                        nyguarde=self.nyguard,
+                        nzguarde=self.nzguard,
+                        mgtol = 1.e-20,
+                        )
+
+      esolver.conductordatalist = self.conductordatalist
+      esolver.loadrho()
+      esolver.solve()
+
+      bsolver = MagnetostaticMG(luse2D=not(self.solvergeom == w3d.XYZgeom),
+                                nxguardphi=self.nxguard+1,
+                                nyguardphi=self.nyguard+1,
+                                nzguardphi=self.nzguard+1,
+                                nxguarde=self.nxguard,
+                                nyguarde=self.nyguard,
+                                nzguarde=self.nzguard,
+                                mgtol=1.e-20,
+                                )
+
+      # --- Reset to the value needed by the EM solver
+      top.grid_overlap = 1
+
+      bsolver.conductordatalist = self.conductordatalist
+      bsolver.loadj()
+      bsolver.solve()
+
+      if self.solvergeom == w3d.RZgeom:
+          bsolver.field[0,0,...] = 0.
+          bsolver.field[1,0,...] = 0.
+
+      # --- This can be done since the number of guard cells is the same
+      # --- for the ES and EM solvers.
+      # --- These fields are all node centered.
+      # --- This assumes that the domains of the EM solver are all contained within the
+      # --- domains of the static solvers. This should be the case since the static solvers
+      # --- have a larger grid_overlap.
+      ix1 = self.fsdecomp.ix[self.fsdecomp.ixproc] - bsolver.fsdecomp.ix[bsolver.fsdecomp.ixproc] + 1
+      ix2 = ix1 + self.fsdecomp.nx[self.fsdecomp.ixproc] + 1 + 2*self.nxguard
+      iy1 = self.fsdecomp.iy[self.fsdecomp.iyproc] - bsolver.fsdecomp.iy[bsolver.fsdecomp.iyproc] + 1
+      iy2 = iy1 + self.fsdecomp.ny[self.fsdecomp.iyproc] + 1 + 2*self.nyguard
+      iz1 = self.fsdecomp.iz[self.fsdecomp.izproc] - bsolver.fsdecomp.iz[bsolver.fsdecomp.izproc] + 1
+      iz2 = iz1 + self.fsdecomp.nz[self.fsdecomp.izproc] + 1 + 2*self.nzguard
+
+      # --- Calculate the fields on the Yee mesh by direct finite differences
+      # --- of the potential (which is on a node centered grid)
+
+      if self.solvergeom == w3d.XYZgeom:
+          Ex = (esolver.phi[ix1:ix2,iy1:iy2,iz1:iz2] - esolver.phi[ix1+1:ix2+1,iy1:iy2,iz1:iz2])/esolver.dx
+          Ey = (esolver.phi[ix1:ix2,iy1:iy2,iz1:iz2] - esolver.phi[ix1:ix2,iy1+1:iy2+1,iz1:iz2])/esolver.dy
+          Ez = (esolver.phi[ix1:ix2,iy1:iy2,iz1:iz2] - esolver.phi[ix1:ix2,iy1:iy2,iz1+1:iz2+1])/esolver.dz
+
+          Ax = bsolver.potential[0,...]
+          Ay = bsolver.potential[1,...]
+          Az = bsolver.potential[2,...]
+          Bx = 0.5*(-((Ay[ix1:ix2,iy1  :iy2  ,iz1+1:iz2+1] - Ay[ix1:ix2,iy1  :iy2  ,iz1:iz2]) +
+                      (Ay[ix1:ix2,iy1+1:iy2+1,iz1+1:iz2+1] - Ay[ix1:ix2,iy1+1:iy2+1,iz1:iz2]))/bsolver.dz
+                    +((Az[ix1:ix2,iy1+1:iy2+1,iz1  :iz2  ] - Ay[ix1:ix2,iy1:iy2,iz1  :iz2  ]) +
+                      (Az[ix1:ix2,iy1+1:iy2+1,iz1+1:iz2+1] - Ay[ix1:ix2,iy1:iy2,iz1+1:iz2+1]))/bsolver.dy)
+          By = 0.5*(-((Az[ix1+1:ix2+1,iy1:iy2,iz1  :iz2  ] - Az[ix1:ix2,iy1:iy2,iz1  :iz2  ]) +
+                      (Az[ix1+1:ix2+1,iy1:iy2,iz1+1:iz2+1] - Az[ix1:ix2,iy1:iy2,iz1+1:iz2+1]))/bsolver.dx
+                    +((Ax[ix1  :ix2  ,iy1:iy2,iz1+1:iz2+1] - Ax[ix1  :ix2  ,iy1:iy2,iz1:iz2]) +
+                      (Ax[ix1+1:ix2+1,iy1:iy2,iz1+1:iz2+1] - Ax[ix1+1:ix2+1,iy1:iy2,iz1:iz2]))/bsolver.dz)
+          Bz = 0.5*(-((Ax[ix1  :ix2  ,iy1+1:iy2+1,iz1:iz2] - Ax[ix1  :ix2  ,iy1:iy2,iz1:iz2]) +
+                      (Ax[ix1+1:ix2+1,iy1+1:iy2+1,iz1:iz2] - Ax[ix1+1:ix2+1,iy1:iy2,iz1:iz2]))/bsolver.dy
+                    +((Ay[ix1+1:ix2+1,iy1  :iy2  ,iz1:iz2] - Ay[ix1:ix2,iy1  :iy2  ,iz1:iz2]) +
+                      (Ay[ix1+1:ix2+1,iy1+1:iy2+1,iz1:iz2] - Ay[ix1:ix2,iy1+1:iy2+1,iz1:iz2]))/bsolver.dx)
+
+      elif self.l_2drz:
+          Ex = (esolver.phi[ix1:ix2,:,iz1:iz2] - esolver.phi[ix1+1:ix2+1,:,iz1:iz2])/esolver.dx
+          Ey = zeros_like(Ex)
+          Ez = (esolver.phi[ix1:ix2,:,iz1:iz2] - esolver.phi[ix1:ix2,:,iz1+1:iz2+1])/esolver.dz
+
+          Ax = bsolver.potential[0,...]
+          Ay = bsolver.potential[1,...]
+          Az = bsolver.potential[2,...]
+          Bx =      -((Ay[ix1:ix2,:,iz1+1:iz2+1] - Ay[ix1:ix2,:,iz1:iz2]))/bsolver.dz
+          By = 0.5*(-((Az[ix1+1:ix2+1,:,iz1  :iz2  ] - Az[ix1:ix2,:,iz1  :iz2  ]) +
+                      (Az[ix1+1:ix2+1,:,iz1+1:iz2+1] - Az[ix1:ix2,:,iz1+1:iz2+1]))/bsolver.dx
+                    +((Ax[ix1  :ix2  ,:,iz1+1:iz2+1] - Ax[ix1  :ix2  ,:,iz1:iz2]) +
+                      (Ax[ix1+1:ix2+1,:,iz1+1:iz2+1] - Ax[ix1+1:ix2+1,:,iz1:iz2]))/bsolver.dz)
+          ii = arange(ix1,ix2) - bsolver.nxguardphi
+          rr = (ii + 0.5)*bsolver.dx
+          Bz = +(((ii[:,newaxis,newaxis] + 1)*Ay[ix1+1:ix2+1,:,iz1:iz2] - ii[:,newaxis,newaxis]*Ay[ix1:ix2,:,iz1:iz2]))/rr[:,newaxis,newaxis]
+
+      elif self.l_2dxz:
+          Ex = (esolver.phi[ix1:ix2,:,iz1:iz2] - esolver.phi[ix1+1:ix2+1,:,iz1:iz2])/esolver.dx
+          Ey = zeros_like(Ex)
+          Ez = (esolver.phi[ix1:ix2,:,iz1:iz2] - esolver.phi[ix1:ix2,:,iz1+1:iz2+1])/esolver.dz
+
+          Ax = bsolver.potential[0,...]
+          Ay = bsolver.potential[1,...]
+          Az = bsolver.potential[2,...]
+          Bx =      -((Ay[ix1:ix2,:,iz1+1:iz2+1] - Ay[ix1:ix2,:,iz1:iz2]))/bsolver.dz
+          By = 0.5*(-((Az[ix1+1:ix2+1,:,iz1  :iz2  ] - Az[ix1:ix2,:,iz1  :iz2  ]) +
+                      (Az[ix1+1:ix2+1,:,iz1+1:iz2+1] - Az[ix1:ix2,:,iz1+1:iz2+1]))/bsolver.dx
+                    +((Ax[ix1  :ix2  ,:,iz1+1:iz2+1] - Ax[ix1  :ix2  ,:,iz1:iz2]) +
+                      (Ax[ix1+1:ix2+1,:,iz1+1:iz2+1] - Ax[ix1+1:ix2+1,:,iz1:iz2]))/bsolver.dz)
+          Bz =      +((Ay[ix1+1:ix2+1,:,iz1:iz2] - Ay[ix1:ix2,:,iz1:iz2]))/bsolver.dx
+
+      self.fields.Bx[...] = Bx
+      self.fields.By[...] = By
+      self.fields.Bz[...] = Bz
+      self.fields.Ex[...] = Ex
+      self.fields.Ey[...] = Ey
+      self.fields.Ez[...] = Ez
+
+      # --- This is copied from push_b_part_2
+      # --- novercycle and icycle need to be defined for setebp.
+      if self.ncyclesperstep<1.:
+          self.novercycle = nint(1./self.ncyclesperstep)
+          self.icycle = (top.it-1)%self.novercycle
+      else:
+          self.novercycle = 1
+          self.icycle = 0
+
+      # --- This is copied from the end of dosolve.
+      self.setebp()
+      if top.efetch[0] != 4:self.yee2node3d()
+      if self.l_smooth_particle_fields and any(self.npass_smooth>0):
+          self.smoothfields()
     
 def allocatesf(f,stencil):
     f.syf = EM3D_SPLITYEEFIELDtype()
