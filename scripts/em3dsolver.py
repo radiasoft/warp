@@ -1622,6 +1622,7 @@ class EM3D(SubcycledPoissonSolver):
     zmmin,zmmax = self.zmmin,self.zmmax
     # to be updated
     mgmaxlevels=1
+    conductorobject.interior.n=0
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.zgrid,
                       nx,ny,nz,
@@ -1655,12 +1656,15 @@ class EM3D(SubcycledPoissonSolver):
            permeability = conductor.permeability
          else:
            permeability = 1.
+         print 'hello', conductor.condid,conductivity,permittivity,self.fields.nconds
+         print 'bf',maxnd(self.fields.Epsix)
          set_macroscopic_coefs_on_yee(self.fields, \
                                       self.fields.nconds, \
                                       aint(conductorobject.interior.indx[:,:self.fields.nconds]), \
                                       conductivity, \
                                       permittivity, \
                                       permeability)
+         print 'af',maxnd(self.fields.Epsix)
       else:
          set_incond(self.fields, \
                     self.fields.nconds, \
@@ -2704,8 +2708,12 @@ class EM3D(SubcycledPoissonSolver):
       self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=direction is None),'F',
       direction=direction,**kw)
 
+  def pfincond(self,l_children=1,guards=0,direction=None,**kw):
+      self.genericpfem3d(self.getarray(self.fields.incond,guards,overlap=direction is None),'incond',
+      direction=direction,**kw)
+
   def pfdive(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.getdive(),guards,overlap=direction is None),'div(E)',
+      self.genericpfem3d(self.getdive(guards,overlap=direction is None),'div(E)',
       direction=direction,**kw)
 
   def pfe(self,l_children=1,guards=0,direction=None,**kw):
@@ -2800,6 +2808,9 @@ class EM3D(SubcycledPoissonSolver):
 
   def getf(self,guards=0,overlap=0):
       return self.getarray(self.fields.F,guards,overlap)
+
+  def getincond(self,guards=0,overlap=0):
+      return self.getarray(self.fields.incond,guards,overlap)
 
   def getdive(self,guards=0,overlap=0):
       dive = zeros(shape(self.fields.Ex),'d')
@@ -2911,6 +2922,12 @@ class EM3D(SubcycledPoissonSolver):
 
   def gatherf(self,guards=0,direction=None,**kw):
       return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherincond(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getincond(guards,overlap=direction is None),direction=direction,**kw)
+
+  def gatherdive(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getdive(guards,overlap=direction is None),direction=direction,**kw)
 
   def get_tot_energy(self):
 #    yee2node3d(self.fields)
