@@ -53,6 +53,7 @@ type(mpibuffertype), dimension(1000), save :: mpibuffers
    MODULE PROCEDURE mpi_pack_real_1darray
    MODULE PROCEDURE mpi_pack_real_2darray
    MODULE PROCEDURE mpi_pack_real_3darray
+   MODULE PROCEDURE mpi_pack_logical_3darray
  END interface
  INTERFACE mpi_unpack_int
    MODULE PROCEDURE mpi_unpack_int_scalar
@@ -246,6 +247,16 @@ contains
    return
  end subroutine mpi_pack_real_3darray
 
+ subroutine mpi_pack_logical_3darray(a,ibuf)
+   implicit none
+   integer(ISZ)::ibuf
+   logical(ISZ), DIMENSION(:,:,:), INTENT(IN) :: a
+   comm_world_mpiisz = comm_world
+     call mpi_pack(a, SIZE(a), mpi_double_precision, mpibuffers(ibuf)%buffer, int(size(mpibuffers(ibuf)%buffer),MPIISZ), &
+          mpibuffers(ibuf)%pack_pos, comm_world_mpiisz, ierr)
+   return
+ end subroutine mpi_pack_logical_3darray
+
  subroutine mpi_send_pack(tid,tag,ibuf)
    implicit none
    integer(ISZ)::ibuf
@@ -330,6 +341,17 @@ contains
           mpi_unpack_real_array, int(isize,MPIISZ), mpi_double_precision,comm_world_mpiisz,ierr)
    return
  end function mpi_unpack_real_array
+
+ function mpi_unpack_logical_array(isize,ibuf)
+   implicit none
+   integer(ISZ)::ibuf
+   INTEGER(ISZ), INTENT(IN) :: isize
+   logical(ISZ), DIMENSION(isize) :: mpi_unpack_logical_array
+   comm_world_mpiisz = comm_world
+     call mpi_unpack(mpibuffers(ibuf)%buffer,int(size(mpibuffers(ibuf)%buffer),MPIISZ),mpibuffers(ibuf)%pack_pos, &
+          mpi_unpack_logical_array, int(isize,MPIISZ), mpi_double_precision,comm_world_mpiisz,ierr)
+   return
+ end function mpi_unpack_logical_array
 
  subroutine mpi_waitall_requests()
    implicit none
