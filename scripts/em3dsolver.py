@@ -1656,15 +1656,12 @@ class EM3D(SubcycledPoissonSolver):
            permeability = conductor.permeability
          else:
            permeability = 1.
-         print 'hello', conductor.condid,conductivity,permittivity,self.fields.nconds
-         print 'bf',maxnd(self.fields.Epsix)
          set_macroscopic_coefs_on_yee(self.fields, \
                                       self.fields.nconds, \
                                       aint(conductorobject.interior.indx[:,:self.fields.nconds]), \
                                       conductivity, \
                                       permittivity, \
                                       permeability)
-         print 'af',maxnd(self.fields.Epsix)
       else:
          set_incond(self.fields, \
                     self.fields.nconds, \
