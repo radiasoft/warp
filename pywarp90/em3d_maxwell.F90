@@ -987,7 +987,7 @@ real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzg
 real(kind=8), intent(IN) :: mu0dt0,dt0sdx,dt0sdy,dt0sdz,xmin,zmin,dx,dz
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_2dxz,l_2drz
-real(kind=8) :: w,zlaser,rd,ru,a,mu0dt,dtsdx,dtsdy,dtsdz
+real(kind=8) :: w,zlaser,rd,ru,a,b,mu0dt,dtsdx,dtsdy,dtsdz
 
 ! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
 if (.not. l_2dxz) then ! --- 3D XYZ
@@ -995,14 +995,19 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz
    do k = 0, ny
     do j = 0, nx-1
-      mu0dt = mu0dt0/epsix(j,k,l)
-      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l))
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l))
+     if (sigmax(j,k,l)<0.) then
+       Ex(j,k,l)=0.
+     else
       a = 0.5*mu0dt*sigmax(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsix(j,k,l)*b)
+      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l)*b)
+      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
       Ex(j,k,l) = a*Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
                               - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                               - mu0dt  * CJ(j,k,l,1)
+     end if
     end do
    end do
   end do
@@ -1011,14 +1016,19 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz
    do k = 0, ny-1
     do j = 0, nx
-      mu0dt = mu0dt0/epsiy(j,k,l)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l))
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l))
+     if (sigmay(j,k,l)<0.) then
+       Ey(j,k,l)=0.
+     else
       a = 0.5*mu0dt*sigmay(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
+      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
       Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                               + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                               - mu0dt  * CJ(j,k,l,2)
+     end if
     end do
    end do
   end do
@@ -1027,14 +1037,19 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   do l = 0, nz-1
    do k = 0, ny
     do j = 0, nx
-      mu0dt = mu0dt0/epsiz(j,k,l)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l))
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l))
+     if (sigmaz(j,k,l)<0.) then
+       Ez(j,k,l)=0.
+     else
       a = 0.5*mu0dt*sigmaz(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
+      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
       Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                               - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
                               - mu0dt  * CJ(j,k,l,3)
+     end if
     end do
    end do
   end do
@@ -1047,40 +1062,52 @@ else ! --- now 2D XZ or RZ
   ! advance Ex
   do l = 0, nz
     do j = 0, nx-1
-      mu0dt = mu0dt0/epsix(j,k,l)
-      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l))
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l))
-      a = 0.5*mu0dt*sigmax(j,k,l)
+     if (sigmax(j,k,l)<0.) then
+       Ex(j,k,l)=0.
+     else
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsix(j,k,l)*b)
+      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
       Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                               - mu0dt  * CJ(j,k,l,1)
+     end if
     end do
   end do
 
   ! advance Ey
   do l = 0, nz
     do j = 0, nx
-      mu0dt = mu0dt0/epsiy(j,k,l)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l))
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l))
-      a = 0.5*mu0dt*sigmay(j,k,l)
+      if (sigmay(j,k,l)<0.) then
+       Ey(j,k,l)=0.
+     else
+     a = 0.5*mu0dt*sigmay(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
+      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
       Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                               + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                               - mu0dt  * CJ(j,k,l,2)
+     end if
     end do
   end do
 
   ! advance Ez 
   do l = 0, nz-1
     do j = 0, nx
-      mu0dt = mu0dt0/epsiz(j,k,l)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l))
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l))
       a = 0.5*mu0dt*sigmaz(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
+     if (sigmaz(j,k,l)<0.) then
+       Ez(j,k,l)=0.
+     else
       Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                               - mu0dt  * CJ(j,k,l,3)
+     end if
     end do
   end do
 
@@ -1090,71 +1117,97 @@ else ! --- now 2D XZ or RZ
   ! advance Er
   do l = 0, nz
     do j = 0, nx-1
-      mu0dt = mu0dt0/epsix(j,k,l)
-      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l))
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l))
+     if (sigmax(j,k,l)<0.) then
+       Ex(j,k,l)=0.
+     else
       a = 0.5*mu0dt*sigmax(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsix(j,k,l)*b)
+      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l)*b)
+      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
       Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                               - mu0dt  * CJ(j,k,l,1)
+     end if
     end do
   end do
 
   ! advance Etheta
   do l = 0, nz
     do j = 1, nx
-      mu0dt = mu0dt0/epsiy(j,k,l)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l))
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l))
+     if (sigmay(j,k,l)<0.) then
+       Ey(j,k,l)=0.
+     else
       a = 0.5*mu0dt*sigmay(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
+      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
       Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
                               + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
                               - mu0dt  * CJ(j,k,l,2)
+     end if
     end do
     j = 0
-    mu0dt = mu0dt0/epsiy(j,k,l)
-    dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l))
-    dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l))
     a = 0.5*mu0dt*sigmay(j,k,l)
+    b = (1.+a)
     a = (1-a)/(1+a)
-    Ey(j,k,l) = a*Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
-                            + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
-                            - mu0dt  * CJ(j,k,l,2)
+    mu0dt = mu0dt0/(epsiy(j,k,l)*b)
+    dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
+    dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
+    if (sigmay(j,k,l)<0.) then
+       Ey(j,k,l)=0.
+    else
+      Ey(j,k,l) = a*Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
+                              + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
+                              - mu0dt  * CJ(j,k,l,2)
+    end if
   end do
 
   ! advance Ez 
   do l = 0, nz-1
     do j = 1, nx
-      mu0dt = mu0dt0/epsiz(j,k,l)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l))
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l))
+     if (sigmaz(j,k,l)<0.) then
+       Ez(j,k,l)=0.
+     else
+      a = 0.5*mu0dt*sigmaz(j,k,l)
+      b = (1.+a)
+      a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
+      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
       ru = 1.+0.5/(xmin/dx+j)
       rd = 1.-0.5/(xmin/dx+j)
-      a = 0.5*mu0dt*sigmaz(j,k,l)
-      a = (1-a)/(1+a)
       Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
                               - mu0dt  * CJ(j,k,l,3)
+     end if
     end do
     j = 0
-    if (xmin==0.) then
-      mu0dt = mu0dt0/epsiz(j,k,l)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l))
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l))
+    if (sigmaz(j,k,l)<0.) then
+      Ez(j,k,l)=0.
+    else
+     if (xmin==0.) then
       a = 0.5*mu0dt*sigmaz(j,k,l)
+      b = (1.+a)
       a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
+      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
       Ez(j,k,l) = a*Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
                               - mu0dt  * CJ(j,k,l,3)
-    else
-      mu0dt = mu0dt0/epsiz(j,k,l)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l))
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l))
+     else
+      a = 0.5*mu0dt*sigmaz(j,k,l)
+      b = (1.+a)
+      a = (1-a)/(1+a)
+      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
+      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
+      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
       ru = 1.+0.5/(xmin/dx+j)
       rd = 1.-0.5/(xmin/dx+j)
-      a = 0.5*mu0dt*sigmaz(j,k,l)
-      a = (1-a)/(1+a)
       Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
                               - mu0dt  * CJ(j,k,l,3)
+     end if
     end if
   end do
  end if
@@ -3961,6 +4014,9 @@ integer(ISZ):: n,i,it,zl,zr
 !                                    f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    end do
   end if
+  if (f%nxcond>0) then
+    call shift_3dlarray_ncells_z(f%incond,f%nxcond,f%nycond,f%nzcond,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+  end if
   if (f%nxpnext>0) then
     call shift_3darray_ncells_z(f%Expnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
     call shift_3darray_ncells_z(f%Eypnext,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
@@ -4041,6 +4097,35 @@ if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = 0.
 
   return
 end subroutine shift_3darray_ncells_z
+
+subroutine shift_3dlarray_ncells_z(f,nx,ny,nz,nxguard,nyguard,nzguard,zl,zr,n)
+#ifdef MPIPARALLEL
+use mpirz
+#endif
+implicit none
+integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
+integer(ISZ), parameter:: otherproc=10, ibuf = 950
+logical(ISZ) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
+
+f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
+if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = .false.
+
+#ifdef MPIPARALLEL
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,:,nzguard-n+1:nzguard)),ibuf)
+     call mympi_pack(f(:,:,nzguard-n+1:nzguard),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if    
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,:,nz+nzguard-n+1:)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,:,nz+nzguard-n+1:) = reshape(mpi_unpack_logical_array( size(f(:,:,nz+nzguard-n+1:)),ibuf), &
+                                                           shape(f(:,:,nz+nzguard-n+1:)))
+  end if
+#endif
+
+  return
+end subroutine shift_3dlarray_ncells_z
 
 subroutine shift_3darray_ncells_zold(f,nx,ny,nz,nxguard,nyguard,nzguard,zl,zr,n)
 #ifdef MPIPARALLEL
