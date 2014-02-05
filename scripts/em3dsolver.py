@@ -2527,7 +2527,7 @@ class EM3D(SubcycledPoissonSolver):
         nxg=0
         nyg=0
         nzg=0
-    if direction in [0,1,2]:
+    if direction in [0,1,2] and not (direction==1 and self.l_2dxz):
       if me==0:
         if self.l_2dxz:
           if direction==0: datag = zeros([self.nz+1+nzg*2],'d')
