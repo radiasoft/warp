@@ -666,8 +666,8 @@ c     --- The special case of nz == 0.
 c     --- Make sure that the number of processors is less than the number of
 c     --- grid cells.
       if (nprocs > nz) then
-        call kaboom("domaindecomposefields: The number of grid cells must be
-     & greater than the number of processors along each dimension.")
+        call kaboom("domaindecomposefields: The number of grid cells must be"//
+     &" greater than the number of processors along each dimension.")
         return
       endif
 
@@ -745,8 +745,8 @@ c       --- First check to make sure that all values are > 0.
         do i=0,nprocs-1
           if (nzdecomp(i) <= 0) then
             print*,"domaindecomposefields: BAD VALUE ",nz,i,nzdecomp(i)
-            call kaboom("domaindecomposefields: ERROR: nz for the field solver
-     & for each processor must be greater than zero")
+            call kaboom("domaindecomposefields: ERROR: nz for the field solver"//
+     &" for each processor must be greater than zero")
             return
           endif
         enddo
@@ -754,8 +754,8 @@ c       --- First check to make sure that all values are > 0.
 c       --- Make sure that the sum of nzdecomp is consistent with nz
         if (sum(nzdecomp) .ne. nz) then
           print*,"domaindecomposefields: BAD VALUE ",nz," != (",nzdecomp,")"
-          call kaboom("domaindecomposefields: ERROR: sum of the domain
-     &sizes must be equal to the total number of grid cells")
+          call kaboom("domaindecomposefields: ERROR: sum of the domain"//
+     &"sizes must be equal to the total number of grid cells")
           return
         endif
 
@@ -802,8 +802,8 @@ c     --- nz == 0 is a special case
 c     --- Make sure that the number of processors is less than the number of
 c     --- grid cells.
       if (nprocs > nz) then
-        call kaboom("domaindecomposeparticles: The number of grid cells must
-     & be greater than the number of processors along each dimension.")
+        call kaboom("domaindecomposeparticles: The number of grid cells must"//
+     &" be greater than the number of processors along each dimension.")
         return
       endif
 
@@ -818,8 +818,8 @@ c       --- sum is one.
 c       --- All values of userdecomp must be > 0.
         do i=0,nprocs-1
           if (userdecomp(i) <= 0.) then
-            call kaboom("domaindecomposeparticles: ERROR: The length of all
-     & particle domains must be positive. Fix userdecomp appropriately.")
+            call kaboom("domaindecomposeparticles: ERROR: The length of all"//
+     &" particle domains must be positive. Fix userdecomp appropriately.")
             return
           endif
         enddo

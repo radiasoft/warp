@@ -197,14 +197,14 @@ c --- if using old variables
 c --- using new variables
       if((bound0==periodic .and. boundnz/=periodic) .or.
      &   (bound0/=periodic .and. boundnz==periodic)) then
-         call kaboom("w3dgen: Error in setup of bound0 and boundnz: either both
-     & or none should be periodic")
+         call kaboom("w3dgen: Error in setup of bound0 and boundnz: either both"//
+     &" or none should be periodic")
          return
       end if
       if((pbound0==periodic .and. pboundnz/=periodic) .or.
      &   (pbound0/=periodic .and. pboundnz==periodic)) then
-         call kaboom("w3dgen: Error in setup of pbound0 and pboundnz: either both
-     & or none should be periodic")
+         call kaboom("w3dgen: Error in setup of pbound0 and pboundnz: either both"//
+     &" or none should be periodic")
          return
       end if
       if(bound0==periodic .or. boundnz==periodic) then

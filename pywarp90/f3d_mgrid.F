@@ -1183,8 +1183,8 @@ c     --- only it can be checked.
         print*,"conductor nx,ny,nz = ",conductors%levelnx(mglevel),
      &                                 conductors%levelny(mglevel),
      &                                 conductors%levelnz(mglevel)
-        call kaboom("vcycle: error: the coarsening level of the conductor is
-     &inconsistent with that used by the solver")
+        call kaboom("vcycle: error: the coarsening level of the conductor is"//
+     &" inconsistent with that used by the solver")
         return
       endif
 

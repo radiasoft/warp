@@ -956,8 +956,8 @@ c     --- Check that the same coarsening was done for the conductors as is
 c     --- being done now. Note that only nzlocal is saved for the conductors so
 c     --- only it can be checked.
       if (nzlocal .ne. conductors%levelnz(mglevel)) then
-        call kaboom("vcycleimplicites3d: error: the coarsening level of the
-     &conductor is inconsistent with that used by the solver")
+        call kaboom("vcycleimplicites3d: error: the coarsening level of the"//
+     &" conductor is inconsistent with that used by the solver")
         return
       endif
 

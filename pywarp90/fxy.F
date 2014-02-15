@@ -147,8 +147,8 @@ c     --- invert to get capacity matrix (checking for singular matrix)
 c     --- These routines don't seem to give as good a result as those below.
 c     call ssifa(cmatxy,ncxy,ncxy,kpvtxy,info)
 c     if (info .ne. 0) then
-c       call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that
-c    & two or more conductor points are within the same grid cell.")
+c       call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that"//
+c    &" two or more conductor points are within the same grid cell.")
 c     endif
 c     call ssidi(cmatxy,ncxy,ncxy,kpvtxy,tt1,tt2,xywork,001)
 
@@ -164,8 +164,8 @@ c     --- These routines are from LAPACK.
 #endif
       if (info .ne. 0) then
         print*,info
-        call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that
-     & two or more conductor points are within the same grid cell.")
+        call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that"//
+     &" two or more conductor points are within the same grid cell.")
       endif
 c     --- pcond is passed as workspace.
 #if WORDSIZE == 64

@@ -231,17 +231,17 @@ c             --- still within the field grid. This should never happen.
 
                 if (zmmin <= ztemp .and. ztemp < zpminlocal) then
                   if (axis == 0) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &xmmin and xpminlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" xmmin and xpminlocal")
                   else if (axis == 1) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &ymmin and ypminlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" ymmin and ypminlocal")
                   else if (axis == 2) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &zmmin and zpminlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" zmmin and zpminlocal")
                   endif
                 endif
               enddo
@@ -300,17 +300,17 @@ c             --- still within the field grid. This should never happen.
 
                 if (zpmaxlocal < ztemp .and. ztemp <= zmmax) then
                   if (axis == 0) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &xmmax and xpmaxlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" xmmax and xpmaxlocal")
                   else if (axis == 1) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &ymmax and ypmaxlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" ymmax and ypmaxlocal")
                   else if (axis == 2) then
-                    call kaboom("particleboundaries_parallel: there is
-     &something wrong with the loadbalancing - a particle was found between
-     &zmmax and zpmaxlocal")
+                    call kaboom("particleboundaries_parallel: there is"//
+     &" something wrong with the loadbalancing - a particle was found between"//
+     &" zmmax and zpmaxlocal")
                   endif
                 endif
               enddo

@@ -3470,8 +3470,8 @@ c     --- invert to get capacity matrices (checking for singular matrix)
 c       --- These routines don't seem to give as good a result as those below.
 c       call dsifa(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,info)
 c       if (info .ne. 0) then
-c         call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that
-c    & two or more conductor points are within the same grid cell.")
+c         call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that"//
+c    &" two or more conductor points are within the same grid cell.")
 c       endif
 c       call dsidi(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
 
@@ -3490,8 +3490,8 @@ c       --- These routines are from LAPACK.
 #endif
         if (info .ne. 0) then
 c         print*,info
-          call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that
-     & two or more conductor points are within the same grid cell.")
+          call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that"//
+     &" two or more conductor points are within the same grid cell.")
         endif
 c       --- pcond3d is passed as workspace.
 #if WORDSIZE == 64

@@ -2906,8 +2906,8 @@ c     --- The sp_fract was then also removed from the calculation of sw below.
 
 c     --- Print warning if npinject=0
       if (npinject == 0) then
-        call remark("ERROR: injctint, npinject is zero, no particles will
-     &  be injected.")
+        call remark("ERROR: injctint, npinject is zero, no particles will"//
+     &" be injected.")
       endif
 
 c Each species is stored in seperate parts of the particle arrays, the size of
@@ -3165,8 +3165,8 @@ c Loop over the injection sources.
 c       --- Provide some simple error checking
         if (ainject(ij) > abs(rinject(ij)) .or.
      &      binject(ij) > abs(rinject(ij))) then
-          call kaboom("fill_inj: Error: the radius of curvature of the injection source must
-     & be greater than or equal to its transverse radius")
+          call kaboom("fill_inj: Error: the radius of curvature of the injection source must"//
+     &" be greater than or equal to its transverse radius")
           return
         endif
 
@@ -3453,8 +3453,8 @@ c     --- If transforming to coordinates of source, subtract source center
             endif
           enddo
         else if (ishift == 2) then
-          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,
-     & report it to DPGrote@lbl.gov")
+          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,"//
+     &" report it to DPGrote@lbl.gov")
           return
 c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
@@ -3537,8 +3537,8 @@ c     --- If transforming from coordinates of source, add source center
             endif
           enddo
         else if (ishift == 2) then
-          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,
-     & report it to DPGrote@lbl.gov")
+          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,"//
+     &" report it to DPGrote@lbl.gov")
           return
 c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
