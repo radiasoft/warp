@@ -762,20 +762,17 @@ class MainWindow(wxFrame):
         self.config['lastpath'] = self.config.get('lp', os.getcwd())
         try:
             path = os.sep.join([self.configPath, 'history.txt'])
-            f = open(path, "w")
-            f.write(pprint.pformat(self.config))
-            f.close()
+            with open(path, "w") as f:
+                f.write(pprint.pformat(self.config))
             path = os.sep.join([self.configPath, 'menus.txt'])
-            f = open(path, "w")
-            f.write(pprint.pformat(MENUPREF))
-            f.close()
+            with open(path, "w") as f:
+                f.write(pprint.pformat(MENUPREF))
         except:
             self.exceptDialog("Could not save preferences to %s"%path)
 
     def readAndEvalFile(self, filename):
-        f = open(filename)
-        txt = f.read().replace('\r\n','\n')
-        f.close()
+        with open(filename) as f:
+            txt = f.read().replace('\r\n','\n')
         return eval(txt)
 #------------------------- end cmt-001 - 08/06/2003 --------------------------
 
@@ -842,10 +839,9 @@ class MainWindow(wxFrame):
                     cpos =  string.find(ofn,':')
                     if cpos>=0:
                         ofn = ofn[cpos-1:]
-                fil = open(ofn, 'wb')
-                txt = win.GetText()
-                fil.write(txt)
-                fil.close()
+                with open(ofn, 'wb') as fil:
+                    txt = win.GetText()
+                    fil.write(txt)
                 if VS[-1] == 'u': a = "%s as %s"%(ofn, win.enc)
                 else:             a = ofn
                 win.mod = os.stat(ofn)[8]
@@ -982,9 +978,8 @@ class MainWindow(wxFrame):
         state = self.config.get('DOCUMENT_DEFAULTS', {})
         if d:
             FN = self.getAbsolute(nwin.filename, nwin.dirname)
-            f=open(FN,'rb')
-            txt = f.read()
-            f.close()
+            with open(FN,'rb') as f:
+                txt = f.read()
             nwin.mod = os.stat(FN)[8]
             nwin.format = detectLineEndings(txt)
             nwin.SetText(txt)
@@ -1025,9 +1020,8 @@ class MainWindow(wxFrame):
                 return
         try:
             FN = self.getAbsolute(win.filename, win.dirname)
-            fil = open(FN, 'rb')
-            txt = fil.read()
-            fil.close()
+            with open(FN, 'rb') as fil:
+                txt = fil.read()
             win.BeginUndoAction()
             win.SetText(txt, 0)
             win.EndUndoAction()
@@ -1929,9 +1923,8 @@ class MainWindow(wxFrame):
         of this document."""%VERSION
         self.dialog(txt.replace('        ', ''), "About...")
     def OnHelp(self, e):
-        a = open(os.path.join(runpath, 'readme.txt'), 'rb')
-        txt = a.read()
-        a.close()
+        with open(os.path.join(runpath, 'readme.txt'), 'rb') as a:
+            txt = a.read()
         dlg = wxScrolledMessageDialog(self, txt, "Help!")
         dlg.ShowModal()
         dlg.Destroy()

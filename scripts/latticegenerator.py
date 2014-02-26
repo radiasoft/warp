@@ -159,9 +159,8 @@ class LatticeGenerator:
   #---------------------------------------------------------------------------
   # --- Write data out to a pickle file
   def saveself(s,filename):
-    ff = open(filename,'w')
-    cPickle.dump(s,ff,1)
-    ff.close()
+    with open(filename,'w') as ff:
+      cPickle.dump(s,ff,1)
 
   #---------------------------------------------------------------------------
   # --- Print out a line of info

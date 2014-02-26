@@ -1674,9 +1674,8 @@ def madtowarp(line,settunelen=1):
 # --- Now, using above classes, read in and parse a MAD lattice file.
 def getlattice(file):
     """Reads a MAD style lattice from the file and sets up the WARP lattice."""
-    ff = open(file,'r')
-    data = ff.readlines()
-    ff.close()
+    with open(file,'r') as ff:
+        data = ff.readlines()
     # --- Massage the data removing carriage returns, comments and blank lines
     i = 0
     while i < len(data):

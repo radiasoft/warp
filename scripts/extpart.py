@@ -749,14 +749,13 @@ feature.
         # --- in the files from each of the processors.
         datadict = {}
         for file in files:
-            ff = open(file,'r')
-            while 1:
-                try:
-                    data = cPickle.load(ff)
-                except:
-                    break
-                datadict[data[0]+'_'+file] = data[1]
-            ff.close()
+            with open(file,'r') as ff:
+                while 1:
+                    try:
+                        data = cPickle.load(ff)
+                    except:
+                        break
+                    datadict[data[0]+'_'+file] = data[1]
         return datadict
 
     def getPDBdatadict(self,files):
@@ -1997,18 +1996,16 @@ def dumpExtPart(object,filename):
     if me == 0:
         # --- Only PE0 writes the object to the file since it is the processor
         # --- where the data is gathered.
-        ff = open(filename,'w')
-        cPickle.dump(object,ff,1)
-        ff.close()
+        with open(filename,'w') as ff:
+            cPickle.dump(object,ff,1)
 
 def restoreExtPart(object,filename):
     """Restore extrapolated data from the given file"""
     if me == 0:
         # --- Only PE0 wrote the object to the file since it is the processor
         # --- where the data was gathered.
-        ff = open(filename,'r')
-        result = cPickle.load(ff)
-        ff.close()
+        with open(filename,'r') as ff:
+            result = cPickle.load(ff)
         result.enable()
         # --- Get the value of iz
         iz = result.iz
@@ -2531,14 +2528,13 @@ feature.
         # --- Read in all of the data into a dictionary.
         datadict = {}
         for file in files:
-            ff = open(file,'r')
-            while 1:
-                try:
-                    data = cPickle.load(ff)
-                except:
-                    break
-                datadict[data[0]] = data[1]
-            ff.close()
+            with open(file,'r') as ff:
+                while 1:
+                    try:
+                        data = cPickle.load(ff)
+                    except:
+                        break
+                    datadict[data[0]] = data[1]
         return datadict
 
     def getPDBdatadict(self,files):

@@ -694,36 +694,34 @@ after simulation when the dumptofile flag was on.
         # --- This reads in everything at the beginning of the file until
         # --- the time data is found, which starts the data section of the
         # --- file.
-        ff = open(files[0],'r')
-        data = cPickle.load(ff)
-        while data[0][0:4] != 'time':
-            setattr(self,data[0],data[1])
+        with open(files[0],'r') as ff:
             data = cPickle.load(ff)
-        ff.close()
+            while data[0][0:4] != 'time':
+                setattr(self,data[0],data[1])
+                data = cPickle.load(ff)
 
         # --- Read all of the data in. Only keep the data if the time is
         # --- between start and endtime.
         keepdata = 0
         datadict = {}
         for file in files:
-            ff = open(file,'r')
-            while 1:
-                try:
-                    tell = ff.tell()
-                    data = cPickle.load(ff)
-                except:
-                    break
-                if data[0][:4] == 'time':
-                    # --- Keep the data if any portion of it is with in
-                    # --- the start and end time.
-                    t1 = data[1][0]
-                    t2 = data[1][-1]
-                    keepdata = (starttime <= t2 and t1 <= endtime)
-                if not readscintillator and data[0][:12] == 'scintillator':
-                    data = (data[0],tell)
-                if keepdata:
-                    datadict[data[0]] = data[1]
-            ff.close()
+            with open(file,'r') as ff:
+                while 1:
+                    try:
+                        tell = ff.tell()
+                        data = cPickle.load(ff)
+                    except:
+                        break
+                    if data[0][:4] == 'time':
+                        # --- Keep the data if any portion of it is with in
+                        # --- the start and end time.
+                        t1 = data[1][0]
+                        t2 = data[1][-1]
+                        keepdata = (starttime <= t2 and t1 <= endtime)
+                    if not readscintillator and data[0][:12] == 'scintillator':
+                        data = (data[0],tell)
+                    if keepdata:
+                        datadict[data[0]] = data[1]
 
         # --- Fix old bad naming
         varlist = datadict.keys()
@@ -856,10 +854,9 @@ after simulation when the dumptofile flag was on.
         if file is None:
             file = self.dumptofile+'_gridcrossing.pkl'
 
-        ff = open(file,'r')
-        ff.seek(self._scintillator[i])
-        data = cPickle.load(ff)
-        ff.close()
+        with open(file,'r') as ff:
+            ff.seek(self._scintillator[i])
+            data = cPickle.load(ff)
         return data[1]
 
     # ----------------------------------------------------------------------
@@ -2314,39 +2311,37 @@ be unreliable.
         # --- This reads in everything at the beginning of the file until
         # --- the time data is found, which starts the data section of the
         # --- file.
-        ff = open(files[0],'r')
-        data = cPickle.load(ff)
-        while data[0][0:4] != 'time':
-            setattr(self,data[0],data[1])
+        with open(files[0],'r') as ff:
             data = cPickle.load(ff)
-        ff.close()
+            while data[0][0:4] != 'time':
+                setattr(self,data[0],data[1])
+                data = cPickle.load(ff)
 
         # --- Read all of the data in. Only keep the data if the time is
         # --- between start and endtime.
         keepdata = 0
         datadict = {}
         for file in files:
-            ff = open(file,'r')
-            while 1:
-                try:
-                    tell = ff.tell()
-                    data = cPickle.load(ff)
-                except:
-                    break
-                if data[0][:4] == 'time':
-                    if self.nhist < 1.:
-                        # --- Keep the data if any portion of it is with in
-                        # --- the stand and end time.
-                        t1 = data[1][0]
-                        t2 = data[1][-1]
-                    else:
-                        t1 = t2 = data[1]
-                    keepdata = (starttime <= t2 and t1 <= endtime)
-                if not readscintillator and data[0][:12] == 'scintillator':
-                    data = (data[0],tell)
-                if keepdata:
-                    datadict[data[0]] = data[1]
-            ff.close()
+            with open(file,'r') as ff:
+                while 1:
+                    try:
+                        tell = ff.tell()
+                        data = cPickle.load(ff)
+                    except:
+                        break
+                    if data[0][:4] == 'time':
+                        if self.nhist < 1.:
+                            # --- Keep the data if any portion of it is with in
+                            # --- the stand and end time.
+                            t1 = data[1][0]
+                            t2 = data[1][-1]
+                        else:
+                            t1 = t2 = data[1]
+                        keepdata = (starttime <= t2 and t1 <= endtime)
+                    if not readscintillator and data[0][:12] == 'scintillator':
+                        data = (data[0],tell)
+                    if keepdata:
+                        datadict[data[0]] = data[1]
 
         # --- Fix old bad naming
         varlist = datadict.keys()
@@ -2417,10 +2412,9 @@ be unreliable.
         if file is None:
             file = self.dumptofile+'_gridcrossing.pkl'
 
-        ff = open(file,'r')
-        ff.seek(self._scintillator[i])
-        data = cPickle.load(ff)
-        ff.close()
+        with open(file,'r') as ff:
+            ff.seek(self._scintillator[i])
+            data = cPickle.load(ff)
         return data[1]
 
     # ----------------------------------------------------------------------

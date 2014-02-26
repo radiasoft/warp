@@ -131,9 +131,8 @@ class child:
 #########################################################################
 # --- Now, using above classes, read in and parse a hibeam lattice file.
 def hibeamlattice(file):
-    ff = open(file,'r')
-    data = ff.readlines()
-    ff.close()
+    with open(file,'r') as ff:
+        data = ff.readlines()
     # --- Massage the data removing carriage returns, comments and blank lines
     i = 0
     while i < len(data):
