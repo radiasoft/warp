@@ -43,9 +43,8 @@ Note that only things which can be pickled and unpickled are written out.
         assert mode in ['w','a'],Exception("Improper mode: " + mode)
         if mode == 'a':
           # --- If append, read in all data from the file.
-          ff = open(filename,mode='rb')
-          self.__dict__['_pickledict'] = cPickle.load(ff)
-          ff.close()
+          with open(filename,mode='rb') as ff:
+              self.__dict__['_pickledict'] = cPickle.load(ff)
         else:
           self.__dict__['_pickledict'] = {}
 

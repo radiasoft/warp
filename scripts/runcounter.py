@@ -66,10 +66,9 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
 
     try:
         # --- Try to open the runcounter file
-        runcounterfile = open(prefix+suffix,"r")
-        # --- Read in the state, converting each number into an integer
-        counter = map(int,runcounterfile.readline().split())
-        runcounterfile.close()
+        with open(prefix+suffix,"r") as runcounterfile:
+            # --- Read in the state, converting each number into an integer
+            counter = map(int,runcounterfile.readline().split())
     except IOError:
         # --- If no such file, then flag counter
         counter = None
@@ -95,9 +94,8 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
 
     # --- PE0 (or serial job) can now write out the next value
     if me == 0:
-        runcounterfile = open(prefix+suffix,"w")
-        runcounterfile.write(' '.join(map(repr,counter)) + '\n')
-        runcounterfile.close()
+        with open(prefix+suffix,"w") as runcounterfile:
+            runcounterfile.write(' '.join(map(repr,counter)) + '\n')
 
     # --- Make this job wait a few seconds to make sure it is not running
     # --- the same time as another job in this series.
