@@ -614,6 +614,7 @@ most of which get there default values from one of the fortran packages.
         # --- If the self-B correction is nonzero, then calculate and include
         # --- the approximate correction terms A and dA/dt.
         bfieldp = self.returnbfieldp()
+        bfieldp[...] = 0.
         self.getselfb(bfieldp,top.fselfb[iselfb],self.potentialp)
         self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
