@@ -163,12 +163,11 @@ def save_irrev(simlen=0.0):
         Save irreversibility factors (coefficients) in Text File
         Simlen is the length of simulation before reversal.
     """
-    out = open("rev."+runid[0:3]+".txt", "a")
-    out.write("Simulation Length = "+`simlen`+" * lambda_p"'\n\n')
-    for mom in secmoms:
+    with open("rev."+runid[0:3]+".txt", "a") as out:
+      out.write("Simulation Length = "+`simlen`+" * lambda_p"'\n\n')
+      for mom in secmoms:
         out.write(mom+" = %s\n" % eval("ir"+mom, __main__.__dict__))
-    out.write('\n\n')
-    out.close()
+      out.write('\n\n')
 
 
 # =========================

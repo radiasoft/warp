@@ -100,9 +100,8 @@ Gets the storage directory name from comments in the deck.
 
 #------------------------------------------------------------------------
 def addstoragenametodeck(deck,storage):
-  ff = open(deck,'r')
-  lines = ff.readlines()
-  ff.close()
+  with open(deck,'r') as ff:
+    lines = ff.readlines()
   i = 0
   # --- Strip out any existing storage lines
   while i < len(lines):
@@ -113,10 +112,8 @@ def addstoragenametodeck(deck,storage):
   # --- Prepend new storage line
   lines[0:0] = [storageflag + " " + storage + '\n']
   # --- Write out modified text
-  ff = open(deck,'w')
-  for l in lines: ff.write(l)
-  ff.close()
-
+  with open(deck,'w') as ff:
+    for l in lines: ff.write(l)
 
 
 if __name__ == '__main__':

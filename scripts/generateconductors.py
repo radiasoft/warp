@@ -6522,25 +6522,24 @@ class SRFRVLAsystem:
       Save conductor into external file:
         - filename: name of external file ('.wob' will be added')
         """
-        f=open(filename+'.wob','w')
-        f.write("Begin\n")
+        with open(filename+'.wob','w') as f:
+            f.write("Begin\n")
 
-        for cond in self.SRFRVLAconds:
-            f.write("  Conductor "+cond.name+"\n")
-            for part in cond.parts:
-                f.write("    Part "+part.name+"\n")
-                d = part.data[0]
-                f.write('     s   %13.6E %13.6E \n'%(d[0],d[1]))
-                for d in part.data[1:]:
-                    if(len(d)==3): # line
-                        f.write('     l   %13.6E %13.6E                             %c \n'%(d[0],d[1],d[2]))
-                    else: # arc
-                        f.write('     a   %13.6E %13.6E %13.6E %13.6E %c \n'%(d[0],d[1],d[2],d[3],d[4]))
-                f.write("    Endpart "+part.name+"\n")
-            f.write("  End "+cond.name+"\n")
+            for cond in self.SRFRVLAconds:
+                f.write("  Conductor "+cond.name+"\n")
+                for part in cond.parts:
+                    f.write("    Part "+part.name+"\n")
+                    d = part.data[0]
+                    f.write('     s   %13.6E %13.6E \n'%(d[0],d[1]))
+                    for d in part.data[1:]:
+                        if(len(d)==3): # line
+                            f.write('     l   %13.6E %13.6E                             %c \n'%(d[0],d[1],d[2]))
+                        else: # arc
+                            f.write('     a   %13.6E %13.6E %13.6E %13.6E %c \n'%(d[0],d[1],d[2],d[3],d[4]))
+                    f.write("    Endpart "+part.name+"\n")
+                f.write("  End "+cond.name+"\n")
 
-        f.write("End\n")
-        f.close()
+            f.write("End\n")
 
     def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
                    color='none',signx=1.,width=1.):

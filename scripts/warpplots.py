@@ -2373,13 +2373,13 @@ Write a palette to the file
            They must be integers between 0 and 255. No checking is done!
   - comments=None: optional comments to write to the file.
   """
-  ff = open(filename+'.gp','w')
-  ff.write('# gist palette '+filename+'.gp\n')
-  if comments is not None: ff.write('# '+comments+'\n')
-  ff.write('ncolors = %d\n'%len(r))
-  for ri,gi,bi in zip(r,g,b):
-    ff.write('%8d%8d%8d\n'%(ri,gi,bi))
-  ff.close()
+  with open(filename+'.gp','w') as ff:
+    ff.write('# gist palette '+filename+'.gp\n')
+    if comments is not None:
+      ff.write('# '+comments+'\n')
+    ff.write('ncolors = %d\n'%len(r))
+    for ri,gi,bi in zip(r,g,b):
+      ff.write('%8d%8d%8d\n'%(ri,gi,bi))
 
 #############################################################################
 def changepalette(returnpalette=0,filename='newpalette',help=0,view=None):

@@ -164,9 +164,8 @@ and 4 for 4-fold -> unfold over x and y)
 #
 #     tif = "P5\n#TIF version of array\n%d %d\n255\n%s" % (M, N,
 #                                 numpy.ravel(matrix).tostring())
-#     f_tif = open(filename,'wb')
-#     f_tif.write(tif)
-#     f_tif.close()
+#     with open(filename,'wb') as f_tif:
+#       f_tif.write(tif)
 #
 # ################## Read Array from Tif ##########################################
 #
@@ -174,9 +173,8 @@ and 4 for 4-fold -> unfold over x and y)
 #     """ read_tif(phpath): read tif photo speicified by phpath and
 #         return as a 2-D array
 #     """
-#     f_tif = open(phpath,'rb')
-#     tif = f_tif.read()
-#     f_tif.close()
+#     with open(phpath,'rb') as f_tif:
+#       tif = f_tif.read()
 #     #
 #     header, matrix = tif.split('\n255\n')
 #     dims = tuple([int(s) for s in header.split('\n')[-1].split()])
@@ -197,11 +195,10 @@ def write_info_file(empty = 1):
     tempstring = arraytostr(top.runid) + ".info"
 
     if ~empty:
-        f = open(tempstring,"w")
-        f.write("Information file for density photos.  Runi ID: %s.\n"+
-                "Format is: normal; position; peak_coord_1; peak_coord_2;"+
-                " meshsize_1; meshsize_2 \n" % arraytostr(top.runid))
-        f.close()
+        with open(tempstring,"w") as f:
+            f.write("Information file for density photos.  Runi ID: %s.\n"+
+                    "Format is: normal; position; peak_coord_1; peak_coord_2;"+
+                    " meshsize_1; meshsize_2 \n" % arraytostr(top.runid))
     else:
         f = open(tempstring,"a")
         f.write("%s; %d; %d; %d; %E; %E \n" % (normal, position, peak1, peak2,

@@ -22,34 +22,33 @@ def vtkparticlegrid(xx,yy,zz,gnx=32,gny=32,gnz=32,
   setgrid3d(len(xx),xx,yy,zz,gnx,gny,gnz,gg,xmin,xmax,ymin,ymax,zmin,zmax)
   if cmax is not None: gg = where(gg>cmax,cmax,gg)
 
-  ff = open(fname,"w")
   stdoutsave = sys.stdout
-  sys.stdout = ff
-  print "# vtk DataFile Version 2.0"
-  print comment
-  print "ASCII"
-  print "DATASET RECTILINEAR_GRID"
-  print "DIMENSIONS %d %d %d"%(gnx+1,gny+1,gnz+1)
-  print "X_COORDINATES %d float"%(gnx+1)
-  ss = ""
-  for i in range(gnx+1): ss = ss + "%f "%(xmin + i*gdx)
-  print ss
-  print "Y_COORDINATES %d float"%(gny+1)
-  ss = ""
-  for i in range(gny+1): ss = ss + "%f "%(ymin + i*gdy)
-  print ss
-  print "Z_COORDINATES %d float"%(gnz+1)
-  ss = ""
-  for i in range(gnz+1): ss = ss + "%f "%(zmin + i*gdz)
-  print ss
-  print "POINT_DATA %d"%((gnx+1)*(gny+1)*(gnz+1))
-  print "SCALARS scalars float 1"
-  print "LOOKUP_TABLE default"
-  for iz in range(gnz+1):
-    for iy in range(gny+1):
-      for ix in range(gnx+1):
-        print "%f"%gg[ix,iy,iz]
-  ff.close()
+  with open(fname,"w") as ff:
+    sys.stdout = ff
+    print "# vtk DataFile Version 2.0"
+    print comment
+    print "ASCII"
+    print "DATASET RECTILINEAR_GRID"
+    print "DIMENSIONS %d %d %d"%(gnx+1,gny+1,gnz+1)
+    print "X_COORDINATES %d float"%(gnx+1)
+    ss = ""
+    for i in range(gnx+1): ss = ss + "%f "%(xmin + i*gdx)
+    print ss
+    print "Y_COORDINATES %d float"%(gny+1)
+    ss = ""
+    for i in range(gny+1): ss = ss + "%f "%(ymin + i*gdy)
+    print ss
+    print "Z_COORDINATES %d float"%(gnz+1)
+    ss = ""
+    for i in range(gnz+1): ss = ss + "%f "%(zmin + i*gdz)
+    print ss
+    print "POINT_DATA %d"%((gnx+1)*(gny+1)*(gnz+1))
+    print "SCALARS scalars float 1"
+    print "LOOKUP_TABLE default"
+    for iz in range(gnz+1):
+      for iy in range(gny+1):
+        for ix in range(gnx+1):
+          print "%f"%gg[ix,iy,iz]
   sys.stdout = stdoutsave
 
   if returngrid: return gg

@@ -528,41 +528,40 @@ def asciipart(s,name='particles.dat',format='%10.3e',mode='w'):
    - format='%10.3e': format used to write the data
    - mode='w': mode used when opening the file
     """
-    f = open(name,mode)
-    if isinstance(s,Species):
-        n=s.getn()
-        x=s.getx()
-        y=s.gety()
-        z=s.getz()
-        ux=s.getux()
-        uy=s.getuy()
-        uz=s.getuz()
-    else:
-        n=getn(js=s)
-        x=getx(js=s)
-        y=gety(js=s)
-        z=getz(js=s)
-        ux=getux(js=s)
-        uy=getuy(js=s)
-        uz=getuz(js=s)
-    npad = len(format%1.)
-    if mode=='w':
-        f.write('x'+' '*npad)
-        f.write('y'+' '*npad)
-        f.write('z'+' '*npad)
-        f.write('ux'+' '*(npad-1))
-        f.write('uy'+' '*(npad-1))
-        f.write('uz'+' '*(npad-1))
-        f.write('\n')
-    for i in range(n):
-        f.write(format%x[i]+' ')
-        f.write(format%y[i]+' ')
-        f.write(format%z[i]+' ')
-        f.write(format%ux[i]+' ')
-        f.write(format%uy[i]+' ')
-        f.write(format%uz[i]+' ')
-        f.write('\n')
-    f.close()
+    with open(name,mode) as f:
+        if isinstance(s,Species):
+            n=s.getn()
+            x=s.getx()
+            y=s.gety()
+            z=s.getz()
+            ux=s.getux()
+            uy=s.getuy()
+            uz=s.getuz()
+        else:
+            n=getn(js=s)
+            x=getx(js=s)
+            y=gety(js=s)
+            z=getz(js=s)
+            ux=getux(js=s)
+            uy=getuy(js=s)
+            uz=getuz(js=s)
+        npad = len(format%1.)
+        if mode=='w':
+            f.write('x'+' '*npad)
+            f.write('y'+' '*npad)
+            f.write('z'+' '*npad)
+            f.write('ux'+' '*(npad-1))
+            f.write('uy'+' '*(npad-1))
+            f.write('uz'+' '*(npad-1))
+            f.write('\n')
+        for i in range(n):
+            f.write(format%x[i]+' ')
+            f.write(format%y[i]+' ')
+            f.write(format%z[i]+' ')
+            f.write(format%ux[i]+' ')
+            f.write(format%uy[i]+' ')
+            f.write(format%uz[i]+' ')
+            f.write('\n')
 
 def bisection(f,a,b,f0=0.,xtol=1.e-10,maxiter=100):
     """

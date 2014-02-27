@@ -162,10 +162,8 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
             except IndexError: continue
 
         #write GIF animation
-        fp = open(filename, "wb")
-        gifmaker.makedelta(fp, sequence)
-        fp.close()
-
+        with open(filename, "wb") as fp:
+            gifmaker.makedelta(fp, sequence)
 
 
     if ty:
@@ -223,9 +221,8 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
             except IndexError: continue
 
         #write GIF animation
-        fp = open(filename, "wb")
-        gifmaker.makedelta(fp, sequence)
-        fp.close()
+        with open(filename, "wb") as fp:
+            gifmaker.makedelta(fp, sequence)
 
 
     if tx:
@@ -283,6 +280,5 @@ in a gif animation.  <Needs More Work (to change fps, etc)>
             except IndexError: continue
 
         #write GIF animation
-        fp = open(filename, "wb")
-        gifmaker.makedelta(fp, sequence)
-        fp.close()
+        with open(filename, "wb") as fp:
+            gifmaker.makedelta(fp, sequence)

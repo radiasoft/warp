@@ -6,9 +6,8 @@ class NameList:
 
   def __init__(self,filename):
     self.filename = filename
-    ff = open(filename,'r')
-    self.file = ff.readlines()
-    ff.close()
+    with open(filename,'r') as ff:
+      self.file = ff.readlines()
     #self.joincontinuedlines()
     self.getheader()
     self.getnamelists()
