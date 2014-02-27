@@ -41,9 +41,8 @@ def save_tif(matrix, filename = None):
 
     tif = "P5\n#TIF version of array\n%d %d\n255\n%s" % (M, N,
                                 numpy.ravel(matrix).tostring())
-    f_tif = open(filename,'wb')
-    f_tif.write(tif)
-    f_tif.close()
+    with open(filename,'wb') as f_tif:
+      f_tif.write(tif)
 
 ################## Read Array from Tif ##########################################
 
@@ -51,9 +50,8 @@ def read_tif(phpath):
     """ read_tif(phpath): read tif photo speicified by phpath and
         return as a 2-D array
     """
-    f_tif = open(phpath,'rb')
-    tif = f_tif.read()
-    f_tif.close()
+    with open(phpath,'rb') as f_tif:
+      tif = f_tif.read()
     #
     header, matrix = tif.split('\n255\n')
     dims = tuple([int(s) for s in header.split('\n')[-1].split()])
