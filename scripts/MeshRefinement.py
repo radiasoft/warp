@@ -547,7 +547,7 @@ error prone.
     if self.finalized and not lforce: return
     blocklists = self.generateblocklevellists()
     self.blocklists = blocklists
-    neighborblocklists = self.swapblocklistswithprocessneighbors(blocklists)
+    neighborblocklists = self.swapblocklistswithprocessneighbors()
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
     self.initializechilddomains()
@@ -578,7 +578,29 @@ error prone.
         b = child.generateblocklevellists(blocklists[1:])
     return blocklists
 
-  def swapblocklistswithprocessneighbors(self,blocklists):
+  def generatedummyblocklevellists(self,dummyblocklists=None):
+    NMAXLEVELS = 32
+    if dummyblocklists is None:
+      # --- This will only happen at the top level.
+      # --- Create a list of empty lists. Each empty list will get the blocks
+      # --- at the appropriate levels appended to it. Note that 32 is
+      # --- assumed to be a large enough number - there almost certainly
+      # --- will never be 32 levels of refinement.
+      dummyblocklists = [[] for i in range(NMAXLEVELS)]
+    # --- Add this instance to the top level of the list and pass the rest
+    # --- of it to the children
+    if self not in dummyblocklists[0]:
+      dummyself = {}
+      dummyself['isactive'] = self.isactive
+      dummyself['fulllower'] = self.fulllower
+      dummyself['fullupper'] = self.fullupper
+      dummyself['blocknumber'] = self.blocknumber
+      dummyblocklists[0].append(dummyself)
+      for child in self.children:
+        b = child.generatedummyblocklevellists(dummyblocklists[1:])
+    return dummyblocklists
+
+  def swapblocklistswithprocessneighbors(self):
     NMAXLEVELS = 32
     # --- Note that this will only be called when self = self.root
     if not lparallel:
@@ -586,24 +608,21 @@ error prone.
       #return [[[] for i in range(NMAXLEVELS)] for i in range(6)]
       return 6*[NMAXLEVELS*[[]]]
     else:
-      # --- First, set so amount data sent to neighbors will be small
-      lreducedpicklesave = self.lreducedpickle
-      lnorestoreonpicklesave = self.lnorestoreonpickle
-      self.lreducedpickle = 1
-      self.lnorestoreonpickle = 1
+      # --- Create a dummyblocklist
+      dummyblocklists = self.generatedummyblocklevellists()
 
       neighborpes = self.neighborpes
 
       # --- Exchange lists with processes neighboring along X
       if self.ixproc > 0 and neighborpes[0] >= 0:
-        comm_world.send(blocklists,neighborpes[0])
+        comm_world.send(dummyblocklists,neighborpes[0])
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
         blocklistsxp = comm_world.recv(neighborpes[1])[0]
       else:
         blocklistsxp = NMAXLEVELS*[[]]
 
       if self.ixproc < self.nxprocs-1 and neighborpes[1] >= 0:
-        comm_world.send(blocklists,neighborpes[1])
+        comm_world.send(dummyblocklists,neighborpes[1])
       if self.ixproc > 0 and neighborpes[0] >= 0:
         blocklistsxm = comm_world.recv(neighborpes[0])[0]
       else:
@@ -611,14 +630,14 @@ error prone.
 
       # --- Exchange lists with processes neighboring along Y
       if self.iyproc > 0 and neighborpes[2] >= 0:
-        comm_world.send(blocklists,neighborpes[2])
+        comm_world.send(dummyblocklists,neighborpes[2])
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
         blocklistsyp = comm_world.recv(neighborpes[3])[0]
       else:
         blocklistsyp = NMAXLEVELS*[[]]
 
       if self.iyproc < self.nyprocs-1 and neighborpes[3] >= 0:
-        comm_world.send(blocklists,neighborpes[3])
+        comm_world.send(dummyblocklists,neighborpes[3])
       if self.iyproc > 0 and neighborpes[2] >= 0:
         blocklistsym = comm_world.recv(neighborpes[2])[0]
       else:
@@ -626,27 +645,23 @@ error prone.
 
       # --- Exchange lists with processes neighboring along Z
       if self.izproc > 0 and neighborpes[4] >= 0:
-        comm_world.send(blocklists,neighborpes[4])
+        comm_world.send(dummyblocklists,neighborpes[4])
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
         blocklistszp = comm_world.recv(neighborpes[5])[0]
       else:
         blocklistszp = NMAXLEVELS*[[]]
 
       if self.izproc < self.nzprocs-1 and neighborpes[5] >= 0:
-        comm_world.send(blocklists,neighborpes[5])
+        comm_world.send(dummyblocklists,neighborpes[5])
       if self.izproc > 0 and neighborpes[4] >= 0:
         blocklistszm = comm_world.recv(neighborpes[4])[0]
       else:
         blocklistszm = NMAXLEVELS*[[]]
 
-      # --- Restore the flags
-      self.lreducedpickle = lreducedpicklesave
-      self.lnorestoreonpickle = lnorestoreonpicklesave
-
       return (blocklistsxm,blocklistsxp,
               blocklistsym,blocklistsyp,
               blocklistszm,blocklistszp)
-      
+
   def clearparentsandchildren(self):
     for block in self.listofblocks:
       block.parents = []
@@ -780,17 +795,17 @@ only once, rather than twice for each parent as in the original.
       for neighborlists,pe in zip(neighborblocklists,self.neighborpes):
         if pe < 0 or pe == npes or pe == me: continue
         for neighborblock in neighborlists:
-          if not neighborblock.isactive: continue
-          sl = maximum(neighborblock.fulllower,block.fulllower)
-          su = minimum(neighborblock.fullupper,block.fullupper)
+          if not neighborblock['isactive']: continue
+          sl = maximum(neighborblock['fulllower'],block.fulllower)
+          su = minimum(neighborblock['fullupper'],block.fullupper)
           # --- It probably doesn't hurt anything in 3D but will be a small
           # --- waste of time to include blocks that only overlap on an edge,
           # --- but those overlaps must be included in 1D and 2D.
           if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
           if pe < me:
-            block.overlapsparallelleft[pe,neighborblock.blocknumber] = [sl,su]
+            block.overlapsparallelleft[pe,neighborblock['blocknumber']] = [sl,su]
           else:
-            block.overlapsparallelright[pe,neighborblock.blocknumber] = [sl,su]
+            block.overlapsparallelright[pe,neighborblock['blocknumber']] = [sl,su]
 
   def clearinactiveregions(self,nbcells,parent=None,level=1):
     """
