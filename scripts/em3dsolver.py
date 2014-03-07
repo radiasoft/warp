@@ -305,11 +305,11 @@ class EM3D(SubcycledPoissonSolver):
                                lchild=True,
                                **self.kw)
 
-    if not self.l_1dz:
-      if self.xmmin>w3d.xmmaxlocal or self.xmmax<w3d.xmminlocal:return
-    if not self.l_2dxz and not self.l_2drz:
-      if self.ymmin>w3d.ymmaxlocal or self.ymmax<w3d.ymminlocal:return
-    if self.zmmin>w3d.zmmaxlocal or self.zmmax<w3d.zmminlocal:return
+#   if not self.l_1dz:
+#     if self.xmmin>w3d.xmmaxlocal or self.xmmax<w3d.xmminlocal:return
+#   if not self.l_2dxz and not self.l_2drz:
+#     if self.ymmin>w3d.ymmaxlocal or self.ymmax<w3d.ymminlocal:return
+#   if self.zmmin>w3d.zmmaxlocal or self.zmmax<w3d.zmminlocal:return
     if self.refinement is not None:
       self.block_coarse = self.field_coarse.block
     
