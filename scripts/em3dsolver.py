@@ -302,6 +302,7 @@ class EM3D(SubcycledPoissonSolver):
                                #bounds=self.bounds,
                                isactiveem=self.isactive,
                                ncyclesperstep=self.root.listofblocks[self.parents[0]].ncyclesperstep,
+                               lchild=True,
                                **self.kw)
 
     if not self.l_1dz:
