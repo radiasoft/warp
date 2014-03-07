@@ -59,6 +59,8 @@ Implements adaptive mesh refinement in 3d
                     l_EM=0,
                     children=None,lchild=False,**kw):
 
+    self.lchild = lchild
+
     # --- Save the input dictionary to pass to children
     self.kw = kw
         
