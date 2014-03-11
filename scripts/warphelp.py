@@ -3,23 +3,24 @@
 from warp import *
 warphelp_version = "$Id: warphelp.py,v 1.2 2009/01/30 23:45:50 dave Exp $"
 
+
 def warphelpdoc():
-  import warphelp
-  print warphelp.__doc__
+    import warphelp
+    print warphelp.__doc__
 
-##########################################################################
+
 def warphelp():
-  import warpplots
+    import warpplots
 
-  print """
+    print """
 WARP help card
 For addition documentation on any command or variable, type doc(name) or
 doc('name') for fortran variables.
 """
 
-  print warpplots.__doc__
+    print warpplots.__doc__
 
-  print """
+    print """
 dump(): creates a dump file
 restart(): restart simulation from a dump file
 loadrho(): loads charge density array
@@ -30,7 +31,7 @@ installbeforestep(): installs a function to be called before a step
 installafterstep(): installs a function to be called after a step
 """
 
-  print """
+    print """
 For a description of available scripts, type
 warpscripts()
 
@@ -43,4 +44,3 @@ histplotdoc()
 For descriptions of useful fortran routines type
 warpfortran()
 """
-##########################################################################
