@@ -1,5 +1,4 @@
 # Gist gray.gp palette
-# $Id: grey.gp,v 1.1 2001/01/30 01:35:44 dave Exp $
 
 # black - gray - white
 # linear gray scale from black to white

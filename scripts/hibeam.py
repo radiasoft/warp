@@ -6,7 +6,6 @@ import getopt
 import hibeamlattice
 import string
 from hibeamdefaults import *
-hibeam_version = "$Id: hibeam.py,v 1.4 2004/12/03 23:55:41 dave Exp $"
 
 
 # --- Get the command line options.

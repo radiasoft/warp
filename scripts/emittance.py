@@ -1,7 +1,6 @@
 from warp import *
 from grid_1d import *
 from grid_2d import *
-emittance_version = "$Id: emittance.py,v 1.4 2006/04/28 17:36:37 dave Exp $"
 
 def emit1(threshold=0.05,js=0,pgroup=None):
   if pgroup is None: pgroup = top.pgroup

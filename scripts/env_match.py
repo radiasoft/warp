@@ -1,6 +1,5 @@
 from warp import *
 import numpy.linalg as linalg
-env_match_version = "$Id: env_match.py,v 1.4 2011/01/13 00:53:40 grote Exp $"
 
 print 'Envelope matching routines'
 print 'match() matches the beam giving the desired value of sigma, varying'

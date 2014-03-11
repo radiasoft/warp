@@ -1,8 +1,6 @@
 from warp import *
 import __main__
 
-printparameters3d_version = "$Id: printparameters3d.py,v 1.11 2010/03/11 19:10:20 dave Exp $"
-
 
 def printparameters3d():
     # --- Exit now if output parameters are not to be printed

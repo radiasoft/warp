@@ -27,7 +27,7 @@ if sys.hexversion >= 0x20501f0:
   import hashlib
 else:
   import md5 as hashlib
-monitor_version = "$Id: monitor.py,v 1.13 2010/03/01 04:13:49 dave Exp $"
+
 
 def socketsend(sock,s):
   """

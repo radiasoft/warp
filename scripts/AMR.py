@@ -16,7 +16,6 @@ try:
 except ImportError:
   pass
 
-AMR_version = "$Id: AMR.py,v 1.55 2010/04/07 01:26:46 jlvay Exp $"
 
 class AMRTree(VisualizableClass):
     """

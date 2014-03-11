@@ -22,7 +22,6 @@
 #
 # ==================
 """
-b_fields_version = "$Id: b_fields.py,v 1.4 2005/05/13 06:01:16 ramiak Exp $"
 from warp import *
 from rami_scripts import *
 

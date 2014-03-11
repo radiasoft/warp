@@ -1,5 +1,4 @@
 # Gist Fire.gp palette
-# $Id: ImageJ_Fire.gp,v 1.1 2012/01/06 23:54:00 grote Exp $
 
 # Copied from the Fire palette of ImageJ
 

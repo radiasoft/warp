@@ -1,5 +1,4 @@
 # Gist stern.gp palette
-# $Id: stern.gp,v 1.1 2001/01/30 01:15:52 dave Exp $
 
 # red - dk blue - lt blue - gray green - white
 # "Stern special" color table from IDL (c) Research Systems, Inc.

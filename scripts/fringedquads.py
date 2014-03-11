@@ -1,5 +1,4 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.12 2009/02/05 18:18:40 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.

@@ -3,7 +3,6 @@ Users can add their own options by importing warpoptions (before importing
 warp) add calling parser.add_option.
 """
 import optparse
-warpoptions_version = "$Id: warpoptions.py,v 1.5 2010/11/15 23:01:06 dave Exp $"
 
 
 def warpoptionsdoc():

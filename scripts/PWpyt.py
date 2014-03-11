@@ -5,7 +5,6 @@
 HDF basic writer class PW by David Grote, LLNL
 Heavily modified from PW.py originally written by Paul Dubois, LLNL, to use
 HDF files.
-$Id: PWpyt.py,v 1.8 2007/12/14 23:44:02 dave Exp $
 
 This writes all scalars into two tables, one for ints and one for floats.
 Everything else is written out using createArray.

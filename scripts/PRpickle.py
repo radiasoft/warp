@@ -5,7 +5,6 @@
 Pickle basic writer class PR by David Grote, LLNL
 Heavily modified from PR.py originally written by Paul Dubois, LLNL, to use
 pickle files.
-$Id: PRpickle.py,v 1.1 2008/02/07 22:02:38 dave Exp $
 
 This provides a nice wrapper over pickles for reading general
 self-describing data sets written out with PWpickle.PW.

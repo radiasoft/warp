@@ -76,7 +76,6 @@ except ImportError:
     # --- disabling any visualization.
     VisualizableClass = object
 
-lattice_version = "$Id: lattice.py,v 1.104 2011/09/22 00:26:58 grote Exp $"
 
 def latticedoc():
     import lattice

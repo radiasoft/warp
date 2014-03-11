@@ -1,7 +1,7 @@
 """Graphical tuning of lattice elements with the envelope code"""
 
 from warp import *
-envtuner_version = "$Id: envtuner.py,v 1.3 2009/09/14 23:27:17 dave Exp $"
+
 
 def makeenvtuneplot(zl,zu,qz):
     # --- Make the envelope plot, setting and returning the plot limits.

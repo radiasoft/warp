@@ -24,7 +24,7 @@ import numpy
 import mphoto
 import gifmaker
 
-photo_processing_version = "$Id: photo_processing.py,v 1.4 2009/01/08 19:30:23 dave Exp $"
+
 def photo_processingdoc():
     import photo_processing
     print photo_processing.__doc__

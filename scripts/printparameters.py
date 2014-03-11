@@ -1,7 +1,6 @@
 from warp import *
 import __main__
 
-printparameters_version = "$Id: printparameters.py,v 1.6 2010/03/11 19:10:20 dave Exp $"
 
 def printparameters():
 

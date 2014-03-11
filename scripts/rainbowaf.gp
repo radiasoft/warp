@@ -1,5 +1,4 @@
 # Gist rainbowaf.gp palette
-# $Id: rainbowaf.gp,v 1.4 2001/09/05 00:18:04 dave Exp $
 
 # red - orange - yellow - green - blue - purple
 # colors in spectral order, mod by AF for white background

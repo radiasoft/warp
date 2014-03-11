@@ -1,5 +1,4 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.23 2006/06/01 17:51:04 dave Exp $"
 
 
 def getzmomdoc():

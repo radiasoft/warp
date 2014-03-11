@@ -30,7 +30,7 @@ from warp import *
 import numpy, os
 from tifrw import *
 
-mphoto_version = "$Id: mphoto.py,v 1.6 2009/01/08 19:30:23 dave Exp $"
+
 def mphotodoc():
     import mphoto
     print mphoto.__doc__

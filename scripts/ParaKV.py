@@ -41,7 +41,7 @@
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.6 2006/06/17 02:12:01 dave Exp $"
+
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__

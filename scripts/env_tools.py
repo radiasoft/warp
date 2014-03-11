@@ -1,6 +1,5 @@
 from warp import *
 import numpy.linalg as linalg
-env_tools_version = "$Id: env_tools.py,v 1.2 2008/07/11 21:13:43 dave Exp $"
 
 print " "
 print "This scripts finds matched beam parameters for a periodic lattice."

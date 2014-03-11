@@ -1,7 +1,6 @@
 """Contains the command warphelp() which prints a list of handy commands.
 """
 from warp import *
-warphelp_version = "$Id: warphelp.py,v 1.2 2009/01/30 23:45:50 dave Exp $"
 
 
 def warphelpdoc():

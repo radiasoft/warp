@@ -4,7 +4,6 @@
 from warp import *
 from lattice import addnewbgrd,addnewbsqgrad
 
-fftsolver_version = "$Id: fftsolver.py,v 1.35 2011/09/22 23:20:02 grote Exp $"
 
 ##############################################################################
 class FFTSolver3D(MultiGrid3D):

@@ -64,7 +64,7 @@ from scipy import interpolate
 # Add script name version and script documentation function            #
 ########################################################################
 
-envmatch_KVinvariant_version = "$Id: envmatch_KVinvariant.py,v 1.5 2008/07/02 19:46:09 sven Exp $"
+
 def envmatch_KVinvariantdoc():
   import envmatch_KVinvariant
   print  envmatch_KVinvariant.__doc__

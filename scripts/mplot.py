@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.11 2010/08/05 22:21:29 dave Exp $"
+
 
 ### MPLOT - setup plots
 def mplot(dumpfile):

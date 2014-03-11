@@ -17,8 +17,6 @@ yes = 1
 no = 0
 import numpy
 
-tifrw_version = "$Id: tifrw.py,v 1.3 2009/01/08 19:27:35 dave Exp $"
-
 
 def tifrwdoc():
     import tifrw

@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.50 2010/06/08 17:53:37 dave Exp $"
+
 
 class TraceParticle(object):
     """

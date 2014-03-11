@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.129 2010/11/23 19:10:28 dave Exp $"
+
 
 def plot_conductordoc():
     print """

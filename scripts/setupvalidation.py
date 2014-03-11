@@ -1,5 +1,5 @@
 from warp import *
-setupvalidation_version = "$Id: setupvalidation.py,v 1.4 2006/11/14 18:21:39 dave Exp $"
+
 
 def setupvalidationdoc():
   print """

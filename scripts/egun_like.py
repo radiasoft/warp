@@ -28,7 +28,6 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.69 2011/08/08 23:00:05 jlvay Exp $"
 
 
 ##############################################################################

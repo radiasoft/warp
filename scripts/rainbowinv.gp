@@ -1,5 +1,4 @@
 # Gist rainbowinv.gp palette
-# $Id: rainbowinv.gp,v 1.1 2002/11/07 22:01:27 dave Exp $
 
 # (red - orange - yellow - green - blue - purple)transpose
 # colors in inverse spectral order

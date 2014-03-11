@@ -6,7 +6,6 @@ import __main__
 import gc
 import types
 
-fieldsolver_version = "$Id: fieldsolver.py,v 1.103 2011/12/19 18:51:17 grote Exp $"
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true,lfinalize_rho=true):

@@ -14,7 +14,6 @@ try:
 except ImportError:
   pass
 
-multigrid_version = "$Id: multigrid.py,v 1.164 2011/12/08 22:49:04 grote Exp $"
 
 ##############################################################################
 class MultiGrid3D(SubcycledPoissonSolver):

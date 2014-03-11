@@ -1,5 +1,3 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.14 2009/04/03 21:47:42 dave Exp $"
-
 def warpscriptsdoc():
   print """
 Contains the command warpscripts() which prints a description of

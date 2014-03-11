@@ -5,7 +5,6 @@ __all__ = ['Smoother']
 
 from warp import *
 
-smoothing_version = "$Id: smoothing.py,v 1.3 2011/04/27 19:22:49 jlvay Exp $"
 
 class Smoother(object):
   """

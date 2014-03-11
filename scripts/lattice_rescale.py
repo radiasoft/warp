@@ -26,7 +26,7 @@ import envmatch_KVinvariant as matching
 # Add script name version and script documentation function            #
 ########################################################################
 
-lattice_rescale_version = "$Id: lattice_rescale.py,v 1.2 2008/02/26 17:33:23 sven Exp $"
+
 def lattice_rescaledoc():
   import lattice_rescale
   print  lattice_rescale.__doc__

@@ -1,7 +1,6 @@
 "Class for handling conductors with time dependent voltages."
 from warp import *
 
-timedependentvoltage_version = "$Id: timedependentvoltage.py,v 1.22 2010/06/08 17:42:09 dave Exp $"
 
 class TimeVoltage:
     """

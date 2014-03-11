@@ -1,7 +1,7 @@
 # Calculate the residual of Poisson's equation.  The residual has the units
 # of volts, same as phi.
 from warp import *
-residual_version = "$Id: residual.py,v 1.6 2008/04/16 22:00:13 dave Exp $"
+
 
 #print "Maximum residual = %e" % max(abs(ravel(residual)))
 

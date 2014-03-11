@@ -2,7 +2,8 @@
 """
 __all__ = ['drawlatticedoc','drawlattice']
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.13 2009/07/08 21:18:23 dave Exp $"
+
+
 def drawlatticedoc():
     import drawlattice
     print drawlattice.__doc__

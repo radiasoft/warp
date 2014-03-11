@@ -1,12 +1,11 @@
 """General injection algorithms
 """
-__all__ = ['InjectionGaussLaw',
-           'particleinjection_version','particleinjection_doc']
+__all__ = ['InjectionGaussLaw', 'particleinjection_doc']
 from warp import *
 import generateconductors
 import copy
 
-particleinjection_version = "$Id: particleinjection.py,v 1.17 2011/11/11 21:52:26 rcohen Exp $"
+
 def particleinjection_doc():
     import particleinjection
     print particleinjection.__doc__

@@ -59,7 +59,7 @@ plinechglw: Plots line-charge as a function of time
 
 from warp import *
 import __main__
-lwplots_version = "$Id: lwplots.py,v 1.6 2010/08/19 18:16:24 dave Exp $"
+
 
 def lwplotsdoc():
     import lwplots

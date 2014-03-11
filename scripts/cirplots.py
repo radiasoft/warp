@@ -1,12 +1,10 @@
 """Predefined history plots for Circe package.
 """
 from warp import *
-cirplots_version = "$Id: cirplots.py,v 1.2 2003/08/07 19:00:58 dave Exp $"
 
 
 ##############################################################################
 # Handy plots for the circe package
-
 def hcplot1(ii, istep, lvss, data,
             titlet=None, titleb=None, titlel=None, titler=None):
     if ii == -1:

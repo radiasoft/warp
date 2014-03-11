@@ -5,7 +5,6 @@ __all__ = ['LoadBalancer']
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.70 2011/11/07 23:01:05 grote Exp $"
 
 def loadbalancedoc():
     import loadbalance

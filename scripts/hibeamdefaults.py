@@ -1,7 +1,6 @@
 # --- Returns a value from the requested distribution function.
 from numpy import *
 import random
-hibeamdefaults_version = "$Id: hibeamdefaults.py,v 1.2 2008/05/12 16:32:46 dave Exp $"
 
 
 def errordist(type):

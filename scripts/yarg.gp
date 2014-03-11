@@ -1,5 +1,4 @@
 # Gist yarg.gp palette
-# $Id: yarg.gp,v 1.1 2001/01/30 01:15:52 dave Exp $
 
 # white - gray - black
 # linear gray scale from white to black

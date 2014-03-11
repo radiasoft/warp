@@ -1,7 +1,6 @@
 from warp import *
 import numpy.linalg as linalg
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.10 2008/07/11 21:13:43 dave Exp $"
 
 def wxy_matchdoc():
   print """

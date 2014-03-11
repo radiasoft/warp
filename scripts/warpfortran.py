@@ -1,6 +1,3 @@
-warpfortran_version = "$Id: warpfortran.py,v 1.2 2004/03/16 17:18:14 dave Exp $"
-
-
 def warpfortrandoc():
     print """
 Definges warpfortran() which prints description of most useful fortran

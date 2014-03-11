@@ -7,7 +7,6 @@ import struct # needed for makefortranordered
 import appendablearray
 import re
 
-warputils_version = "$Id: warputils.py,v 1.42 2011/11/04 21:39:11 grote Exp $"
 
 def warputilsdoc():
     import warputils
