@@ -2,7 +2,6 @@
 """
 from warp import *
 import time
-collision_version = "$Id: collision.py,v 1.6 2008/11/21 20:49:47 dave Exp $"
 
 def collisiondoc():
   import collision

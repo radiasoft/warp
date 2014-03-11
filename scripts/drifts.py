@@ -1,6 +1,6 @@
 from warp import *
 from lattice import *
-drifts_version = "$Id: drifts.py,v 1.3 2006/09/11 19:16:41 dave Exp $"
+
 
 def initdrifts():
   if top.drfts: return

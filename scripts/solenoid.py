@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.27 2011/12/20 20:17:36 grote Exp $"
+
 
 def solenoiddoc():
   import solenoid

@@ -7,7 +7,7 @@ from toppy import deposeintersect,setgrid1d,deposgrid1d
 import types
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.17 2009/11/25 22:28:25 jlvay Exp $"
+
 
 class AppendableArray:
     """

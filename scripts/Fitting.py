@@ -9,7 +9,6 @@ This module contains the following fitting functions of general use:
 
 lsqfit ... Least Squares fit of a straight line to approximate a set of pts.
 """
-Fitting_version = "$Id: Fitting.py,v 1.5 2009/01/08 19:30:23 dave Exp $"
 import numpy
 
 

@@ -9,7 +9,6 @@ This module contains utilities for simplifying management of WARP simulations:
 
 mailme ... sends e-mail message at that point of the run.
 """
-Rutils_version = "$Id: Rutils.py,v 1.1 2005/05/13 06:09:00 ramiak Exp $"
 import smtplib
 import os
 

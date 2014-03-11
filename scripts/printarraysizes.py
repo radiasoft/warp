@@ -1,5 +1,4 @@
 from warp import *
-printarraysizes_version = "$Id: printarraysizes.py,v 1.2 2001/06/18 20:45:55 dave Exp $"
 
 
 def printarraysizesdoc():

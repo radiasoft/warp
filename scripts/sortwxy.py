@@ -1,5 +1,4 @@
 from warp import *
-sortwxy_version = "$Id: sortwxy.py,v 1.5 2009/02/05 18:18:40 dave Exp $"
 # Sorts the particles for better cache use for the gather/scatter.
 
 

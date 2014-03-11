@@ -18,7 +18,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.51 2010/04/20 22:32:53 jlvay Exp $"
+
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__

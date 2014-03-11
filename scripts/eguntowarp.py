@@ -3,7 +3,7 @@
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.7 2008/05/12 16:32:46 dave Exp $'
+
 def eguntowarpdoc():
   import eguntowarp
   print eguntowarp.__doc__

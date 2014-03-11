@@ -1,6 +1,4 @@
 from lattice import *
-generatelattice_version = "$Id: generatelattice.py,v 1.2 2001/09/21 23:22:28 dave Exp $"
-
 # Requires that functions beamduration, beamavesize, and endcondition
 # be supplied.
 

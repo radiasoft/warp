@@ -1,12 +1,12 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.9 2009/02/05 18:18:40 dave Exp $"
+
+
 ######################################################################
 # Lattice builder
-# 
+#
 ######################################################################
-
 class LatticeGenerator:
   """Generates a lattice
   ion_mass:

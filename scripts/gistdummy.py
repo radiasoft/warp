@@ -1,6 +1,5 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.22 2009/04/04 00:30:27 dave Exp $"
 #from numpy import *
 import sys  # To be sure expand_path has posixpath and we have sys.path
 import os

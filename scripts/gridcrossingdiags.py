@@ -4,7 +4,6 @@ __all__ = ['GridCrossingDiags','GridCrossingDiagsOld']
 from warp import *
 import cPickle
 
-gridcrossingdiags_version = "$Id: gridcrossingdiags.py,v 1.50 2011/11/07 20:51:33 grote Exp $"
 
 class GridCrossingDiags(object):
     """

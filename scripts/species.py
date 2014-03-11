@@ -9,7 +9,6 @@ from warp import *
 import PWpickle as PW
 import PRpickle as PR
 
-species_version = "$Id: species.py,v 1.93 2011/12/20 19:41:59 grote Exp $"
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:

@@ -1,5 +1,4 @@
 # Gist cool.gp palette
-# $Id: cool.gp,v 1.1 2001/06/08 22:54:11 dave Exp $
 
 # dk red - red - orange - yellow  - white
 # color temperatures of hot iron bar in reverse order

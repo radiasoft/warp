@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.105 2011/08/15 21:05:43 grote Exp $"
+
 def particlescraperdoc():
     import particlescraper
     print particlescraper.__doc__

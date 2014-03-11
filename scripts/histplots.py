@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.44 2011/09/29 00:17:54 grote Exp $"
+
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam

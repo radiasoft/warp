@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.82 2011/11/07 23:01:05 grote Exp $"
+
 
 def warpparalleldoc():
     import warpparallel

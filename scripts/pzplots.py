@@ -85,7 +85,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.26 2011/07/01 17:16:03 grote Exp $"
+
 
 def pzplotsdoc():
     import pzplots

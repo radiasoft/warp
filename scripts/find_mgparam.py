@@ -1,7 +1,6 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.26 2008/11/19 18:29:59 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation

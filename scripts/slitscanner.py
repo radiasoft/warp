@@ -3,7 +3,7 @@ Creates a class which generates slit scanner data.
 SlitScan()
 """
 from warp import *
-slitscanner_version = "$Id: slitscanner.py,v 1.2 2002/09/27 22:13:51 dave Exp $"
+
 
 def slitscannerdoc():
     import slitscanner

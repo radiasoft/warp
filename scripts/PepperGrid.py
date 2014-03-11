@@ -17,8 +17,6 @@ apply_grid  ... Rectangular Grid
 """
 from warp import *
 
-PepperGrid_version = "$Id: PepperGrid.py,v 1.5 2008/05/23 18:40:20 dave Exp $"
-
 
 def PepperGriddoc():
     import PepperGrid

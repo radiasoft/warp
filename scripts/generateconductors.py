@@ -117,7 +117,6 @@ except ImportError:
     # --- disabling any visualization.
     VisualizableClass = object
 
-generateconductors_version = "$Id: generateconductors.py,v 1.246 2012/01/11 23:00:55 grote Exp $"
 def generateconductors_doc():
     import generateconductors
     print generateconductors.__doc__

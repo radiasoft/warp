@@ -8,7 +8,6 @@ from warp import *
 from appendablearray import *
 import cPickle
 import types
-extpart_version = "$Id: extpart.py,v 1.81 2011/09/29 00:16:10 grote Exp $"
 
 def extpartdoc():
     import extpart

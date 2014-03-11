@@ -1,6 +1,6 @@
 from warp import *
 import numpy.linalg as linalg
-matchenv_version = "$Id: matchenv.py,v 1.2 2008/07/11 21:13:43 dave Exp $"
+
 
 def matchenvdoc():
   print """

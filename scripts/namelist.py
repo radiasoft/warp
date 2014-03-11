@@ -1,6 +1,5 @@
 from numpy import *
 import re
-namelist_version = "$Id: namelist.py,v 1.2 2009/01/08 19:30:23 dave Exp $"
 
 
 class NameList:

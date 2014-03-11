@@ -1,7 +1,4 @@
-
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.10 2008/11/19 18:29:59 dave Exp $"
-
 from warp import *
 import controllers
 

@@ -1,5 +1,4 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.16 2010/06/30 23:43:20 dave Exp $"
 from warp import *
 import controllers
 import signal

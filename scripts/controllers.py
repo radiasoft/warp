@@ -59,7 +59,8 @@ installafterstep(myplots)
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.33 2011/10/19 22:58:36 grote Exp $"
+
+
 def controllersdoc():
     import controllers
     print controllers.__doc__

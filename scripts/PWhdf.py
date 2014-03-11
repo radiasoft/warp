@@ -7,7 +7,6 @@ import _pyhl
 from numpy import *
 from types import *
 
-PWhdf_version = "$Id: PWhdf.py,v 1.7 2010/03/11 19:10:18 dave Exp $"
 
 class PW:
     "HDF file writer class."

@@ -4,7 +4,7 @@ procedure, but using the full simulation instead of 1-D approximation.
 from warp import *
 from timedependentvoltage import TimeVoltage
 
-constantcurrentinjection_version = "$Id: constantcurrentinjection.py,v 1.14 2010/09/13 23:02:02 dave Exp $"
+
 def constantcurrentinjectiondoc():
   import constantcurrentinjection
   print constantcurrentinjection.__doc__

@@ -5,7 +5,6 @@
 HDF basic writer class PR by David Grote, LLNL
 Heavily modified from PR.py originally written by Paul Dubois, LLNL, to use
 HDF files.
-$Id: PRpyt.py,v 1.5 2008/02/06 19:50:39 jlvay Exp $
 
 This provides a nice wrapper over the pytables for reading general
 self-describing data sets written out with PWpyt.PW.

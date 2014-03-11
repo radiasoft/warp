@@ -2,7 +2,7 @@ from __future__ import generators
 from warp import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.73 2009/08/04 23:47:56 dave Exp $"
+
 
 ##############################################################################
 def realboundariesdoc():

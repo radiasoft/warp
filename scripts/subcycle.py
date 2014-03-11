@@ -2,7 +2,7 @@
 Defines class Subcycle, which does periodic fieldsolves.
 """
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.9 2008/05/07 23:20:40 dave Exp $"
+
 
 def subcycledoc():
   import subcycle

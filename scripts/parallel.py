@@ -1,8 +1,6 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.42 2010/12/02 18:56:17 dave Exp $"
-
 from numpy import *
 # --- Try import mpi - if not found, then run in serial mode
 # --- Note that:

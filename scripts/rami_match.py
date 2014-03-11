@@ -19,7 +19,7 @@ from warp import *
 import numpy.linalg as linalg
 import singleparticle
 
-rami_match_version = "$Id: rami_match.py,v 1.6 2008/07/11 21:13:43 dave Exp $"
+
 def rami_matchdoc():
   import rami_match
   print rami_match.__doc__

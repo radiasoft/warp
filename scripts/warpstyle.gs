@@ -1,5 +1,4 @@
 # Gist warpstyle.gs drawing style
-# $Id: warpstyle.gs,v 1.3 2001/04/23 22:15:25 dave Exp $
 
 # Multiple viewports
 #  1:  Standard, full page, left axis

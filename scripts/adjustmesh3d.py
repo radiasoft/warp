@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.32 2011/11/07 23:01:05 grote Exp $"
+
 
 def adjustmesh3ddoc():
   import adjustmesh3d

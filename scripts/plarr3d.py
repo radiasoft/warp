@@ -1,5 +1,4 @@
 """This module contains a class Plarr3d with methods to plot a 3-D array of points connected or not by lines.  Also included is a method to make a color-separated stereoscopic plot. For more info, import Plarr3d and type doc(Plarr3d)."""
-plarr3d_version = "$Id: plarr3d.py,v 1.7 2009/07/08 00:02:05 rcohen Exp $"
 def plarr3ddoc():
     import plarr3d
     print plarr3d.__doc__

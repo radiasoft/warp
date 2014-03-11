@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.95 2011/10/04 21:45:52 grote Exp $"
+
 
 #-------------------------------------------------------------------------
 def particlesdoc():

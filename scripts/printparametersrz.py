@@ -1,8 +1,6 @@
 from warp import *
 import __main__
 
-printparametersrz_version = "$Id: printparametersrz.py,v 1.3 2010/03/11 19:10:20 dave Exp $"
-
 
 def printparametersrz():
     # --- Exit now if output parameters are not to be printed

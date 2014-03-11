@@ -24,7 +24,7 @@ import __main__
 from rami_scripts import *
 import getzmom
 
-orbitrack_version = "$Id: orbitrack.py,v 1.4 2008/05/23 18:40:20 dave Exp $"
+
 def orbitrackdoc():
   import orbitrack
   print orbitrack.__doc__

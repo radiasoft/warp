@@ -8,7 +8,7 @@ __all__ = ['PlaneSave']
 
 from warp import *
 import cPickle
-plane_save_version = "$Id: plane_save.py,v 1.24 2009/06/29 18:24:38 dave Exp $"
+
 
 class PlaneSave:
     """

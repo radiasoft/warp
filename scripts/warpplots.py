@@ -116,7 +116,7 @@ else:
 import controllers
 import os
 import sys
-warpplots_version = "$Id: warpplots.py,v 1.278 2012/01/26 23:31:29 grote Exp $"
+
 
 def warpplotsdoc():
   import warpplots

@@ -5,7 +5,7 @@ import time
 import sys, copy
 import fcntl
 import types
-runcounter_version = "$Id: runcounter.py,v 1.17 2012/01/26 23:34:20 grote Exp $"
+
 
 def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
                sleep=0):

@@ -73,7 +73,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.7 2006/04/28 21:25:57 dave Exp $"
+
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
