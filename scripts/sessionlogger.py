@@ -15,27 +15,32 @@ import readline
 
 sessionlogger_version = "$Id: sessionlogger.py,v 1.2 2010/03/11 19:10:20 dave Exp $"
 
+
 class ForkedFile(object):
     """
 This class forks the output to both an internal buffer and to the write method
 of the original file.
     """
-    def __init__(self,file):
+    def __init__(self, file):
         self.file = file
         self.resetbuffer()
-    def write(self,string):
+
+    def write(self, string):
         self.buffer += string
         self.file.write(string)
+
     def resetbuffer(self):
         self.buffer = ''
+
     def flush(self):
         self.file.flush()
 
+
 class SessionLogger(object):
-    def __init__(self,logfilename,comments=None):
+    def __init__(self, logfilename, comments=None):
         # --- Open the file
         self.logfilename = logfilename
-        self.logfile = open(logfilename,'w')
+        self.logfile = open(logfilename, 'w')
 
         # --- Creates forks of both stdout and stderr and replace the original
         # --- ones with the forked ones.
@@ -47,7 +52,8 @@ class SessionLogger(object):
         # --- Write any initial stuff to the log, including a time stamp
         self.logfile.write('#### '+time.asctime(time.localtime())+' ####\n')
         self.logfile.write('Python '+sys.version+'\n')
-        if comments is not None: self.logfile.write(comments+'\n')
+        if comments is not None:
+            self.logfile.write(comments+'\n')
 
         # --- The session log writer will be called just before readline
         # --- writes the prompt.
@@ -79,4 +85,3 @@ class SessionLogger(object):
         readline.set_startup_hook()
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
-

@@ -16,8 +16,10 @@ _version = '0.4'
 
 import cPickle
 
+
 class PRError(Exception):
     pass
+
 
 class PR:
     """Pickle file read-access class.
@@ -36,15 +38,15 @@ which is useful for names that are not usable as python attributes.
     def __init__(self, filename):
         'PR(filename) opens file and reads in the pickled dictionary'
         self._filename = filename
-        with open(filename,'rb') as ff:
+        with open(filename, 'rb') as ff:
             self._pickledict = cPickle.load(ff)
 
     def __getattr__(self, name):
         return self._pickledict[name]
 
-    def read(self,name):
+    def read(self, name):
         'read(name) = the value of name as a Python object.'
-        return getattr(self,name)
+        return getattr(self, name)
 
     def close(self):
         'close(): close the file.'
@@ -55,4 +57,3 @@ which is useful for names that are not usable as python attributes.
         ls = list(self._pickledict.keys())
         ls.sort()
         return ls
-

@@ -13,122 +13,134 @@ import signal
 # --- Set the following two in case ruthere is called before setinterrupt.
 _defaultcontrolC = signal.getsignal(signal.SIGINT)
 _controlCrecieved = 0
-def _handlecontrolC(signum,frame):
-  global _controlCrecieved
-  _controlCrecieved = 1
+
+
+def _handlecontrolC(signum, frame):
+    global _controlCrecieved
+    _controlCrecieved = 1
+
+
 def ruthere():
-  """
+    """
 Checks if an interrupt was requested (usually control-C). If so, then raise
 an exception. This always restores the original interrupt handler so that the
 calling code does not have to, and so that, if there is an exception, it gets
 restored (since the calling code is not returned to).
-  """
-  global _controlCrecieved
-  oldsignal = signal.signal(signal.SIGINT,_defaultcontrolC)
-  if _controlCrecieved:
-    _controlCrecieved = 0
-    raise Exception("Interrupt requested")
-def setinterrupt():
-  global _controlCrecieved,_defaultcontrolC
-  _controlCrecieved = 0
-  _defaultcontrolC = signal.signal(signal.SIGINT,_handlecontrolC)
+    """
+    global _controlCrecieved
+    oldsignal = signal.signal(signal.SIGINT, _defaultcontrolC)
+    if _controlCrecieved:
+        _controlCrecieved = 0
+        raise Exception("Interrupt requested")
 
-def _getcommand(ext1,ext2):
-  """
+
+def setinterrupt():
+    global _controlCrecieved, _defaultcontrolC
+    _controlCrecieved = 0
+    _defaultcontrolC = signal.signal(signal.SIGINT, _handlecontrolC)
+
+
+def _getcommand(ext1, ext2):
+    """
 This retreives the appropriate command, searching through the packages
 until it finds one which has the command. Note that the package can either
 be a fortran package (looking for ext1) or a instance of a class which
 inheritted from PackageClass (looking for ext2).
-  """
-  for p in package():
-    pkg = packageobject(p)
-    try:
-      command = getattr(pkg,p+ext1)
-      break
-    except:
-      pass
-    try:
-      command = getattr(pkg,ext2)
-      break
-    except:
-      pass
-  return command
+    """
+    for p in package():
+        pkg = packageobject(p)
+        try:
+            command = getattr(pkg, p+ext1)
+            break
+        except:
+            pass
+        try:
+            command = getattr(pkg, ext2)
+            break
+        except:
+            pass
+    return command
+
 
 #############################################################################
 def generate(command=None):
-  "Generates the current package"
-  #setinterrupt()
-  a = wtime()
-  if command is None:
-    command = _getcommand('gen','generate')
-  command()
-  controllers.aftergenerate()
-  # --- Get generate time
-  top.gentime = wtime() - a
-  #ruthere()
-
-def step(n=1,maxcalls=None,command=None):
-  if command is None:
-    command = _getcommand('exe','step')
-  if maxcalls is None: maxcalls = n
-  top.maxcalls = int(maxcalls)
-  ncalls = n
-  top.ncall = 0
-  while top.ncall < ncalls:
-    starttime = wtime()
+    "Generates the current package"
     #setinterrupt()
-    top.ncall = top.ncall + 1
-
-    controllers.callbeforestepfuncs()
+    a = wtime()
+    if command is None:
+        command = _getcommand('gen', 'generate')
     command()
-    controllers.callafterstepfuncs()
-
-    # --- Get step time
-    #top.steptime = wtime() - top.starttime - top.gentime
-    # --- Flush the stdout buffer
-    sys.stdout.flush()
-
+    controllers.aftergenerate()
+    # --- Get generate time
+    top.gentime = wtime() - a
     #ruthere()
 
-    # --- Accumulate step time
-    endtime = wtime()
-    top.steptime += (endtime - starttime)
+
+def step(n=1, maxcalls=None, command=None):
+    if command is None:
+        command = _getcommand('exe', 'step')
+    if maxcalls is None:
+        maxcalls = n
+    top.maxcalls = int(maxcalls)
+    ncalls = n
+    top.ncall = 0
+    while top.ncall < ncalls:
+        starttime = wtime()
+        #setinterrupt()
+        top.ncall = top.ncall + 1
+
+        controllers.callbeforestepfuncs()
+        command()
+        controllers.callafterstepfuncs()
+
+        # --- Get step time
+        #top.steptime = wtime() - top.starttime - top.gentime
+        # --- Flush the stdout buffer
+        sys.stdout.flush()
+
+        #ruthere()
+
+        # --- Accumulate step time
+        endtime = wtime()
+        top.steptime += (endtime - starttime)
+
 
 def finish(command=None):
-  #setinterrupt()
-  if command is None:
-    command = _getcommand('fin','finish')
-  try:
-    command()
-  except:
-    pass
-  #ruthere()
+    #setinterrupt()
+    if command is None:
+        command = _getcommand('fin', 'finish')
+    try:
+        command()
+    except:
+        pass
+    #ruthere()
+
 
 ########################################################################
 def stepz(zstep=0.):
-  """
+    """
 Runs for the specified z distance.
-  """
-  zfinal = top.zbeam + zstep
-  # --- Step until the beam is just before zfinal, calling step in a way
-  # --- so that split leap-frog advances can be done.
-  while top.zbeam + top.vbeamfrm*top.dt < zfinal:
-    step(1,10)
-  # --- Step until the final value is reached, synchronizing the advance
-  while top.zbeam < zfinal:
-    step(1)
+    """
+    zfinal = top.zbeam + zstep
+    # --- Step until the beam is just before zfinal, calling step in a way
+    # --- so that split leap-frog advances can be done.
+    while top.zbeam + top.vbeamfrm*top.dt < zfinal:
+        step(1, 10)
+    # --- Step until the final value is reached, synchronizing the advance
+    while top.zbeam < zfinal:
+        step(1)
+
 
 ########################################################################
 def stept(tstep=0.):
-  """
+    """
 Runs for the specified time
-  """
-  tfinal = top.time + tstep
-  # --- Step until the beam is just before tfinal, calling step in a way
-  # --- so that split leap-frog advances can be done.
-  while top.time + top.dt < tfinal:
-    step(1,10)
-  # --- Step until the final value is reached, synchronizing the advance
-  while top.time < tfinal:
-    step(1)
-
+    """
+    tfinal = top.time + tstep
+    # --- Step until the beam is just before tfinal, calling step in a way
+    # --- so that split leap-frog advances can be done.
+    while top.time + top.dt < tfinal:
+        step(1, 10)
+    # --- Step until the final value is reached, synchronizing the advance
+    while top.time < tfinal:
+        step(1)

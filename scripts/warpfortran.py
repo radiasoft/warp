@@ -1,14 +1,15 @@
 warpfortran_version = "$Id: warpfortran.py,v 1.2 2004/03/16 17:18:14 dave Exp $"
 
+
 def warpfortrandoc():
-  print """
+    print """
 Definges warpfortran() which prints description of most useful fortran
 routines accesible from python
 """
 
 
 def warpfortran():
-  print """
+    print """
 derivqty() Calculates global derived qtys.
 resetlat() Resizes lattice arrays to their true lengths
 setlatt() Sets lattice pointers for the current beam location

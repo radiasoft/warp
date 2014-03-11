@@ -4,6 +4,7 @@ generatelattice_version = "$Id: generatelattice.py,v 1.2 2001/09/21 23:22:28 dav
 # Requires that functions beamduration, beamavesize, and endcondition
 # be supplied.
 
+
 class GenerateLattice:
     def __doc__(s):
         return """
@@ -22,8 +23,8 @@ class GenerateLattice:
     madtowarp.
     """
 
-    def __init__(s,ekin,totalcharge,aion,sigma0,occupancy,
-                 beamduration,beamavesize,endcondition):
+    def __init__(s, ekin, totalcharge, aion, sigma0, occupancy,
+                 beamduration, beamavesize, endcondition):
         s.ekin = ekin
         s.totalcharge = totalcharge
         s.aion = aion
@@ -32,9 +33,9 @@ class GenerateLattice:
         s.beamduration = beamduration
         s.beamavesize = beamavesize
         s.endcondition = endcondition
-        s.vbeam = s.ekintov(s.ekin,s.aion)
+        s.vbeam = s.ekintov(s.ekin, s.aion)
 
-    def ekintov(s,ekin,aion):
+    def ekintov(s, ekin, aion):
         ke = jperev*ekin/(aion*amu*clight**2)
         gammabar = 1. + ke
         return clight*sqrt((2*ke+ke**2)/gammabar**2)
@@ -50,15 +51,15 @@ class GenerateLattice:
             hlp = s.beamavesize(s)*sqrt((1.-cos(s.sigma0))/(2.*s.pervaence()))
             quadlen = s.occupancy*hlp
             quadstren = 2.*s.ekin/(hlp**2*s.vbeam)*sqrt(2.*(1.-cos(s.sigma0))/(
-                                              s.occupancy**2*(1.-2./3.*s.occupancy)))
+                s.occupancy**2*(1.-2./3.*s.occupancy)))
             quadaperture = 1.25*s.beamavesize(s) + 0.01
             #print "hlp = ",hlp
             #print "quadlen = ",quadlen
             #print "quadstren = ",quadstren
             #print "quadaperture = ",quadaperture
             #print "pervaence = ",s.pervaence()
-            drift = Drft(l=hlp*(1.-s.occupancy)/2.,ap=quadaperture)
-            quad = Quad(l=hlp*s.occupancy,db=quadstren*quadsign,ap=quadaperture)
+            drift = Drft(l=hlp*(1.-s.occupancy)/2., ap=quadaperture)
+            quad = Quad(l=hlp*s.occupancy, db=quadstren*quadsign, ap=quadaperture)
             quadsign = -quadsign
             s.zloc = s.zloc + hlp
             if not lattice:
