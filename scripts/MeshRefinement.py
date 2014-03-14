@@ -3318,200 +3318,200 @@ Fortran version
   ##########################################################################
   # Define the basic plot commands
   def pfex(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Exp,guards),'E_x',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Exp,guards),'E_x',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Exp,guards,overlap=True),'E_x',**kw)
             else:
               c.genericpfem3d(None,'E_x',**kw)
 
   def pfey(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Eyp,guards),'E_y',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Eyp,guards),'E_y',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Eyp,guards,overlap=True),'E_y',**kw)
             else:
               c.genericpfem3d(None,'E_y',**kw)
 
   def pfez(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Ezp,guards),'E_z',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Ezp,guards),'E_z',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Ezp,guards,overlap=True),'E_z',**kw)
             else:
               c.genericpfem3d(None,'E_z',**kw)
 
   def pfbx(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Bxp,guards),'B_x',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Bxp,guards),'B_x',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Bxp,guards,overlap=True),'B_x',**kw)
             else:
               c.genericpfem3d(None,'B_x',**kw)
 
   def pfby(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Byp,guards),'B_y',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Byp,guards),'B_y',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Byp,guards,overlap=True),'B_y',**kw)
             else:
               c.genericpfem3d(None,'B_y',**kw)
 
   def pfbz(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Bzp,guards),'B_z',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Bzp,guards),'B_z',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Bzp,guards,overlap=True),'B_z',**kw)
             else:
               c.genericpfem3d(None,'B_z',**kw)
 
   def pfexp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Ex,guards),'Ep_x',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=True),'Ep_x',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Ex,guards),'Ep_x',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Ex,guards,overlap=True),'Ep_x',**kw)
             else:
               c.genericpfem3d(None,'Ep_x',**kw)
 
   def pfeyp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Ey,guards),'Ep_y',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=True),'Ep_y',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Ey,guards),'Ep_y',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Ey,guards,overlap=True),'Ep_y',**kw)
             else:
               c.genericpfem3d(None,'Ep_y',**kw)
 
   def pfezp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Ez,guards),'Ep_z',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=True),'Ep_z',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Ez,guards),'Ep_z',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Ez,guards,overlap=True),'Ep_z',**kw)
             else:
               c.genericpfem3d(None,'Ep_z',**kw)
 
   def pfbxp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Bx,guards),'Bp_x',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=True),'Bp_x',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Bx,guards),'Bp_x',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Bx,guards,overlap=True),'Bp_x',**kw)
             else:
               c.genericpfem3d(None,'Bp_x',**kw)
 
   def pfbyp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.By,guards),'Bp_y',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=True),'Bp_y',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.By,guards),'Bp_y',**kw)
+              c.genericpfem3d(c.getarray(c.fields.By,guards,overlap=True),'Bp_y',**kw)
             else:
               c.genericpfem3d(None,'Bp_y',**kw)
 
   def pfbzp(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Bz,guards),'Bp_z',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=True),'Bp_z',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Bz,guards),'Bp_z',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Bz,guards,overlap=True),'Bp_z',**kw)
             else:
               c.genericpfem3d(None,'Bp_z',**kw)
 
   def pfjx(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards),'J_x',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=True),'J_x',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,0],guards),'J_x',**kw)
+              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,0],guards,overlap=True),'J_x',**kw)
             else:
               c.genericpfem3d(None,'J_x',**kw)
 
   def pfjy(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards),'J_y',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True),'J_y',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,1],guards),'J_y',**kw)
+              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,1],guards,overlap=True),'J_y',**kw)
             else:
               c.genericpfem3d(None,'J_y',**kw)
 
   def pfjz(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards),'J_z',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=True),'J_z',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,2],guards),'J_z',**kw)
+              c.genericpfem3d(c.getarray(c.fields.J[:,:,:,2],guards,overlap=True),'J_z',**kw)
             else:
               c.genericpfem3d(None,'J_z',**kw)
 
   def pfrho(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.Rho,guards),'Rho',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=True),'Rho',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.Rho,guards),'Rho',**kw)
+              c.genericpfem3d(c.getarray(c.fields.Rho,guards,overlap=True),'Rho',**kw)
             else:
               c.genericpfem3d(None,'Rho',**kw)
 
   def pff(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.fields.F,guards),'F',**kw)
+      slice = self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=True),'F',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.F,guards),'F',**kw)
+              c.genericpfem3d(c.getarray(c.fields.F,guards,overlap=True),'F',**kw)
             else:
               c.genericpfem3d(None,'F',**kw)
 
   def pfdive(self,l_children=1,guards=0,**kw):
-      slice = self.genericpfem3d(self.getarray(self.getdive(),guards),'div(E)',**kw)
+      slice = self.genericpfem3d(self.getdive(guards,overlap=True),'div(E)',**kw)
       kw['slice'] = slice
       if l_children:
         for i in range(1,len(self.blocklists)):
           for c in self.blocklists[i]:
             if c.isactive:
-              c.genericpfem3d(c.getarray(c.fields.getdive(),guards),'div(E)',**kw)
+              c.genericpfem3d(c.getdive(guards,overlap=True),'div(E)',**kw)
             else:
               c.genericpfem3d(None,'div(E)',**kw)
 

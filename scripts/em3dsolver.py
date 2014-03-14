@@ -2468,7 +2468,7 @@ class EM3D(SubcycledPoissonSolver):
 
   ##########################################################################
   # Gather requested array on processor 0
-  def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0,**kw):
+  def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0):
     if self.isactive:
      f=self.block.core.yf
      if self.l_1dz:
@@ -2649,94 +2649,94 @@ class EM3D(SubcycledPoissonSolver):
         return g[f.nxguard:-f.nxguard-ox,f.nyguard:-f.nyguard-oy,f.nzguard:-f.nzguard-oz]
       
   def pfex(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=direction is None),'E_x',
+      self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',
       direction=direction,**kw)
 
   def pfey(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=direction is None),'E_y',
+      self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',
       direction=direction,**kw)
 
   def pfez(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=direction is None),'E_z',
+      self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',
       direction=direction,**kw)
 
   def pfbx(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=direction is None),'B_x',
+      self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',
       direction=direction,**kw)
 
   def pfby(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=direction is None),'B_y',
+      self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',
       direction=direction,**kw)
 
   def pfbz(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=direction is None),'B_z',
+      self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',
       direction=direction,**kw)
 
   def pfexg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=direction is None),'Eg_x',
+      self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=True),'Eg_x',
       direction=direction,**kw)
 
   def pfeyg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=direction is None),'Eg_y',
+      self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=True),'Eg_y',
       direction=direction,**kw)
 
   def pfezg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=direction is None),'Eg_z',
+      self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=True),'Eg_z',
       direction=direction,**kw)
 
   def pfbxg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=direction is None),'Bg_x',
+      self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=True),'Bg_x',
       direction=direction,**kw)
 
   def pfbyg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=direction is None),'Bg_y',
+      self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=True),'Bg_y',
       direction=direction,**kw)
 
   def pfbzg(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=direction is None),'Bg_z',
+      self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=True),'Bg_z',
       direction=direction,**kw)
 
   def pfjx(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=direction is None),'J_x',
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=True),'J_x',
       direction=direction,**kw)
 
   def pfjy(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=direction is None),'J_y',
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True),'J_y',
       direction=direction,**kw)
 
   def pfjz(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=direction is None),'J_z',
+      self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=True),'J_z',
       direction=direction,**kw)
 
   def pfrho(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=direction is None),'Rho',
+      self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=True),'Rho',
       direction=direction,**kw)
 
   def pff(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=direction is None),'F',
+      self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=True),'F',
       direction=direction,**kw)
 
   def pfincond(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.incond,guards,overlap=direction is None),'incond',
+      self.genericpfem3d(self.getarray(self.fields.incond,guards,overlap=True),'incond',
       direction=direction,**kw)
 
   def pfdive(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getdive(guards,overlap=direction is None),'div(E)',
+      self.genericpfem3d(self.getdive(guards,overlap=True),'div(E)',
       direction=direction,**kw)
 
   def pfe(self,l_children=1,guards=0,direction=None,**kw):
-      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=direction is None)
+      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=True)
       self.genericpfem3d(sqrt(e),'E',
       direction=direction,**kw)
 
   def pfb(self,l_children=1,guards=0,direction=None,**kw):
-      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=direction is None)
+      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=True)
       self.genericpfem3d(sqrt(b),'B',
       direction=direction,**kw)
 
   def pfw(self,l_children=1,guards=0,direction=None,**kw):
-      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=direction is None)
-      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=direction is None)
+      e = self.getarray(self.fields.Exp**2+self.fields.Eyp**2+self.fields.Ezp**2,guards,overlap=True)
+      b = self.getarray(self.fields.Bxp**2+self.fields.Byp**2+self.fields.Bzp**2,guards,overlap=True)
       self.genericpfem3d(sqrt(e+b),'W',
       direction=direction,**kw)
 
@@ -2877,65 +2877,65 @@ class EM3D(SubcycledPoissonSolver):
       b2 = self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
       return e2+clight**2*b2
 
-  def gatherexg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getexg(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherexg(self,guards=0,direction=None):
+      return self.gatherarray(self.getexg(guards),direction=direction)
 
-  def gathereyg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.geteyg(guards,overlap=direction is None),direction=direction,**kw)
+  def gathereyg(self,guards=0,direction=None):
+      return self.gatherarray(self.geteyg(guards),direction=direction)
 
-  def gatherezg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getezg(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherezg(self,guards=0,direction=None):
+      return self.gatherarray(self.getezg(guards),direction=direction)
 
-  def gatherbxg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getbxg(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherbxg(self,guards=0,direction=None):
+      return self.gatherarray(self.getbxg(guards),direction=direction)
 
-  def gatherbyg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getbyg(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherbyg(self,guards=0,direction=None):
+      return self.gatherarray(self.getbyg(guards),direction=direction)
 
-  def gatherbzg(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getbzg(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherbzg(self,guards=0,direction=None):
+      return self.gatherarray(self.getbzg(guards),direction=direction)
 
-  def gatherex(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getex(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherex(self,guards=0,direction=None):
+      return self.gatherarray(self.getex(guards),direction=direction)
 
-  def gatherey(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getey(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherey(self,guards=0,direction=None):
+      return self.gatherarray(self.getey(guards),direction=direction)
 
-  def gatherez(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getez(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherez(self,guards=0,direction=None):
+      return self.gatherarray(self.getez(guards),direction=direction)
 
-  def gatherbx(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getbx(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherbx(self,guards=0,direction=None):
+      return self.gatherarray(self.getbx(guards),direction=direction)
 
-  def gatherby(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getby(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherby(self,guards=0,direction=None):
+      return self.gatherarray(self.getby(guards),direction=direction)
 
-  def gatherbz(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getbz(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherbz(self,guards=0,direction=None):
+      return self.gatherarray(self.getbz(guards),direction=direction)
 
-  def gatherjx(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getjx(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherjx(self,guards=0,direction=None):
+      return self.gatherarray(self.getjx(guards),direction=direction)
 
-  def gatherjy(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getjy(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherjy(self,guards=0,direction=None):
+      return self.gatherarray(self.getjy(guards),direction=direction)
 
-  def gatherjz(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getjz(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherjz(self,guards=0,direction=None):
+      return self.gatherarray(self.getjz(guards),direction=direction)
 
-  def gatherrho(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getrho(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherrho(self,guards=0,direction=None):
+      return self.gatherarray(self.getrho(guards),direction=direction)
 
-  def gatherrhoold(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getrhoold(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherrhoold(self,guards=0,direction=None):
+      return self.gatherarray(self.getrhoold(guards),direction=direction)
 
-  def gatherf(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getf(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherf(self,guards=0,direction=None):
+      return self.gatherarray(self.getf(guards),direction=direction)
 
-  def gatherincond(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getincond(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherincond(self,guards=0,direction=None):
+      return self.gatherarray(self.getincond(guards),direction=direction)
 
-  def gatherdive(self,guards=0,direction=None,**kw):
-      return self.gatherarray(self.getdive(guards,overlap=direction is None),direction=direction,**kw)
+  def gatherdive(self,guards=0,direction=None):
+      return self.gatherarray(self.getdive(guards),direction=direction)
 
   def get_tot_energy(self):
 #    yee2node3d(self.fields)
