@@ -279,10 +279,6 @@ class EM3D(SubcycledPoissonSolver):
     
     if  top.vbeamfrm != 0.:self.bounds[-2:]=-1
     
-    self.setbcparallel(0) # x
-    self.setbcparallel(1) # y
-    self.setbcparallel(2) # z
-    
     if self.refinement is not None:
       ref=self.refinement
       self.field_coarse = self.__class__(l_force_nzlocal2nz=True,
@@ -310,21 +306,14 @@ class EM3D(SubcycledPoissonSolver):
 #   if not self.l_2dxz and not self.l_2drz:
 #     if self.ymmin>w3d.ymmaxlocal or self.ymmax<w3d.ymminlocal:return
 #   if self.zmmin>w3d.zmmaxlocal or self.zmmax<w3d.zmminlocal:return
-    if self.refinement is not None:
-      self.block_coarse = self.field_coarse.block
-    
-    # --- Create field and source arrays and other arrays.
-    self.allocatefieldarrays()
+
     self.initializeconductors()
-    # --- Handle laser inputs
-    self.setuplaser()
-    if self.refinement is not None: # --- disable laser on MR patches
-      self.laser_profile=None
-      self.field_coarse.laser_profile=None
       
     # ---- install 2nd part of field solve (only for root)
     if self.refinement is None and not self.l_coarse_patch:
       installbeforeloadrho(self.solve2ndhalf)
+
+    self.finalized = False
 
   def processdefaultsfrompackage(self,defaults,package,kw):
     for name in defaults:
@@ -371,6 +360,20 @@ class EM3D(SubcycledPoissonSolver):
              1+self.nylocal+2*self.nyguard,
              1+self.nzlocal+2*self.nzguard))
 
+  def finalize(self,lforce=False):
+    if self.finalized and not lforce: return
+    self.setbcparallel(0) # x
+    self.setbcparallel(1) # y
+    self.setbcparallel(2) # z
+
+    # --- Create field and source arrays and other arrays.
+    self.allocatefieldarrays()
+
+    # --- Handle laser inputs
+    self.setuplaser()
+
+    self.finalized = True
+
   def allocatefieldarrays(self):
     self.block = pyinit_3dem_block(self.nxlocal, 
                                    self.nylocal, 
@@ -415,6 +418,7 @@ class EM3D(SubcycledPoissonSolver):
     if self.l_2drz:    
       self.vol = 2.*pi*(arange(self.nx+1)*self.dx+self.block.xmin)*self.dx*self.dz
       if self.block.xmin==0.:self.vol[0] = 0.25*self.dx**2*self.dz
+
     
     
 ################################################################################
@@ -520,6 +524,10 @@ class EM3D(SubcycledPoissonSolver):
     if self.laser_source_z is None:
       self.laser_source_z = w3d.zmmin
     self.laser_source_z = max(min(self.laser_source_z,w3d.zmmax),w3d.zmmin)
+
+    if self.refinement is not None: # --- disable laser on MR patches
+      self.laser_profile=None
+      self.field_coarse.laser_profile=None
 
 #===============================================================================
   def setuplaser_profile(self,f):
@@ -1214,6 +1222,7 @@ class EM3D(SubcycledPoissonSolver):
 
   def allocatedataarrays(self):
     if self.l_verbose:print 'allocatedataarrays'
+    self.finalize()
     # --- reallocate Jarray if needed
     if self.fields.ntimes != top.nsndts:
       self.fields.ntimes=top.nsndts
@@ -1298,11 +1307,11 @@ class EM3D(SubcycledPoissonSolver):
     # --- apply boundary condition on current
     self.apply_current_bc(self.block)
     if self.refinement is not None:
-      self.apply_current_bc(self.block_coarse)
+      self.apply_current_bc(self.field_coarse.block)
     if self.l_pushf or self.l_deposit_rho:
       self.apply_rho_bc(self.block)
       if self.refinement is not None:
-        self.apply_rho_bc(self.block_coarse)
+        self.apply_rho_bc(self.field_coarse.block)
 
     if self.l_sumjx:
       j = self.fields.Jarray[0,:,:,:,0]*0.
@@ -1844,6 +1853,7 @@ class EM3D(SubcycledPoissonSolver):
         self.nzshifts+=n
 
   def solve2ndhalf(self):
+    self.allocatedataarrays()
     if self.solveroff:return
     if self.mode==2:
       self.solve2ndhalfmode2()

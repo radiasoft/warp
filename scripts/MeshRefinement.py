@@ -559,7 +559,6 @@ error prone.
                                  neighborblocklists[3][1:],
                                  neighborblocklists[4][1:],
                                  neighborblocklists[5][1:])
-    if self.l_EM:self.finalizeem()
     self.finalized = 1
 
   def generateblocklevellists(self,blocklists=None):
@@ -3072,6 +3071,7 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
     self.exchange_e(dir=-1)
     
   def solve2ndhalf(self):
+    self.allocatedataarrays()
     if self.solveroff:return
     if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
@@ -3158,7 +3158,7 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
     
   def addsubstractfieldfromparent(self):
     """
-Add own field and field from parent, substracting field from block_coarse, and 
+Add own field and field from parent, substracting field from field_coarse.block, and
 putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
     """
     for parentnumber in self.parents:
@@ -3172,9 +3172,9 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
       u = minimum(pupper,self.fullupper)
       lp = (l-plower)/self.refinement
       if top.efetch[0] != 4:
-        addsubstractfields_nodal(self.block,self.block_coarse,parent.block,lp,self.refinement,self.l_2dxz)
+        addsubstractfields_nodal(self.block,self.field_coarse.block,parent.block,lp,self.refinement,self.l_2dxz)
       else:
-        addsubstractfields(self.block,self.block_coarse,parent.block,lp,self.refinement,self.l_2dxz)
+        addsubstractfields(self.block,self.field_coarse.block,parent.block,lp,self.refinement,self.l_2dxz)
     for child in self.children:
       child.addsubstractfieldfromparent()
 
@@ -3218,11 +3218,23 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
     for child in self.children:
       child.shift_cells_z(n*child.refinement[2])
 
-  def finalizeem(self):
+  def finalize(self,lforce=False):
+    if self != self.root: return
+    if self.finalized and not lforce: return
+    self.__class__.__bases__[0].finalize(self) # MeshRefinement.finalize
+    for block in self.listofblocks:
+      self.__class__.__bases__[1].finalize(block,lforce=True) # EM3D.finalize
+      if block != self.root:
+        self.__class__.__bases__[1].finalize(block.field_coarse,lforce=True) # EM3D.finalize
     self.setbcoverlaps()
     self.checkconnections()
     self.fillchilddomains()
     self.setdtinit()
+    self.finalized = True # Redundant, but here for clarity
+
+  def aftersetsourcep(self):
+    # --- distribute charge density among blocks
+    self.gathersourcepfromchildren()
 
   def finalizesourcep(self):
     if self.l_verbose:print 'finalizesourcep',self.sourcepfinalized
