@@ -1149,7 +1149,7 @@ Fortran version
       child.gathersourcepfromchildren()
 
       # --- Get coordinates of child relative to this domain
-      if self.lparallel and self is self.root and not self.l_EM:
+      if self.lparallel and self is self.root:
         # --- On the root processor, the extent of the sourcep array can be
         # --- different from the extent of the source array, which is what
         # --- the fulllower and fullupper describe. This difference must be
@@ -1168,72 +1168,18 @@ Fortran version
       u = minimum(child.fullupperoverrefinement,fullupper)
 
       w = child.getwarrayforsourcep()
-      if not self.l_EM:
-        pdims = array([self.nxp,self.nyp,self.nzp])
-        childpdims = array([child.nxp,child.nyp,child.nzp])
-        gathersourcefromchild(self.sourcep,self.ncomponents,
-                              [self.nxguardrho,self.nyguardrho,self.nzguardrho],
-                              pdims,
-                              child.sourcep,childpdims,
-                              l,u,fulllower,child.fulllower,child.fullupper,
-                              child.refinement,w,
-                              self.xmeshlocal,child.xmeshlocal,
-                              self.lcylindrical)
-      else:
-         # --- project charge and current density from fine patch to coarse twin + parent
-         cb = child.block
-         cbc = child.block_coarse
-         lp = l-fulllower
-         project_jxjyjz(cb.core.yf.J,
-                        cbc.core.yf.Jarray[...,0],
-                        self.block.core.yf.Jarray[...,0],
-                        cb.nx,cb.ny,cb.nz,
-                        self.block.nx,self.block.ny,self.block.nz,
-                        cb.nxguard,cb.nyguard,cb.nzguard,
-                        child.refinement[0],
-                        child.refinement[1],
-                        child.refinement[2],
-                        lp[0],lp[1],lp[2],self.l_2dxz,
-                        self.icycle,self.novercycle)
-         cbc.core.yf.J = cbc.core.yf.Jarray[...,0]         
-         self.block.core.yf.J = self.block.core.yf.Jarray[...,0]
-         if child.l_pushf:
-           project_rho(cb.core.yf.Rho,
-                        cbc.core.yf.Rhoarray[...,0],
-                        self.block.core.yf.Rho,
-                        cb.nx,cb.ny,cb.nz,
-                        self.block.nx,self.block.ny,self.block.nz,
-                        cb.nxguard,cb.nyguard,cb.nzguard,
-                        child.refinement[0],
-                        child.refinement[1],
-                        child.refinement[2],
-                        lp[0],lp[1],lp[2],self.l_2dxz)
-           cbc.core.yf.Rho = cbc.core.yf.Rhoarray[...,0]
-         # --- apply density mask to fine patch and twin charge and current densities
-      if 0:
-         ntrans = 4
-         child.Jbf = cb.core.yf.J.copy()
-         child.Jbfc = cbc.core.yf.Jarray[...,0].copy()
-         apply_dmask(cb.core.yf.Rho,
-                     cb.core.yf.J,
-                     cb.core.yf.dmaskx,
-                     cb.core.yf.dmasky,
-                     cb.core.yf.dmaskz,
-                     child.bounds,child.nguarddepos*child.refinement,child.refinement*ntrans,
-                     cb.nx,cb.ny,cb.nz,
-                     cb.nxguardphi,cb.nyguardphi,cb.nzguardphi,
-                     self.l_pushf,self.l_2dxz)
-         apply_dmask(cbc.core.yf.Rhoarray[...,0],
-                     cbc.core.yf.Jarray[...,0],
-                     cbc.core.yf.dmaskx,
-                     cbc.core.yf.dmasky,
-                     cbc.core.yf.dmaskz,
-                     child.bounds,child.nguarddepos,array([1,1,1])*ntrans,
-                     cbc.nx,cbc.ny,cbc.nz,
-                     cbc.nxguardphi,cbc.nyguardphi,cbc.nzguardphi,
-                     self.l_pushf,self.l_2dxz)
-         child.Jaf = cb.core.yf.J.copy()
-         child.Jafc = cbc.core.yf.Jarray[...,0].copy()
+
+      pdims = array([self.nxp,self.nyp,self.nzp])
+      childpdims = array([child.nxp,child.nyp,child.nzp])
+      gathersourcefromchild(self.sourcep,self.ncomponents,
+                            [self.nxguardrho,self.nyguardrho,self.nzguardrho],
+                            pdims,
+                            child.sourcep,childpdims,
+                            l,u,fulllower,child.fulllower,child.fullupper,
+                            child.refinement,w,
+                            self.xmeshlocal,child.xmeshlocal,
+                            self.lcylindrical)
+
     # --- zerosourcepinoverlap is call here so that any contribution from
     # --- the children in the overlap regions will get zeroed as necessary.
     self.zerosourcepinoverlap()
@@ -1268,10 +1214,6 @@ block.
     # --- doing the solve. This ensures that the potential in all of the parents
     # --- which is needed on the boundaries will be up to date.
     if not self.islastcall(): return
-
-    if self.l_EM:
-      self.dosolveem(iwhich,*args)
-      return
 
     # --- solve on potential, first getting potential from the parents - both the
     # --- boundary conditions and the interior values as the initial
@@ -3048,7 +2990,15 @@ Implements adaptive mesh refinement in 3d for the electromagnetic field solver
                     nguarddepos=nguarddepos,
                     children=children,**kw)
 
-  def dosolveem(self,iwhich=0,*args):
+  def dosolve(self,iwhich=0,*args):
+    # --- Make sure that the final setup was done.
+    self.finalize()
+
+    # --- Wait until all of the parents have called here until actually
+    # --- doing the solve. This ensures that the potential in all of the parents
+    # --- which is needed on the boundaries will be up to date.
+    if not self.islastcall(): return
+
     if self.solveroff:return
     if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
     if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
@@ -3247,7 +3197,86 @@ putting the result in Exp, Eyp, Ezp, Bxp, Byp and Bzp.
     self.applysourceboundaryconditions()
     if self.l_verbose:print 'finalizesourcep done'
 
-  def add_source_ndts_slices(self):  
+  def gathersourcepfromchildren(self):
+    """
+Fortran version
+    """
+    # --- Do this only the first time this is called. This should only be
+    # --- done once and since each parent requires that this be done
+    # --- before it can get its sourcep from here, it must be done on the
+    # --- first call.
+    if not self.isfirstcall(): return
+    # --- Loop over the children
+    for child in self.children:
+
+      # --- Make sure that the child has gathered sourcep from its children.
+      child.gathersourcepfromchildren()
+
+      # --- Get coordinates of child relative to this domain
+      fulllower = self.fulllower
+      fullupper = self.fullupper
+      l = maximum(child.fullloweroverrefinement,fulllower)
+      u = minimum(child.fullupperoverrefinement,fullupper)
+
+      w = child.getwarrayforsourcep()
+
+      # --- project charge and current density from fine patch to coarse twin + parent
+      cb = child.block
+      cbc = child.field_coarse.block
+      lp = l-fulllower
+      project_jxjyjz(cb.core.yf.J,
+                     cbc.core.yf.Jarray[...,0],
+                     self.block.core.yf.Jarray[...,0],
+                     cb.nx,cb.ny,cb.nz,
+                     self.block.nx,self.block.ny,self.block.nz,
+                     cb.nxguard,cb.nyguard,cb.nzguard,
+                     child.refinement[0],
+                     child.refinement[1],
+                     child.refinement[2],
+                     lp[0],lp[1],lp[2],self.l_2dxz,
+                     self.icycle,self.novercycle)
+      cbc.core.yf.J = cbc.core.yf.Jarray[...,0]
+      self.block.core.yf.J = self.block.core.yf.Jarray[...,0]
+      if child.l_pushf:
+        project_rho(cb.core.yf.Rho,
+                     cbc.core.yf.Rhoarray[...,0],
+                     self.block.core.yf.Rho,
+                     cb.nx,cb.ny,cb.nz,
+                     self.block.nx,self.block.ny,self.block.nz,
+                     cb.nxguard,cb.nyguard,cb.nzguard,
+                     child.refinement[0],
+                     child.refinement[1],
+                     child.refinement[2],
+                     lp[0],lp[1],lp[2],self.l_2dxz)
+        cbc.core.yf.Rho = cbc.core.yf.Rhoarray[...,0]
+
+      # --- apply density mask to fine patch and twin charge and current densities
+      if 0:
+         ntrans = 4
+         child.Jbf = cb.core.yf.J.copy()
+         child.Jbfc = cbc.core.yf.Jarray[...,0].copy()
+         apply_dmask(cb.core.yf.Rho,
+                     cb.core.yf.J,
+                     cb.core.yf.dmaskx,
+                     cb.core.yf.dmasky,
+                     cb.core.yf.dmaskz,
+                     child.bounds,child.nguarddepos*child.refinement,child.refinement*ntrans,
+                     cb.nx,cb.ny,cb.nz,
+                     cb.nxguardphi,cb.nyguardphi,cb.nzguardphi,
+                     self.l_pushf,self.l_2dxz)
+         apply_dmask(cbc.core.yf.Rhoarray[...,0],
+                     cbc.core.yf.Jarray[...,0],
+                     cbc.core.yf.dmaskx,
+                     cbc.core.yf.dmasky,
+                     cbc.core.yf.dmaskz,
+                     child.bounds,child.nguarddepos,array([1,1,1])*ntrans,
+                     cbc.nx,cbc.ny,cbc.nz,
+                     cbc.nxguardphi,cbc.nyguardphi,cbc.nzguardphi,
+                     self.l_pushf,self.l_2dxz)
+         child.Jaf = cb.core.yf.J.copy()
+         child.Jafc = cbc.core.yf.Jarray[...,0].copy()
+
+  def add_source_ndts_slices(self):
     for child in self.children:
       child.add_source_ndts_slices()
     self.__class__.__bases__[1].add_source_ndts_slices(self)
