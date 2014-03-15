@@ -43,8 +43,8 @@ from warp import *
 
 
 def ParaKVdoc():
-  import ParaKV
-  print ParaKV.__doc__
+    import ParaKV
+    print ParaKV.__doc__
 
 def rad(xxx, yyy):
     """ rad(xxx,yyy) -> radius r = sqrt(x^2+y^2) """
@@ -183,4 +183,3 @@ def test_T_prof(ncpb=2):
     plg(temps_y[:,2]); ptitles("Temperature Profile", "Y", "Tr"); fma()
     palette("gray.gp")
     pptrace(filled=1, particles=0, contours=7); fma()
-

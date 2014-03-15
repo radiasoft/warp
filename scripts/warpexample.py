@@ -168,64 +168,64 @@ f3d.mgmaxiters = 0
 
 # --- Make some plots
 def plotdiode(gridframe=0,axis='x'):
-  plotquadoutline(gridframe=gridframe,axis=axis)
-  if top.it > 0:
-    pierce.draw()
-    extractor.draw()
-    plug.draw()
+    plotquadoutline(gridframe=gridframe,axis=axis)
+    if top.it > 0:
+        pierce.draw()
+        extractor.draw()
+        plug.draw()
 def myplots():
-  #
-  pfzx(contours=50,plotsg=0)
-  ppzx(iy=w3d.iy_axis,wy=2)
-  plotdiode(0,'x')
-  limits(0.,zmmax,-.15,.15)
-  fma()
-  #
-  pfzy(contours=50,plotsg=0)
-  ppzy(ix=w3d.ix_axis,wx=2)
-  plotdiode(0,'y')
-  limits(0.,zmmax,-.15,.15)
-  fma()
-  #
-  ppxy(iz=int(diode_len/w3d.dz),color="density",ncolor=200)
-  limits(-.03,.03,-.03,.03)
-  fma()
-  #
-  ppxy(iz=int(diode_len/w3d.dz),contours=200,filled=1,particles=0,nx=50,ny=50)
-  limits(-.03,.03,-.03,.03)
-  fma()
-  #
-  ppxxp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
-  limits(-.03,.03,-.02,.02)
-  fma()
-  #
-  ppyyp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
-  limits(-.03,.03,-.02,.02)
-  fma()
-  #
-  pprrp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
-  limits(.0,.03,-.02,.01)
-  fma()
-  #
-  ppxy(iz=w3d.nz-1,color="density",ncolor=200)
-  limits(-.06,.06,-.06,.06)
-  fma()
-  #
-  ppxy(iz=w3d.nz-1,contours=200,filled=1,particles=0,nx=50,ny=50)
-  limits(-.06,.06,-.06,.06)
-  fma()
-  #
-  ppxxp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
-  limits(-.06,.06,-.02,.02)
-  fma()
-  #
-  ppyyp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
-  limits(-.06,.06,-.02,.02)
-  fma()
-  #
-  pprrp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
-  limits(.0,.06,-.06,.06)
- 
+    #
+    pfzx(contours=50,plotsg=0)
+    ppzx(iy=w3d.iy_axis,wy=2)
+    plotdiode(0,'x')
+    limits(0.,zmmax,-.15,.15)
+    fma()
+    #
+    pfzy(contours=50,plotsg=0)
+    ppzy(ix=w3d.ix_axis,wx=2)
+    plotdiode(0,'y')
+    limits(0.,zmmax,-.15,.15)
+    fma()
+    #
+    ppxy(iz=int(diode_len/w3d.dz),color="density",ncolor=200)
+    limits(-.03,.03,-.03,.03)
+    fma()
+    #
+    ppxy(iz=int(diode_len/w3d.dz),contours=200,filled=1,particles=0,nx=50,ny=50)
+    limits(-.03,.03,-.03,.03)
+    fma()
+    #
+    ppxxp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
+    limits(-.03,.03,-.02,.02)
+    fma()
+    #
+    ppyyp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
+    limits(-.03,.03,-.02,.02)
+    fma()
+    #
+    pprrp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
+    limits(.0,.03,-.02,.01)
+    fma()
+    #
+    ppxy(iz=w3d.nz-1,color="density",ncolor=200)
+    limits(-.06,.06,-.06,.06)
+    fma()
+    #
+    ppxy(iz=w3d.nz-1,contours=200,filled=1,particles=0,nx=50,ny=50)
+    limits(-.06,.06,-.06,.06)
+    fma()
+    #
+    ppxxp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
+    limits(-.06,.06,-.02,.02)
+    fma()
+    #
+    ppyyp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
+    limits(-.06,.06,-.02,.02)
+    fma()
+    #
+    pprrp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
+    limits(.0,.06,-.06,.06)
+
 top.itplalways[0:3] = [0,1000000,100]
 installplalways(myplots)
 
@@ -332,4 +332,3 @@ f3d.gridmode = 1
 f3d.mgtol = 1.e-3
 f3d.mgmaxiters = 100
 fieldsol(-1)
-

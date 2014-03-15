@@ -26,8 +26,8 @@ import getzmom
 
 
 def orbitrackdoc():
-  import orbitrack
-  print orbitrack.__doc__
+    import orbitrack
+    print orbitrack.__doc__
 
 # --- Define Constants
 
@@ -119,14 +119,14 @@ def spmom(jslist=None):
     ifzmmnt = 1
     __main__.__dict__["zscale"+runid][top.it/top.nhist] = top.zbeam
     if jslist is None:
-      for spec in range(top.ns-1, -1, -1):    # Reverse indicing so main beam ends up last calc
-        getzmom.zmmnt(js=spec)
-        for mom in moms:
-            __main__.__dict__[mom+runid][spec, top.it/top.nhist] = eval("top."+mom[1:], __main__.__dict__)[0]
+        for spec in range(top.ns-1, -1, -1):    # Reverse indicing so main beam ends up last calc
+            getzmom.zmmnt(js=spec)
+            for mom in moms:
+                __main__.__dict__[mom+runid][spec, top.it/top.nhist] = eval("top."+mom[1:], __main__.__dict__)[0]
     else:
-      getzmom.zmmnt(jslist=jslist)
-      for mom in moms:
-          __main__.__dict__[mom+runid][jslist[0], top.it/top.nhist] = eval("top."+mom[1:], __main__.__dict__)[0]
+        getzmom.zmmnt(jslist=jslist)
+        for mom in moms:
+            __main__.__dict__[mom+runid][jslist[0], top.it/top.nhist] = eval("top."+mom[1:], __main__.__dict__)[0]
     ifzmmnt = 0
 
 
@@ -145,4 +145,3 @@ def save_moms(crun="0"):
         __main__.__dict__[var+runid] = eval(seek_name(var))
         outfile.write( var+runid, eval(var+runid, __main__.__dict__) )
     outfile.close()
-

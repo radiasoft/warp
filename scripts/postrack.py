@@ -32,8 +32,8 @@ import __main__, os, sys
 
 
 def postrackdoc():
-  import postrack
-  print postrack.__doc__
+    import postrack
+    print postrack.__doc__
 
 # --- Restore data files if postprocessing
 
@@ -164,10 +164,10 @@ def save_irrev(simlen=0.0):
         Simlen is the length of simulation before reversal.
     """
     with open("rev."+runid[0:3]+".txt", "a") as out:
-      out.write("Simulation Length = "+`simlen`+" * lambda_p"'\n\n')
-      for mom in secmoms:
-        out.write(mom+" = %s\n" % eval("ir"+mom, __main__.__dict__))
-      out.write('\n\n')
+        out.write("Simulation Length = "+`simlen`+" * lambda_p"'\n\n')
+        for mom in secmoms:
+            out.write(mom+" = %s\n" % eval("ir"+mom, __main__.__dict__))
+        out.write('\n\n')
 
 
 # =========================
@@ -420,13 +420,12 @@ def plot_spect(jspec=None, plist=[0], beg=0, end=n_steps, endp=None):
     if endp is None: endp = nint(end/2)
     if jspec is None: jspec = range(0, top.ns)
     for sp in jspec:
-      for part in plist:
-        title = runid+": species "+`sp`+' '+colors[sp % ncolors]+'; particle '+`part`
-        #absc =
-        for plot in plots:
-            __main__.__dict__['spect_'+plot] = FFT.fft(
-                eval(plot+'_'+runid, __main__.__dict__)[sp,beg:end,part])
-            plg(abs(eval("spect_"+plot, __main__.__dict__))[:endp],  marker=plot)
-            #plg(eval("spect_"+plot, __main__.__dict__), absc, marker=plot)
-            ptitles(plot+' '+title, "frequency", "spectral power"); fma()
-
+        for part in plist:
+            title = runid+": species "+`sp`+' '+colors[sp % ncolors]+'; particle '+`part`
+            #absc =
+            for plot in plots:
+                __main__.__dict__['spect_'+plot] = FFT.fft(
+                    eval(plot+'_'+runid, __main__.__dict__)[sp,beg:end,part])
+                plg(abs(eval("spect_"+plot, __main__.__dict__))[:endp],  marker=plot)
+                #plg(eval("spect_"+plot, __main__.__dict__), absc, marker=plot)
+                ptitles(plot+' '+title, "frequency", "spectral power"); fma()

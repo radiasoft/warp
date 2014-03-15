@@ -14,44 +14,44 @@ latticefile = ''
 wirefile = ''
 inputfile = ''
 for arg in sys.argv[1:]:
-  mr = re.search('r=(\w*)',arg)
-  ml = re.search('l=(\w*)',arg)
-  mw = re.search('w=(\w*)',arg)
-  mi = re.search('i=(\w*)',arg)
-  if mr: runname = mr.group(1)
-  if ml: latticefile = ml.group(1)
-  if mw: wirefile = mw.group(1)
-  if mi: inputfile = mi.group(1)
-  mr = re.search('-r\s(\w*)',arg)
-  ml = re.search('-l\s(\w*)',arg)
-  mw = re.search('-w\s(\w*)',arg)
-  mi = re.search('-i\s(\w*)',arg)
-  if mr: runname = mr.group(1)
-  if ml: latticefile = ml.group(1)
-  if mw: wirefile = mw.group(1)
-  if mi: inputfile = mi.group(1)
+    mr = re.search('r=(\w*)',arg)
+    ml = re.search('l=(\w*)',arg)
+    mw = re.search('w=(\w*)',arg)
+    mi = re.search('i=(\w*)',arg)
+    if mr: runname = mr.group(1)
+    if ml: latticefile = ml.group(1)
+    if mw: wirefile = mw.group(1)
+    if mi: inputfile = mi.group(1)
+    mr = re.search('-r\s(\w*)',arg)
+    ml = re.search('-l\s(\w*)',arg)
+    mw = re.search('-w\s(\w*)',arg)
+    mi = re.search('-i\s(\w*)',arg)
+    if mr: runname = mr.group(1)
+    if ml: latticefile = ml.group(1)
+    if mw: wirefile = mw.group(1)
+    if mi: inputfile = mi.group(1)
 
 if not inputfile: inputfile = 'in'+runname
 
 # --- Read in the namelist file.
 namelist = namelist.NameList(inputfile)
 try:
-  hinit = namelist.namelists['hinit']
+    hinit = namelist.namelists['hinit']
 except KeyError:
-  hinit = {}
+    hinit = {}
 try:
-  ztime = namelist.namelists['ztime']
+    ztime = namelist.namelists['ztime']
 except KeyError:
-  ztime = {}
+    ztime = {}
 
 for k,v in hinit.iteritems():
-  v = re.sub('\.f\w*','0',v) # Change .false. to 0
-  v = re.sub('\.t\w*','1',v) # Change .true. to 1
-  exec(k+'='+v)
+    v = re.sub('\.f\w*','0',v) # Change .false. to 0
+    v = re.sub('\.t\w*','1',v) # Change .true. to 1
+    exec(k+'='+v)
 for k,v in ztime.iteritems():
-  v = re.sub('\.f\w*','0',v) # Change .false. to 0
-  v = re.sub('\.t\w*','1',v) # Change .true. to 1
-  exec(k+'='+v)
+    v = re.sub('\.f\w*','0',v) # Change .false. to 0
+    v = re.sub('\.t\w*','1',v) # Change .true. to 1
+    exec(k+'='+v)
 
 # --- Parse the lattice file.
 line = hibeamlattice.hibeamlattice(latticefile)
@@ -95,72 +95,72 @@ iq = -1
 idrft = -1
 
 for e in line:
-  if e.type == 'quad':
-    iq = iq + 1
-    top.quadzs[iq] = zz
-    top.quadze[iq] = zz + e.length
-    top.quadde[iq] = e.gradient
-    top.quadap[iq] = e.aperture
-    top.quadrr[iq] = e.r_elem
-    top.qoffx[iq] = e.offset_x*errordist(e.error_type)
-    top.qoffy[iq] = e.offset_y*errordist(e.error_type)
-    zz = zz + e.length
-    if iq == top.nquad:
-      top.nquad = top.nquad + 100
-      gchange("Lattice")
-  if e.type == 'hyperb':
-    iq = iq + 1
-    top.quadzs[iq] = zz
-    top.quadze[iq] = zz + e.length
-    top.quadde[iq] = e.gradient
-    top.quadap[iq] = -e.aperture
-    top.qoffx[iq] = e.offset_x*errordist(e.error_type)
-    top.qoffy[iq] = e.offset_y*errordist(e.error_type)
-    zz = zz + e.length
-    if iq == top.nquad:
-      top.nquad = top.nquad + 100
-      gchange("Lattice")
-  elif e.type == 'drift':
-    idrft = idrft + 1
-    top.drftzs[idrft] = zz
-    top.drftze[idrft] = zz + e.length
-    top.drftap[idrft] = e.aperture
-    top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-    top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-    zz = zz + e.length
-    if idrft == top.ndrft:
-      top.ndrft = top.ndrft + 100
-      gchange("Lattice")
-  elif e.type == 'box':
-    idrft = idrft + 1
-    top.drftzs[idrft] = zz
-    top.drftze[idrft] = zz + e.length
-    top.drftap[idrft] = -e.aperture
-    top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-    top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-    zz = zz + e.length
-    if idrft == top.ndrft:
-      top.ndrft = top.ndrft + 100
-      gchange("Lattice")
-  elif e.type == 'wire':
-    idrft = idrft + 1
-    top.drftzs[idrft] = zz
-    top.drftze[idrft] = zz + e.length
-    top.drftap[idrft] = e.aperture
-    top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-    top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-    zz = zz + e.length
-    if idrft == top.ndrft:
-      top.ndrft = top.ndrft + 100
-      gchange("Lattice")
+    if e.type == 'quad':
+        iq = iq + 1
+        top.quadzs[iq] = zz
+        top.quadze[iq] = zz + e.length
+        top.quadde[iq] = e.gradient
+        top.quadap[iq] = e.aperture
+        top.quadrr[iq] = e.r_elem
+        top.qoffx[iq] = e.offset_x*errordist(e.error_type)
+        top.qoffy[iq] = e.offset_y*errordist(e.error_type)
+        zz = zz + e.length
+        if iq == top.nquad:
+            top.nquad = top.nquad + 100
+            gchange("Lattice")
+    if e.type == 'hyperb':
+        iq = iq + 1
+        top.quadzs[iq] = zz
+        top.quadze[iq] = zz + e.length
+        top.quadde[iq] = e.gradient
+        top.quadap[iq] = -e.aperture
+        top.qoffx[iq] = e.offset_x*errordist(e.error_type)
+        top.qoffy[iq] = e.offset_y*errordist(e.error_type)
+        zz = zz + e.length
+        if iq == top.nquad:
+            top.nquad = top.nquad + 100
+            gchange("Lattice")
+    elif e.type == 'drift':
+        idrft = idrft + 1
+        top.drftzs[idrft] = zz
+        top.drftze[idrft] = zz + e.length
+        top.drftap[idrft] = e.aperture
+        top.drftox[idrft] = e.offset_x*errordist(e.error_type)
+        top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
+        zz = zz + e.length
+        if idrft == top.ndrft:
+            top.ndrft = top.ndrft + 100
+            gchange("Lattice")
+    elif e.type == 'box':
+        idrft = idrft + 1
+        top.drftzs[idrft] = zz
+        top.drftze[idrft] = zz + e.length
+        top.drftap[idrft] = -e.aperture
+        top.drftox[idrft] = e.offset_x*errordist(e.error_type)
+        top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
+        zz = zz + e.length
+        if idrft == top.ndrft:
+            top.ndrft = top.ndrft + 100
+            gchange("Lattice")
+    elif e.type == 'wire':
+        idrft = idrft + 1
+        top.drftzs[idrft] = zz
+        top.drftze[idrft] = zz + e.length
+        top.drftap[idrft] = e.aperture
+        top.drftox[idrft] = e.offset_x*errordist(e.error_type)
+        top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
+        zz = zz + e.length
+        if idrft == top.ndrft:
+            top.ndrft = top.ndrft + 100
+            gchange("Lattice")
 
 # --- Set general lattice variables.
 top.zlatperi  = 2.*zz
 top.zlatstrt  = 0.
 if iq >= 2:
-  top.tunelen = 0.5*(top.quadzs[2]+top.quadze[2]-top.quadzs[0]-top.quadze[0])
+    top.tunelen = 0.5*(top.quadzs[2]+top.quadze[2]-top.quadzs[0]-top.quadze[0])
 else:
-  top.tunelen = top.zlatperi
+    top.tunelen = top.zlatperi
 env.zl        = zstart
 env.zu        = max(zz,zmax)
 env.dzenv     = zstep0
@@ -199,9 +199,9 @@ top.icphixy[:,0] = always
 #envgen();envexe()
 #wxygen()
 if l_env:
-  package("env")
-  generate()
-  step()
+    package("env")
+    generate()
+    step()
 package("wxy");generate()
 
 step(nint(zmax/zstep0))

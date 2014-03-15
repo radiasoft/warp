@@ -13,10 +13,10 @@ self-describing data sets written out with PWpyt.PW.
 
 import pprint
 try:
-  # this is needed if hdf5 was built with parallel support
-  import mpi
+    # this is needed if hdf5 was built with parallel support
+    import mpi
 except:
-  pass
+    pass
 import tables
 import sys
 import re
@@ -50,9 +50,9 @@ it is added to the cache so the next time, that value in the cache is used
 instead of having to read in the data from the file again. This is meant to
 save time. When the file is opened, all of the variables in the _ints and
 _floats are added to the cache, as well as everything that was in the pickle
-dict.  
+dict.
 
-The _names is a list of all variables in the top level of the file, i.e. 
+The _names is a list of all variables in the top level of the file, i.e.
 group='/'. This includes the names in the _ints and _floats tables, the names
 in the pickle dict, and all of the other names that were directly written out.
 
@@ -122,22 +122,22 @@ that PR can read it in.
             return ''
 
     def inquire_ls(self,group=None):
-        """inquire_ls(group=None) = list of those names 
+        """inquire_ls(group=None) = list of those names
         in the file which represent objects in the given group.
         The default groups gets all."""
         self.check_open()
         if group is None or group == '/':
-          # --- Return the list of all names, including names from the ints
-          # --- and floats tables, and from the pickledict.
-          return self._names
+            # --- Return the list of all names, including names from the ints
+            # --- and floats tables, and from the pickledict.
+            return self._names
         else:
-          # --- Get only names in the specified group
-          ll = self._file.listNodes(group,classname='Leaf')
-          ll = map(lambda l:l.name,ll)
-          # --- Fix the delimiter in all of the names if needed.
-          if self._delimiter != '@':
-              ll = map(lambda l:self._fixdelimiter.sub(self._delimiter,l),ll)
-          return ll
+            # --- Get only names in the specified group
+            ll = self._file.listNodes(group,classname='Leaf')
+            ll = map(lambda l:l.name,ll)
+            # --- Fix the delimiter in all of the names if needed.
+            if self._delimiter != '@':
+                ll = map(lambda l:self._fixdelimiter.sub(self._delimiter,l),ll)
+            return ll
 
     def inquire_mode(self):
         "inquire_mode() = mode ('r', 'w', or 'a') of this file."
@@ -197,9 +197,9 @@ that PR can read it in.
 
             # --- Handle special cases
             if node.title == "Pickled":
-              data = cPickle.loads(data)
+                data = cPickle.loads(data)
             if node.title == 'ZeroLength':
-              data = numpy.zeros(data[:-1],dtype=string.ascii_letters[data[-1]])
+                data = numpy.zeros(data[:-1],dtype=string.ascii_letters[data[-1]])
 
             # --- Add the data to the cache
             self._cache[name] = data
@@ -218,7 +218,7 @@ that PR can read it in.
         self.check_open()
         group = self.inquire_group()
         for node in self._file.iterNodes(group,classname='Leaf'):
-            
+
             if node.title == 'HashedName':
                 # --- Find hashed names in the tables
                 hashedname = node.name
@@ -269,11 +269,10 @@ that PR can read it in.
 
     def set_verbosity(self, flag):
         """verbose(flag) sets verbosity level to flag.
-        0 for quiet operation, 
-        1 to report closing only, 
+        0 for quiet operation,
+        1 to report closing only,
         2 to report access to data."""
         if 0 <= flag <= 2:
             self._verbose = flag
         else:
             raise PRError, 'Illegal value for verbosity: '+`flag`
-

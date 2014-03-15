@@ -36,16 +36,16 @@ Note that only things which can be pickled and unpickled are written out.
     file_type = "pickle"
 
     def __init__(self, filename, mode='w', protocol=-1):
-        "PW(filename='', mode='w') creates filename" 
+        "PW(filename='', mode='w') creates filename"
         self.__dict__['_filename'] = filename
         self.__dict__['_protocol'] = protocol
         assert mode in ['w','a'],Exception("Improper mode: " + mode)
         if mode == 'a':
-          # --- If append, read in all data from the file.
-          with open(filename,mode='rb') as ff:
-              self.__dict__['_pickledict'] = cPickle.load(ff)
+            # --- If append, read in all data from the file.
+            with open(filename,mode='rb') as ff:
+                self.__dict__['_pickledict'] = cPickle.load(ff)
         else:
-          self.__dict__['_pickledict'] = {}
+            self.__dict__['_pickledict'] = {}
 
         self.__dict__['_file'] = open(filename,mode='wb')
 
@@ -151,4 +151,3 @@ if __name__ == "__main__":
     for x in f.inquire_names():
         print x, "is", eval(x), ", in file it is", eval('f.'+x)
     f.close()
-

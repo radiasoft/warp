@@ -4,20 +4,20 @@
 # by: Rami A. Kishek (based on algorithm by I. Haber)
 # created: September 22, 2000
 #
-#	Last Modified: Jan. 5, 2005
+#       Last Modified: Jan. 5, 2005
 #
 # This script provides the following functions used in to generate
 # bgrd data for solenoids using a formula
 #
-#   make_sol	... Uses Kishek's formula to generate a short solenoid
+#   make_sol    ... Uses Kishek's formula to generate a short solenoid
 #       and derive nonlinear terms.  Parameters can be supplied.
 #
-#   make_long_sole  	... Uses Y. Zou's formula to generate a long
+#   make_long_sole      ... Uses Y. Zou's formula to generate a long
 #       solenoid and derive nonlinear terms.  Parameters can be supplied.
 #
-#   plot_bofz	... Plot magnetic field of brgd elements vs z
-#   plot_bofx	... Plot magnetic field of brgd elements vs x
-#   plot_bofy	... Plot magnetic field of brgd elements vs y
+#   plot_bofz   ... Plot magnetic field of brgd elements vs z
+#   plot_bofx   ... Plot magnetic field of brgd elements vs x
+#   plot_bofy   ... Plot magnetic field of brgd elements vs y
 #   comp_bofz   ... Plots comparisons of different bgrdids
 #
 # ==================
@@ -26,8 +26,8 @@ from warp import *
 from rami_scripts import *
 
 def b_fieldsdoc():
-  import b_fields
-  print b_fields.__doc__
+    import b_fields
+    print b_fields.__doc__
 
 #=====================
 
@@ -117,9 +117,9 @@ Defaults correspond to UMER injector solenoid
                 top.bgrdbz[:,iiy,iiz,ispec] = top.bgrdbz[:,iiy,iiz,ispec] + bcof1
             else:
                 top.bgrdbx[:,iiy,iiz,ispec] = top.bgrdbx[:,iiy,iiz,ispec] + \
-						                        (-bcof2 + bcof4*r2i[:])*xxi[:]
+                                                                        (-bcof2 + bcof4*r2i[:])*xxi[:]
                 top.bgrdby[:,iiy,iiz,ispec] = top.bgrdby[:,iiy,iiz,ispec] + \
-						                        (-bcof2 + bcof4*r2i[:])*yy
+                                                                        (-bcof2 + bcof4*r2i[:])*yy
                 top.bgrdbz[:,iiy,iiz,ispec] = top.bgrdbz[:,iiy,iiz,ispec] + bcof1 - \
                                                 bcof3*r2i[:] + bcof5*r2i[:]**2
 
@@ -179,20 +179,20 @@ Defaults correspond to UMER injector solenoid
                             3.0*((zz+hlact)**3)*((zz+hlact)**2+aaa2)**(-2.5)
         g2ppp = -3.0*((zz+hlact)**2+aaa2)**(-1.5) + \
                             18.0*(zz+hlact)**2*((zz+hlact)**2+aaa2)**(-2.5) -   \
-		                    15.0*((zz+hlact)**4)*((zz+hlact)**2+aaa2)**(-3.5)
+                                    15.0*((zz+hlact)**4)*((zz+hlact)**2+aaa2)**(-3.5)
         g2pppp = 45.0*(zz+hlact)*((zz+hlact)**2+aaa2)**(-2.5) - \
-		                    150*(zz+hlact)**3*((zz+hlact)**2+aaa2)**(-3.5) +    \
-		                    105.0*(zz+hlact)**5*((zz+hlact)**2+aaa2)**(-4.5)
+                                    150*(zz+hlact)**3*((zz+hlact)**2+aaa2)**(-3.5) +    \
+                                    105.0*(zz+hlact)**5*((zz+hlact)**2+aaa2)**(-4.5)
         #
         g3p = -1.0/((zz-hlact)**2+aaa2)**0.5 + (zz-hlact)**2*((zz-hlact)**2+aaa2)**(-1.5)
         g3pp = 3.0*(zz-hlact)*((zz-hlact)**2+aaa2)**(-1.5) -    \
-		                    3.0*((zz-hlact)**3)*((zz-hlact)**2+aaa2)**(-2.5)
+                                    3.0*((zz-hlact)**3)*((zz-hlact)**2+aaa2)**(-2.5)
         g3ppp = 3.0*((zz-hlact)**2+aaa2)**(-1.5) -  \
-		                    18.0*(zz-hlact)**2*((zz-hlact)**2+aaa2)**(-2.5) +   \
- 		                    15.0*((zz-hlact)**4)*((zz-hlact)**2+aaa2)**(-3.5)
+                                    18.0*(zz-hlact)**2*((zz-hlact)**2+aaa2)**(-2.5) +   \
+                                    15.0*((zz-hlact)**4)*((zz-hlact)**2+aaa2)**(-3.5)
         g3pppp = -45.0*(zz-hlact)*((zz-hlact)**2+aaa2)**(-2.5) +    \
-		                    150*(zz-hlact)**3*((zz-hlact)**2+aaa2)**(-3.5) -    \
-		                    105.0*(zz-hlact)**5*((zz-hlact)**2+aaa2)**(-4.5)
+                                    150*(zz-hlact)**3*((zz-hlact)**2+aaa2)**(-3.5) -    \
+                                    105.0*(zz-hlact)**5*((zz-hlact)**2+aaa2)**(-4.5)
         #
         bcofs = [g1*(g2+g3), g1*(g2p+g3p), g1*(g2pp+g3pp),
                              g1*(g2ppp+g3ppp), g1*(g2pppp+g3pppp)]
@@ -215,9 +215,9 @@ Defaults correspond to UMER injector solenoid
                 top.bgrdbz[:,iiy,iiz,ispec] = top.bgrdbz[:,iiy,iiz,ispec] + bcof1
             else:
                 top.bgrdbx[:,iiy,iiz,ispec] = top.bgrdbx[:,iiy,iiz,ispec] + \
-						                        (-bcof2 + bcof4*r2i[:])*xxi[:]
+                                                                        (-bcof2 + bcof4*r2i[:])*xxi[:]
                 top.bgrdby[:,iiy,iiz,ispec] = top.bgrdby[:,iiy,iiz,ispec] + \
-						                        (-bcof2 + bcof4*r2i[:])*yy
+                                                                        (-bcof2 + bcof4*r2i[:])*yy
                 top.bgrdbz[:,iiy,iiz,ispec] = top.bgrdbz[:,iiy,iiz,ispec] + bcof1 - \
                                                 bcof3*r2i[:] + bcof5*r2i[:]**2
 
@@ -387,7 +387,7 @@ xplot, yplot define coords of desired plot axis
     plg( yoffset+yscale*top.bgrdbz[iix,iiy,:,nspec],
                                 xoffset+xscale*zgrd[:], marker="z", type="dash")
     if titles:  ptitles(titlet, titleb, titlel, titler)
-	#
+        #
     plg( yoffset+yscale*solbx[iix,iiy,:,nspec],
                                 xoffset+xscale*zgrd[:], marker="x", type="solid")
     plg( yoffset+yscale*solby[iix,iiy,:,nspec],
@@ -397,4 +397,3 @@ xplot, yplot define coords of desired plot axis
     fma()
 
 #===========
-

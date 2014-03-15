@@ -327,9 +327,9 @@ sample set of parameters.
             # --- The first one uses the sample as given.
             trial = sample
             if i > 0:
-              # --- The rest use a perturbation from the sample.
-              trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*deltas)
-                            + 2.*(random.random(self.nparams)-.5)*shifts)
+                # --- The rest use a perturbation from the sample.
+                trial = (trial*(1.+2.*(random.random(self.nparams)-.5)*deltas)
+                              + 2.*(random.random(self.nparams)-.5)*shifts)
             self.x1[i,:] = self.constrainparams(trial)
             self.cost[i] = self.evaluate(self.x1[i,:])
 
@@ -1052,4 +1052,3 @@ not ease of use. This is probably not very robust.
             print "Current values = "
             print self.params
             print "loss = %e %e"%(self.f[-1,0],self.f[-1,0]/tol)
-

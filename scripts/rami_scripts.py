@@ -2,53 +2,53 @@
 # by: Rami A. Kishek    (some functions based on Grote's scripts)
 # created: Aug. 30, 2000
 #
-#	Last Modified: 5/13/2005
+#       Last Modified: 5/13/2005
 #
 # Contains many convenience functions used in Rami's Python Input decks
 # and other modules:
 #
 # ==================
 # CONVENIENCE FUNCS:
-#   calc_dedr	... Calculates dedr based on const beam size, perv, and emit
-#   change_t_step 	... Changes time step in middle of run
+#   calc_dedr   ... Calculates dedr based on const beam size, perv, and emit
+#   change_t_step       ... Changes time step in middle of run
 # * change_pipe_rad ... Changes pipe radius in middle of run
 #   apply_aper      ... Applies an aperture to beam
-#   accelerate_beam	... applies zero-width acceleration gap
-#   make_nice_output 	... Prints nice one-liners
+#   accelerate_beam     ... applies zero-width acceleration gap
+#   make_nice_output    ... Prints nice one-liners
 #   rmarray         ... Creates array of Gaussian random #s same size as x
 #   tableread       ... Reads a table of numeric data from formatted txt file
 #   tablewrite      ... Writes an array of numeric data into formatted txt file
 #
 # MOMENT CALC + SAVING:
 # * init_cmom   ... Initializes history z-moments needed for calc_mom()
-# * calc_mom	... Calculates additional moments to be saved
+# * calc_mom    ... Calculates additional moments to be saved
 # * seek_name   ... Function to assist in finding WARP variable names for saving
-#   save_data	... Saves selected parameters for future plotting .pdb
-#								(compatible w/ old BASIS create / restore)
+#   save_data   ... Saves selected parameters for future plotting .pdb
+#                                                               (compatible w/ old BASIS create / restore)
 #   save_data3  ... Saves z-moment mesh info in 3D Lab frame simus
 #   save_long   ... Saves more variables than save_data (those calculated in calc_mom)
 #
 # PLOTTING:
 #   gen_plot    ... generic history plotting routine with strobing, defaults to vzbar
-#   plot_env	... Plot 2*rms beam enveloppe
-#   plot_emit	... Plot 4*rms beam Emittance
-#   plot_cent	... Plot beam centroid in x,y
-#   plot_vz 	... Plot vz,thermal
+#   plot_env    ... Plot 2*rms beam enveloppe
+#   plot_emit   ... Plot 4*rms beam Emittance
+#   plot_cent   ... Plot beam centroid in x,y
+#   plot_vz     ... Plot vz,thermal
 #   plot_de     ... Plot ENERGY Spread
 #   plot_vzbar  ... Plot ave vz
 #   plot_ekin   ... Plot ave ENERGY
-#   plot_np		... Plot np as function of t
-#   plot_curr	... Plot beam current as function of t
-#   plot_linechg	... Plot Line Charge as function of t
-#   plot_rot	... Plot beam rotation angle
+#   plot_np             ... Plot np as function of t
+#   plot_curr   ... Plot beam current as function of t
+#   plot_linechg        ... Plot Line Charge as function of t
+#   plot_rot    ... Plot beam rotation angle
 #   plot_remit  ... Plot generalized Emittances with rotations, Eg, Eh
-#   plot_disp	... Plot dispersion function vz * < x * (uzp-vz) > / < (uzp-vz)^2 >
+#   plot_disp   ... Plot dispersion function vz * < x * (uzp-vz) > / < (uzp-vz)^2 >
 #   plot_demit  ... Plot generalized Emittance with dispersion, Ed, Ed2
-#   plot_comp	... Compare several runs
+#   plot_comp   ... Compare several runs
 #   comp_exp    ... Compares Current Run to Experimental Output of UMERBeam.m
 #
 # HISTOGRAMMING:
-#   rhistogram	... Simple histogramming function using numeric package
+#   rhistogram  ... Simple histogramming function using numeric package
 #   plot_hist   ... Uses rhistogram to plot a histogram
 #
 # ==================
@@ -75,8 +75,8 @@ from histplots import *
 
 
 def rami_scriptsdoc():
-  import rami_scripts
-  print rami_scripts.__doc__
+    import rami_scripts
+    print rami_scripts.__doc__
 
 # -- Default Variables to be saved
 def_vars1 = ["hpnum", "hvzbar", "hvzrms",
@@ -88,7 +88,7 @@ add_hmom = ["hepsd", "hdisp", "hrot"]           # -- calculated using calc_mom
 
 # -- Moments required to calculate additional moments:
 req_mom  = ["vzbar", "vzrms", "xvzbar", "vxvzbar", "xsqbar", "xpsqbar", "xxpbar", "epsnx",
-	        "xybar", "xbar", "ybar", "xrms", "yrms", "vxbar", "vxrms"]  #"xvxbar", "vxsqbar"
+                "xybar", "xbar", "ybar", "xrms", "yrms", "vxbar", "vxrms"]  #"xvxbar", "vxsqbar"
 
 #===========
 
@@ -101,25 +101,25 @@ def swhere( cond, x, y ):
 #===========
 
 def calc_dedr(a0=None, emit=None, ibeam=None, ekin=None):
-	"""top.dedr = calc_dedr(a0=None, emit=None, ibeam=None, ekin=None)
-		Parameters default to those in TOP
-	Given beam parameters, calculates required dedr to keep
-	beam at a constant size of a0
-	"""
-	if a0==None: 	a0=top.a0
-	if emit==None:	emit=top.emit
-	if ibeam==None:	ibeam=top.ibeam
-	if ekin ==None:	ekin=top.ekin
-	#
-	gen_perv = 1.515e4*abs(ibeam)/(ekin**1.5)
-	kappa = (gen_perv/(a0**2)) + ((emit**2)/(a0**4))
-	return  -kappa*2.*ekin/(top.zion)
+    """top.dedr = calc_dedr(a0=None, emit=None, ibeam=None, ekin=None)
+            Parameters default to those in TOP
+    Given beam parameters, calculates required dedr to keep
+    beam at a constant size of a0
+    """
+    if a0==None:    a0=top.a0
+    if emit==None:  emit=top.emit
+    if ibeam==None: ibeam=top.ibeam
+    if ekin ==None: ekin=top.ekin
+    #
+    gen_perv = 1.515e4*abs(ibeam)/(ekin**1.5)
+    kappa = (gen_perv/(a0**2)) + ((emit**2)/(a0**4))
+    return  -kappa*2.*ekin/(top.zion)
 
 #===========
 
 def accelerate_beam(accelv):
     """ accelerate_beam(accelv)
-    	where accelv is the additional VOLTAGE
+        where accelv is the additional VOLTAGE
     # --- Apply acceleration to beam and beam frame.
     # --- This replaces the accl elements and models a zero-length gap.
     """
@@ -132,7 +132,7 @@ def accelerate_beam(accelv):
 
 def change_t_step(step_size):
     """ change_t_step(step_size)
-  	# --- Change the step size
+        # --- Change the step size
     """
     wxy.ds = step_size
     top.dt = wxy.ds/top.vbeam
@@ -143,8 +143,8 @@ def change_t_step(step_size):
 
 def change_pipe_rad(pipe_rad):
     """ change_pipe_rad(pipe_rad)
-  	# --- Change radius at which particles are removed
-  	# --- Change capacity matrix to new pipe_rad
+        # --- Change radius at which particles are removed
+        # --- Change capacity matrix to new pipe_rad
     """
     top.prwallz = top.prwall = pipe_rad
     symm_fact = swhere( w3d.l4symtry, pi/2.0,
@@ -152,9 +152,9 @@ def change_pipe_rad(pipe_rad):
     fxy.xcond[0:fxy.ncxy] = pipe_rad*cos(symm_fact*iota(fxy.ncxy)/fxy.ncxy)
     fxy.ycond[0:fxy.ncxy] = pipe_rad*sin(symm_fact*iota(fxy.ncxy)/fxy.ncxy)
     fxy.vcond[0:fxy.ncxy] = 0.e0            # Put pipe at ground
-    fieldsol(0)                           	# recalculate matrix and fields
-    w3d.phi[:,:,-1] = w3d.phi[:,:,1]		# Bug fix
-    w3d.phi[:,:, 0] = w3d.phi[:,:,1]	
+    fieldsol(0)                                 # recalculate matrix and fields
+    w3d.phi[:,:,-1] = w3d.phi[:,:,1]            # Bug fix
+    w3d.phi[:,:, 0] = w3d.phi[:,:,1]
 
 #===========
 
@@ -176,7 +176,7 @@ def apply_aper(aper_rad, aper_thick, naper_thick):
 
 def make_nice_output(nwin=0, *files):
     """ make_nice_output(nwin=0, *files)
-	# --- Generate nice ouput to the terminal and any extra files """
+        # --- Generate nice ouput to the terminal and any extra files """
 
     oneliner = "it = %5d zbeam = %9.5f 2*yrms = %7.2f xbar = %6.2f emitx = %7.2f nplive = %8d\n" %\
                 (top.it,top.zbeam-aper_dist, 2.0*top.yrms[nwin]*1.e3, top.xbar[nwin]*1.e3,
@@ -227,15 +227,15 @@ def calc_mom(l3d=no, lhist=no):
     """ calc_mom(l3d=no, lhist=no)
     # To be invoked at end of run; l3d=yes for zmoments;
     #   lhist=yes for history of z-mom (BE SURE to INVOKE init_cmom() at start of run)
-	# Calculates:
-	#		hepsd = emittance conserved in dispersion
-	#		hdisp  = Dispersion moment <x*delta>/<delta^2>
-	#       hepsg, hepsh = Generalized emits w/ QROT
-	#       hrot   = Beam rotation angle
-	# Note: ignores centroids
+        # Calculates:
+        #               hepsd = emittance conserved in dispersion
+        #               hdisp  = Dispersion moment <x*delta>/<delta^2>
+        #       hepsg, hepsh = Generalized emits w/ QROT
+        #       hrot   = Beam rotation angle
+        # Note: ignores centroids
     """
     global hrot, hdisp, hepsd, hepsd2
-	# --- Select appropriate variables:
+        # --- Select appropriate variables:
     m = {}; pre = 'h'; suf = ''
     if l3d:
         suf = 'z'
@@ -342,13 +342,13 @@ def save_data3(crun="0", vars=def_vars, lhist=no, llw=no):
 
 def save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no, llw=no):
     """ save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no, llw=no)
-	#   Uses PW.PW routine to save vars in pdb format.
-	#       default vars stored in variables 'def_vars' + 'add_vars'
-	#	Read output using
-	#       restore("filename.pdb")
-	#   or
-	#		out = PR.PR("filename.pdb")
-	#		out.???
+        #   Uses PW.PW routine to save vars in pdb format.
+        #       default vars stored in variables 'def_vars' + 'add_vars'
+        #       Read output using
+        #       restore("filename.pdb")
+        #   or
+        #               out = PR.PR("filename.pdb")
+        #               out.???
     """
     save_data(crun, vars, l3d, lhist, llw)
 
@@ -356,16 +356,16 @@ def save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no, llw=n
 
 def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
     """ gen_plot(vars=(), xaxis="", runid=None,  kwdict={}, **kw)
-	    Generic plotter of any number of identical variables, with strobing
-	    Understands any of Grote's arguments [hpdoc() for help] +  the following:
+            Generic plotter of any number of identical variables, with strobing
+            Understands any of Grote's arguments [hpdoc() for help] +  the following:
 
-	    vars = tuple of names of variables plotted (defaults to "vzbar")
-	    xaxis = name of x-axis variable (defaults to "zscale")
-	    runid = runid of run to be plotted.  (None defaults to current run)
-	            "" plots vars with no runid attached to their name
-	    nwin = window to be plotted, (def None if array 1-D)
-	    begin = beginning index (0)
-	    strobe = # of points to be strobed (1)
+            vars = tuple of names of variables plotted (defaults to "vzbar")
+            xaxis = name of x-axis variable (defaults to "zscale")
+            runid = runid of run to be plotted.  (None defaults to current run)
+                    "" plots vars with no runid attached to their name
+            nwin = window to be plotted, (def None if array 1-D)
+            begin = beginning index (0)
+            strobe = # of points to be strobed (1)
     """
     # --- Dictionary specifying plot defaults
     pldef = {'nwin': None, 'begin':0, 'end': -1, 'strobe':1,
@@ -619,7 +619,7 @@ def plot_demit(runid=None, kwdict={}, **kw):
 
 def plot_comp(runs={}, plots=("env", "emit", "cent"), kwdict={}, **kw):
     """ plot_comp(runs={}, plots=("env", "emit", "cent"), kwdict={}, **kw)
-	    Generates comparison plots between any number of simulations using gen_plot
+            Generates comparison plots between any number of simulations using gen_plot
             runs  = dictionary relating strings of runids+crun to dictionary of
                     properties
                     eg., {"abcd0": {'type': "solid", 'yscale': 2.0, ...}, ...}
@@ -735,16 +735,16 @@ def comp_exp(expfile, sep='\t', run=None,  kwdict={}, **kw):
 #==========
 
 def rhistogram(a, nbins=30.):
-	"""rhistogram(a, nbins=30.)
-		returns  two arrays of length nbins:
-		    bins: containing the x axis
-		    f: containing the distribution
-	"""
-	bot = min(a.flat); top = max(a.flat)
-	bins = arange(bot, top, (top-bot)/nbins)
-	n = searchsorted(sort(a), bins)
-	n = concatenate([n, [len(a)]])
-	return bins, (0.0+n[1:]-n[:-1])/len(a)
+    """rhistogram(a, nbins=30.)
+            returns  two arrays of length nbins:
+                bins: containing the x axis
+                f: containing the distribution
+    """
+    bot = min(a.flat); top = max(a.flat)
+    bins = arange(bot, top, (top-bot)/nbins)
+    n = searchsorted(sort(a), bins)
+    n = concatenate([n, [len(a)]])
+    return bins, (0.0+n[1:]-n[:-1])/len(a)
 
 #===========
 

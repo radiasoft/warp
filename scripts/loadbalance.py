@@ -268,19 +268,19 @@ recalculated on a finer mesh to give better balancing.
             zinjectmin = min(top.ztinjmn) - w3d.dz
             zinjectmax = max(top.ztinjmx) + w3d.dz
             if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom]:
-              maxa = maximum.reduce(top.atinjectz,axis=0)
-              maxb = maximum.reduce(top.btinjectz,axis=0)
-              xinjectmin = minnd(-maxa+top.xtinject) - 2*w3d.inj_dx
-              xinjectmax = maxnd(+maxa+top.xtinject) + 2*w3d.inj_dx
-              yinjectmin = minnd(-maxb+top.ytinject) - 2*w3d.inj_dy
-              yinjectmax = maxnd(+maxb+top.ytinject) + 2*w3d.inj_dy
+                maxa = maximum.reduce(top.atinjectz,axis=0)
+                maxb = maximum.reduce(top.btinjectz,axis=0)
+                xinjectmin = minnd(-maxa+top.xtinject) - 2*w3d.inj_dx
+                xinjectmax = maxnd(+maxa+top.xtinject) + 2*w3d.inj_dx
+                yinjectmin = minnd(-maxb+top.ytinject) - 2*w3d.inj_dy
+                yinjectmax = maxnd(+maxb+top.ytinject) + 2*w3d.inj_dy
             elif w3d.solvergeom == w3d.RZgeom:
-              maxa = maximum.reduce(top.atinjectz,axis=0)
-              mina = minimum.reduce(top.atinjectz,axis=0)
-              xinjectmin = minnd(mina) - 2*w3d.inj_dx
-              xinjectmax = maxnd(maxa) + 2*w3d.inj_dx
-              yinjectmin = 0.
-              yinjectmax = 0.
+                maxa = maximum.reduce(top.atinjectz,axis=0)
+                mina = minimum.reduce(top.atinjectz,axis=0)
+                xinjectmin = minnd(mina) - 2*w3d.inj_dx
+                xinjectmax = maxnd(maxa) + 2*w3d.inj_dx
+                yinjectmin = 0.
+                yinjectmax = 0.
             xminp = minimum(xminp,max(w3d.xmmin,xinjectmin))
             xmaxp = maximum(xmaxp,min(w3d.xmmax,xinjectmax))
             yminp = minimum(yminp,max(w3d.ymmin,yinjectmin))
@@ -693,7 +693,7 @@ of the domains.
             # --- Find the last place with non-zero weight, and give the last processor
             # --- everything up to that point.
             for ii in range(ii,nn):
-              if weight[ii] > 0.: domain[-1] = ii+1
+                if weight[ii] > 0.: domain[-1] = ii+1
         else:
             domain[-1] = nn
 
@@ -987,4 +987,3 @@ of the domains.
             transferedge('y','z','x','edgeyrzr')
 
         # --- Corners - nothing needs to be done, thank goodness
-

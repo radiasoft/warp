@@ -5,121 +5,120 @@ from warp import *
 
 
 def subcycledoc():
-  import subcycle
-  print subcycle.__doc__
+    import subcycle
+    print subcycle.__doc__
 
 class Subcycle:
-  """
-Setups up the code to run with subcycling, the field solve is only done
-periodically. Init function takes one optional argument, the number of time
-steps between field solves, defaulting to 25.
-The functions disable and enable are available to turn the subcycling off and
-on. The enable function is automatically called initially.
-The function changecycle can be called to change the number of steps between
-fieldsolves.
-  """
-  # --------------------------------------------------------------------
-  def __init__(s,nsubcycle=25,laccumulate_between_fs=0):
-    if nsubcycle < 1:
-      print "Warning, number of steps must be greater than zero."
-      print "         Default value of 25 will be used."
-      nsubcycle = 25
-    s.nsubcycle = nsubcycle
-    s.enabled = 0
-    s.enable()
-    s.fstypesave = top.fstype
-    s.laccumulate_between_fs = laccumulate_between_fs
-    if top.fstype < 0:
-      print "Warning, no fieldsolve type defined. Subcycling will continue"
-      print "as normal, except that no fieldsolves will be done."
-      print "Set top.fstype as appropriate."
-    s.depossave = top.depos
-    s.laccumulate_rhosave = top.laccumulate_rho
-  # --------------------------------------------------------------------
-  def enable(s):
-    "Enable the subcycling"
-    if not s.enabled:
-      s.enabled = 1
-      installbeforestep(s.dobeforestep)
-      installafterstep(s.doafterstep)
-  # --------------------------------------------------------------------
-  def disable(s):
     """
-Disable the subcycling. Returns code to normal operation where a
-fieldsolve is done every timestep.
+  Setups up the code to run with subcycling, the field solve is only done
+  periodically. Init function takes one optional argument, the number of time
+  steps between field solves, defaulting to 25.
+  The functions disable and enable are available to turn the subcycling off and
+  on. The enable function is automatically called initially.
+  The function changecycle can be called to change the number of steps between
+  fieldsolves.
     """
-    if s.enabled:
-      s.enabled = 0
-      uninstallbeforestep(s.dobeforestep)
-      uninstallafterstep(s.doafterstep)
-  # --------------------------------------------------------------------
-  def changecycle(s,newcycle):
-    assert newcycle > 0,"Number of steps must be greater than zero"
-    s.nsubcycle = newcycle
+    # --------------------------------------------------------------------
+    def __init__(s,nsubcycle=25,laccumulate_between_fs=0):
+        if nsubcycle < 1:
+            print "Warning, number of steps must be greater than zero."
+            print "         Default value of 25 will be used."
+            nsubcycle = 25
+        s.nsubcycle = nsubcycle
+        s.enabled = 0
+        s.enable()
+        s.fstypesave = top.fstype
+        s.laccumulate_between_fs = laccumulate_between_fs
+        if top.fstype < 0:
+            print "Warning, no fieldsolve type defined. Subcycling will continue"
+            print "as normal, except that no fieldsolves will be done."
+            print "Set top.fstype as appropriate."
+        s.depossave = top.depos
+        s.laccumulate_rhosave = top.laccumulate_rho
+    # --------------------------------------------------------------------
+    def enable(s):
+        "Enable the subcycling"
+        if not s.enabled:
+            s.enabled = 1
+            installbeforestep(s.dobeforestep)
+            installafterstep(s.doafterstep)
+    # --------------------------------------------------------------------
+    def disable(s):
+        """
+    Disable the subcycling. Returns code to normal operation where a
+    fieldsolve is done every timestep.
+        """
+        if s.enabled:
+            s.enabled = 0
+            uninstallbeforestep(s.dobeforestep)
+            uninstallafterstep(s.doafterstep)
+    # --------------------------------------------------------------------
+    def changecycle(s,newcycle):
+        assert newcycle > 0,"Number of steps must be greater than zero"
+        s.nsubcycle = newcycle
 
-  # --------------------------------------------------------------------
-  def turnoffdeposition(s):
-    """
-Turns off charge deposition (and zeroing of rho). Saves user's values.
-    """
-    try:
-      s.depossave = top.depos.copy()
-    except:
-      s.depossave = top.depos + ''
-    s.laccumulate_rhosave = top.laccumulate_rho
-    top.depos = "none"
-    top.laccumulate_rho = true
-  # --------------------------------------------------------------------
-  def turnondeposition(s):
-    """
-Turns on charge deposition by restoring the values.
-    """
-    top.depos = s.depossave
-    top.laccumulate_rho = s.laccumulate_rhosave
-  # --------------------------------------------------------------------
-  def turnofffieldsolve(s):
-    """
-Turns off the field solve (save the field solve type).
-    """
-    solver = getregisteredsolver()
-    if solver is None:
-      s.fstypesave = top.fstype
-      top.fstype = -1
-    else:
-      for solver in getregisteredsolvers():
-        solver.ldosolve = 0
-  # --------------------------------------------------------------------
-  def turnonfieldsolve(s):
-    """
-Turns on the field solver by restoring the field solve type.
-    """
-    solver = getregisteredsolver()
-    if solver is None:
-      top.fstype = s.fstypesave
-    else:
-      for solver in getregisteredsolvers():
-        solver.ldosolve = 1
+    # --------------------------------------------------------------------
+    def turnoffdeposition(s):
+        """
+    Turns off charge deposition (and zeroing of rho). Saves user's values.
+        """
+        try:
+            s.depossave = top.depos.copy()
+        except:
+            s.depossave = top.depos + ''
+        s.laccumulate_rhosave = top.laccumulate_rho
+        top.depos = "none"
+        top.laccumulate_rho = true
+    # --------------------------------------------------------------------
+    def turnondeposition(s):
+        """
+    Turns on charge deposition by restoring the values.
+        """
+        top.depos = s.depossave
+        top.laccumulate_rho = s.laccumulate_rhosave
+    # --------------------------------------------------------------------
+    def turnofffieldsolve(s):
+        """
+    Turns off the field solve (save the field solve type).
+        """
+        solver = getregisteredsolver()
+        if solver is None:
+            s.fstypesave = top.fstype
+            top.fstype = -1
+        else:
+            for solver in getregisteredsolvers():
+                solver.ldosolve = 0
+    # --------------------------------------------------------------------
+    def turnonfieldsolve(s):
+        """
+    Turns on the field solver by restoring the field solve type.
+        """
+        solver = getregisteredsolver()
+        if solver is None:
+            top.fstype = s.fstypesave
+        else:
+            for solver in getregisteredsolvers():
+                solver.ldosolve = 1
 
-  # --------------------------------------------------------------------
-  def dobeforestep(s):
-    """
-Turns off charge deposition when not needed for optimization. Turns off field
-solve so that it is only explicitly done after the step.
-    """
-    if s.laccumulate_between_fs:
-      if (top.it)%s.nsubcycle == 0: top.laccumulate_rho = false
-      else:                           top.laccumulate_rho = true
-    else:
-      if (top.it+1)%s.nsubcycle == 0: s.turnondeposition()
-      else:                           s.turnoffdeposition()
-    s.turnofffieldsolve()
-  # --------------------------------------------------------------------
-  def doafterstep(s):
-    """
-Does a fieldsolve as needed. Restores quantities to the values expected
-by the user.
-    """
-    s.turnonfieldsolve()
-    s.turnondeposition()
-    if top.it%s.nsubcycle == 0: fieldsol(-1)
-
+    # --------------------------------------------------------------------
+    def dobeforestep(s):
+        """
+    Turns off charge deposition when not needed for optimization. Turns off field
+    solve so that it is only explicitly done after the step.
+        """
+        if s.laccumulate_between_fs:
+            if (top.it)%s.nsubcycle == 0: top.laccumulate_rho = false
+            else:                           top.laccumulate_rho = true
+        else:
+            if (top.it+1)%s.nsubcycle == 0: s.turnondeposition()
+            else:                           s.turnoffdeposition()
+        s.turnofffieldsolve()
+    # --------------------------------------------------------------------
+    def doafterstep(s):
+        """
+    Does a fieldsolve as needed. Restores quantities to the values expected
+    by the user.
+        """
+        s.turnonfieldsolve()
+        s.turnondeposition()
+        if top.it%s.nsubcycle == 0: fieldsol(-1)

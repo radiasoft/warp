@@ -3,9 +3,9 @@ from warp import *
 #=================================================================
 #setbsqgrad:
 #   generates array of grad B^2 data
-# 
+#
 #  Arguments:
-#    nx,ny,nz: number of grid cells in x,y,z. Input ignored if there is 
+#    nx,ny,nz: number of grid cells in x,y,z. Input ignored if there is
 #     gridded B data; will calculate instead from grid data.
 #    xmin,xmax,ymin,ymax,zmin,zmax: min, max values of coordinates
 #     over which grad B is to be calculated.
@@ -70,7 +70,7 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
         by=top.bsqgradby[:,:,:,0]
         bz=top.bsqgradbz[:,:,:,0]
     else:
-#	print xmin,dx,nx,ymin,dy,ny,zmin,dz,nz
+#       print xmin,dx,nx,ymin,dy,ny,zmin,dz,nz
         x,y,z=getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz)
         print "finished getmesh3d"
         dt=top.dt;dtr=.5*dt;dtl=-dtr
@@ -89,7 +89,7 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
         uzd=ones((nx1*ny1*nz1),"d")
         bendres=zeros((nx1*ny1*nz1),"d")
         bendradi=zeros((nx1*ny1*nz1),"d")
-        # now fetch the B array 
+        # now fetch the B array
         print "about to call exteb3d"
         print "shapes", shape(x),shape(uzd),shape(gaminv)
         print shape(bx),shape(ex)
@@ -118,14 +118,14 @@ def fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     # not, print warnings
     needsgchange=0
     if zonly == false:
-      if top.bsqgradnc < 3:
-        print "top.bsqgradnc too small; fixing"
-        needsgchange=1
-        top.bsqgradnc=3
+        if top.bsqgradnc < 3:
+            print "top.bsqgradnc too small; fixing"
+            needsgchange=1
+            top.bsqgradnc=3
     else:
-      if top.bsqgradnc != 1:
-        print "top.brdnc is not 1; fixing"
-        top.bsqgradnc=1
+        if top.bsqgradnc != 1:
+            print "top.brdnc is not 1; fixing"
+            top.bsqgradnc=1
     if top.bsqgradnx != nx:
         print "top.bsqgradnx < nx; fixing"
         needsgchange=1
@@ -152,28 +152,28 @@ def fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     # for dbsqdy, dbsqdz
     dbsqdz=top.bsqgrad[0,:,:,:,0]
     if zonly == false:
-      dbsqdx=top.bsqgrad[1,:,:,:,0]
-      dbsqdy=top.bsqgrad[2,:,:,:,0]
-      dbsqdx[1:nx,:,:]=(bsq[2:nx1,:,:]-bsq[0:nx-1,:,:])*twodxi
-      dbsqdy[:,1:ny,:]=(bsq[:,2:ny1,:]-bsq[:,0:ny-1,:])*twodyi
+        dbsqdx=top.bsqgrad[1,:,:,:,0]
+        dbsqdy=top.bsqgrad[2,:,:,:,0]
+        dbsqdx[1:nx,:,:]=(bsq[2:nx1,:,:]-bsq[0:nx-1,:,:])*twodxi
+        dbsqdy[:,1:ny,:]=(bsq[:,2:ny1,:]-bsq[:,0:ny-1,:])*twodyi
     dbsqdz[:,:,1:nz]=(bsq[:,:,2:nz1]-bsq[:,:,0:nz-1])*twodzi
     # This takes care of interior points.  Now take care of boundaries
     # First upper boundaries, one-sided differences
     dbsqdz[:,:,nz]=(bsq[:,:,nz]-bsq[:,:,nz-1])*dzi
     if zonly == false:
-      dbsqdx[nx,:,:]=(bsq[nx,:,:]-bsq[nx-1,:,:])*dxi
-      dbsqdy[:,ny,:]=(bsq[:,ny,:]-bsq[:,ny-1,:])*dyi
+        dbsqdx[nx,:,:]=(bsq[nx,:,:]-bsq[nx-1,:,:])*dxi
+        dbsqdy[:,ny,:]=(bsq[:,ny,:]-bsq[:,ny-1,:])*dyi
     # now lower boundaries.  Treat differently depending on if symmetry.
     # NOTE this is still within the "if zonly == false" and so indented
-      if symmetry == 0:
-          # no symmetry
-          dbsqdx[0,:,:]=(bsq[1,:,:]-bsq[0,:,:])*dxi
-          dbsqdy[:,0,:]=(bsq[:,1,:]-bsq[:,0,:])*dyi
-      else:
-        if symmetry == 2:
-          # quadrupole symmetry
-          dbsqdx[0,:,:]=0.
-          dbsqdy[:,0,:]=0.
+        if symmetry == 0:
+            # no symmetry
+            dbsqdx[0,:,:]=(bsq[1,:,:]-bsq[0,:,:])*dxi
+            dbsqdy[:,0,:]=(bsq[:,1,:]-bsq[:,0,:])*dyi
         else:
-          raise Exception("Unimplemented data symmetry parameter")
+            if symmetry == 2:
+            # quadrupole symmetry
+                dbsqdx[0,:,:]=0.
+                dbsqdy[:,0,:]=0.
+            else:
+                raise Exception("Unimplemented data symmetry parameter")
     dbsqdz[:,:,0]=(bsq[:,:,1]-bsq[:,:,0])*dzi
