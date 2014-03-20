@@ -404,6 +404,7 @@ for elemt in elements:
         Ionization_Levels[0] = 3.894;
 
 
+listofallspecies = []
 class Species(object):
     """
   Creates a new species of particles. All arguments are optional.
@@ -434,6 +435,7 @@ class Species(object):
                       efetch=None,fselfb=None,limplicit=None,
                       color='fg',marker='\1',msize=1.0):
         assert type is None or isinstance(type,Particle),'type must be one of either an elementary particle, an element, or one of the predefined molecules'
+        listofallspecies.append(self)
         # --- Note that some default arguments are None in case the user had
         # --- set the values in pgroup already, in which case they should not
         # --- be overwritten here unless the inputs are explicitly set.
