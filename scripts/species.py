@@ -6,9 +6,6 @@ types that are passed into Species. These include all of the atomic elements
 Dihydrogen, Dinitrogen, Dioxygen, Carbon_Monoxide, Carbon_Dioxide, and Water
 """
 from warp import *
-import PWpickle as PW
-import PRpickle as PR
-
 
 def SpRandom(loc=0.,scale=1.,size=None):
     if scale > 0.:
@@ -2167,6 +2164,7 @@ class Species(object):
             else:
                 pid=None
         if me==0:
+            import PWpickle as PW
             f=PW.PW(filename)
             f.time=top.time
             f.x=x
@@ -2180,6 +2178,7 @@ class Species(object):
             f.close()
 
     def load(self,filename='pdump.pdb'):
+        import PRpickle as PR
         f=PR.PR(filename)
         self.addparticles(f.x,f.y,f.z,f.ux,f.uy,f.uz,f.gi,lmomentum=True)
         f.close()
