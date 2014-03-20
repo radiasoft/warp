@@ -377,7 +377,7 @@ def winon(winnum=None,dpi=100,prefix=None,suffix=None,xon=1,style='work.gs'):
         except AttributeError: raise RuntimeError,'setup has not yet been called'
         assert winnum != 0,'winnum must not be 0'
         # --- Check file name and type from window 0
-        pname = setup.pname.split('.')[0]
+        pname = '.'.join(setup.pname.split('.')[:-2])
         filetype = setup.pname.split('.')[-1]
         # --- Create file name
         if prefix is not None: pname = prefix + pname
