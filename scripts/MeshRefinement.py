@@ -3363,6 +3363,8 @@ class EMMRBlock(MeshRefinement,EM3D):
                         slice,dataslice = c.getdataatslice(data,direction,slice,l_abs)
                         if cmin_in is None: cmin = min(cmin,minnd(dataslice))
                         if cmax_in is None: cmax = max(cmax,maxnd(dataslice))
+            if cmin_in is None: cmin = globalmin(cmin)
+            if cmax_in is None: cmax = globalmax(cmax)
         return slice,cmin,cmax
 
     def pfex(self,l_children=1,guards=0,**kw):
