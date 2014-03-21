@@ -2147,6 +2147,61 @@ class EM3D(SubcycledPoissonSolver):
 
   ##########################################################################
   # Define the basic plot commands
+  def getdataatslice(self,data,direction=None,slice=None,l_abs=False):
+    """This does the same thing that genericpfem3d does when getting a slice of the
+       data, and returns that slice."""
+    if direction is None and not l_opyndx:direction=2
+    if self.l_2dxz:direction=1
+    dataslice = None
+    if self.isactive:
+      f=self.block.core.yf
+      if self.l_1dz:
+        nxd = nyd = 1
+        nzd=shape(data)[0]
+      elif self.l_2dxz:
+        nyd = 1
+        nxd,nzd=shape(data)
+      else:
+        nxd,nyd,nzd=shape(data)
+      if direction==0:
+       if slice is None:
+         if self.l4symtry:
+           slice=0
+         else:
+           slice=self.nx/2
+       xslice = w3d.xmmin+slice*w3d.dx
+       selfslice = nint((xslice-self.block.xmin)/self.block.dx)
+       if selfslice<0 or selfslice>nxd-1:
+         dataslice=None
+       else:
+         dataslice=data[selfslice,:,:]
+      if direction==1:
+       if slice is None:
+         if self.l4symtry:
+           slice=0
+         else:
+           slice=self.ny/2
+       yslice = w3d.ymmin+slice*w3d.dy
+       selfslice = nint((yslice-self.block.ymin)/self.block.dy)
+       if self.l_2dxz:slice=0
+       if selfslice<0 or selfslice>nyd-1:
+         dataslice=None
+       else:
+         if not self.l_2dxz:
+           dataslice=data[:,selfslice,:]
+         else:
+           dataslice = data
+      if direction==2:
+       if slice is None:slice=self.nz/2
+       zslice = w3d.zmmin+slice*w3d.dz
+       selfslice = nint((zslice-self.block.zmin)/self.block.dz)
+       if selfslice<0 or selfslice>nzd-1:
+         dataslice=None
+       else:
+         dataslice=data[:,:,selfslice]
+    if l_abs and dataslice is not None:dataslice=abs(dataslice)
+    return slice,dataslice
+
   def genericpfem3d(self,data,title,titles=True,l_transpose=false,direction=None,slice=None,l_abs=False,
                     origins=None,deltas=None,display=1,scale=None,camera=None,l_box=1,
                     interactive=0,labels=['X','Y','Z'],palette=None,

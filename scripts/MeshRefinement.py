@@ -3342,9 +3342,35 @@ class EMMRBlock(MeshRefinement,EM3D):
 
     ##########################################################################
     # Define the basic plot commands
+    def fetchcmincmax(self,dataname,l_children,guards,kw):
+        overlap = True
+        direction = kw.get('direction',None)
+        slice = kw.get('slice',None)
+        l_abs = kw.get('l_abs',False)
+        cmin_in = kw.get('cmin',None)
+        cmax_in = kw.get('cmax',None)
+        if cmin_in is not None: cmin = cmin_in
+        if cmax_in is not None: cmax = cmax_in
+        if cmin_in is None or cmax_in is None:
+            data = getattr(self,dataname)(guards,overlap)
+            slice,dataslice = self.getdataatslice(data,direction,slice,l_abs)
+            if cmin_in is None: cmin = minnd(dataslice)
+            if cmax_in is None: cmax = maxnd(dataslice)
+            if l_children:
+                for i in range(1,len(self.blocklists)):
+                    for c in self.blocklists[i]:
+                        data = getattr(c,dataname)(guards,overlap)
+                        slice,dataslice = c.getdataatslice(data,direction,slice,l_abs)
+                        if cmin_in is None: cmin = min(cmin,minnd(dataslice))
+                        if cmax_in is None: cmax = max(cmax,maxnd(dataslice))
+        return slice,cmin,cmax
+
     def pfex(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',**kw)
+        slice,cmin,cmax = self.fetchcmincmax('getex',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3354,8 +3380,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_x',**kw)
 
     def pfey(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',**kw)
+        cmin,cmax = self.fetchcmincmax('getey',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3365,8 +3394,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_y',**kw)
 
     def pfez(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',**kw)
+        cmin,cmax = self.fetchcmincmax('getez',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3376,8 +3408,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_z',**kw)
 
     def pfbx(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',**kw)
+        cmin,cmax = self.fetchcmincmax('getbx',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3387,8 +3422,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_x',**kw)
 
     def pfby(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',**kw)
+        cmin,cmax = self.fetchcmincmax('getby',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3398,8 +3436,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_y',**kw)
 
     def pfbz(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',**kw)
+        cmin,cmax = self.fetchcmincmax('getbz',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3409,8 +3450,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_z',**kw)
 
     def pfexp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=True),'Ep_x',**kw)
+        cmin,cmax = self.fetchcmincmax('getexg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=True),'Ep_x',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3420,8 +3464,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_x',**kw)
 
     def pfeyp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=True),'Ep_y',**kw)
+        cmin,cmax = self.fetchcmincmax('geteyg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Ey,guards,overlap=True),'Ep_y',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3431,8 +3478,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_y',**kw)
 
     def pfezp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=True),'Ep_z',**kw)
+        cmin,cmax = self.fetchcmincmax('getezg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Ez,guards,overlap=True),'Ep_z',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3442,8 +3492,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_z',**kw)
 
     def pfbxp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=True),'Bp_x',**kw)
+        cmin,cmax = self.fetchcmincmax('getbxg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Bx,guards,overlap=True),'Bp_x',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3453,8 +3506,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_x',**kw)
 
     def pfbyp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=True),'Bp_y',**kw)
+        cmin,cmax = self.fetchcmincmax('getbyg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.By,guards,overlap=True),'Bp_y',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3464,8 +3520,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_y',**kw)
 
     def pfbzp(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=True),'Bp_z',**kw)
+        cmin,cmax = self.fetchcmincmax('getbzg',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=True),'Bp_z',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3475,8 +3534,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_z',**kw)
 
     def pfjx(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=True),'J_x',**kw)
+        cmin,cmax = self.fetchcmincmax('getjx',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=True),'J_x',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3486,8 +3548,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_x',**kw)
 
     def pfjy(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True),'J_y',**kw)
+        cmin,cmax = self.fetchcmincmax('getjy',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True),'J_y',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3497,8 +3562,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_y',**kw)
 
     def pfjz(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=True),'J_z',**kw)
+        cmin,cmax = self.fetchcmincmax('getjz',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=True),'J_z',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3508,8 +3576,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_z',**kw)
 
     def pfrho(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=True),'Rho',**kw)
+        cmin,cmax = self.fetchcmincmax('getrho',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=True),'Rho',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3519,8 +3590,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Rho',**kw)
 
     def pff(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=True),'F',**kw)
+        cmin,cmax = self.fetchcmincmax('getf',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=True),'F',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
@@ -3530,8 +3604,11 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'F',**kw)
 
     def pfdive(self,l_children=1,guards=0,**kw):
-        slice = self.genericpfem3d(self.getdive(guards,overlap=True),'div(E)',**kw)
+        cmin,cmax = self.fetchcmincmax('getdive',l_children,guards,kw)
+        kw['cmin'] = cmin
+        kw['cmax'] = cmax
         kw['slice'] = slice
+        self.genericpfem3d(self.getdive(guards,overlap=True),'div(E)',**kw)
         if l_children:
             for i in range(1,len(self.blocklists)):
                 for c in self.blocklists[i]:
