@@ -505,7 +505,7 @@ class MeshRefinement(VisualizableClass):
         # --- this routine may be called by a parent, when it is being restored,
         # --- before this instance is restored, in which case no attributes,
         # --- including 'parents', has been set yet.
-        if 'parents' not in self.__dict__: return
+        if 'parents' not in self.__dict__: return False
 
         # --- Call the installconductor from the inherited field solver class
         self.__class__.__bases__[1].installconductor(self,conductor,
@@ -514,6 +514,8 @@ class MeshRefinement(VisualizableClass):
         # --- Call installconductor for all of the children.
         for child in self.children:
             child.installconductor(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill)
+
+        return True
 
     def clearconductors(self,fselfblist=None):
         if not self.isfirstcall(): return
@@ -2999,6 +3001,7 @@ class EMMRBlock(MeshRefinement,EM3D):
         # --- which is needed on the boundaries will be up to date.
         if not self.islastcall(): return
 
+        self.getconductors()
         if self.solveroff:return
         if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
         if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
@@ -3105,6 +3108,28 @@ class EMMRBlock(MeshRefinement,EM3D):
                     self.__class__.__bases__[1].exchange_b(c.field_coarse)
                     self.__class__.__bases__[1].push_e_full(c.field_coarse,i)
                     self.__class__.__bases__[1].exchange_e(c.field_coarse)
+
+    def installconductor(self,conductor,
+                              xmin=None,xmax=None,
+                              ymin=None,ymax=None,
+                              zmin=None,zmax=None,
+                              dfill=top.largepos):
+
+        # --- Call the installconductor from the inherited MeshRefinement class.
+        # --- This will return True only if it is Ok calling it at this time.
+        result = self.__class__.__bases__[0].installconductor(self,conductor,
+                                                          xmin,xmax,ymin,ymax,zmin,zmax,dfill)
+        if result:
+            # --- Call installconductor for the field_coarse
+            if self.refinement is not None:
+                self.field_coarse.installconductor(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill)
+        return result
+
+    def getconductors(self,alllevels=1,result=None):
+        result = self.__class__.__bases__[0].getconductors(self,alllevels,result)
+        if self.refinement is not None:
+            result.append(self.field_coarse.getconductorobject())
+        return result
 
     def addsubstractfieldfromparent(self):
         """
