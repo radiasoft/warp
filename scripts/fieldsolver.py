@@ -1496,6 +1496,7 @@ class SubcycledPoissonSolver(FieldSolver):
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,indts)
         iselfb = top.iselfb[jsid]
+        self.allocatedataarrays()
         self.setpotentialpforparticles(None,indts,iselfb)
         self.setfieldpforparticles(None,indts,iselfb)
         self.fetchfieldfrompositions(*args)
