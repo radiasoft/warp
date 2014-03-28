@@ -824,6 +824,7 @@ class EM3D(SubcycledPoissonSolver):
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
 #===============================================================================
     # --- This is called by fetchfield from fieldsolver.py
+    if not self.finalized: return
     n = len(x)
     if n == 0: return
     nox = top.depos_order[0,w3d.jsfsapi]
