@@ -3357,10 +3357,11 @@ class EMMRBlock(MeshRefinement,EM3D):
             if l_children:
                 for i in range(1,len(self.blocklists)):
                     for c in self.blocklists[i]:
-                        data = getattr(c,dataname)(guards,overlap)
-                        slice,dataslice = c.getdataatslice(data,direction,slice,l_abs)
-                        if cmin_in is None: cmin = min(cmin,minnd(dataslice))
-                        if cmax_in is None: cmax = max(cmax,maxnd(dataslice))
+                        if c.isactive:
+                            data = getattr(c,dataname)(guards,overlap)
+                            slice,dataslice = c.getdataatslice(data,direction,slice,l_abs)
+                            if cmin_in is None: cmin = min(cmin,minnd(dataslice))
+                            if cmax_in is None: cmax = max(cmax,maxnd(dataslice))
             if cmin_in is None: cmin = globalmin(cmin)
             if cmax_in is None: cmax = globalmax(cmax)
         return slice,cmin,cmax
