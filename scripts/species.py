@@ -901,7 +901,7 @@ class Species(object):
                   into the lab frame. The position means are relative to the lab frame.
      - vrmax: diverging (or converging) velocity. A velocity of vr = r*vrmax/rmax
               is added to each particle.
-     - vtheta: rotational velocity about the cylinder center.
+     - vtheta: rotational velocity about the cylinder center [rad/s].
      - js: particle species number, don't set it unless you mean it
      - lmomentum=false: Set to false when velocities are input as velocities, true
                         when input as massless momentum (as WARP stores them).
@@ -1144,8 +1144,8 @@ class Species(object):
             vx += vrmax*x/rmax
             vy += vrmax*y/rmax
         if vtheta != 0.:
-            vx -= vtheta*y/r
-            vy += vtheta*x/r
+            vx -= vtheta*y
+            vy += vtheta*x
 
         if theta != 0. or phi != 0.:
             # --- Transform velocities from rotated frame into the lab frame.
