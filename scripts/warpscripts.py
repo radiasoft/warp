@@ -1,11 +1,12 @@
 def warpscriptsdoc():
-    print """
+    print("""
   Contains the command warpscripts() which prints a description of
   available scripts
-  """
+    """)
+
 
 def warpscripts():
-    print """
+    print("""
   For more info on any scripts, import the script and type the command
   scriptnamedoc()
 
@@ -229,4 +230,4 @@ def warpscripts():
     runcounter
     setupvalidation
 
-  """
+    """)
