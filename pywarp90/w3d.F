@@ -11311,6 +11311,12 @@ c should also be made there.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+c     --- Make sure that the group is properly setup. This is needed
+c     --- for the paralel version, to ensure the pgroup.npid is
+c     --- consistent with top.npid, so that it is consistent
+c     --- across the parallel domains.
+      call setuppgroup(pgroup)
+
       if (js_in == -1) then
 c       --- Include all species
         js1 = 0
