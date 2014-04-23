@@ -345,6 +345,15 @@ def globalave(a,comm=None):
     n = globalsum(len(a),comm=comm)
     if n > 0: return s/n
     else:     return 0.
+def globalvar(x,comm=None):
+    if comm is None: comm = comm_world
+    if len(shape(x)) == 0: x = array([x])
+    n = globalsum(len(x),comm=comm)
+    if n < 1: return 0.
+    xbar = globalsum(x,comm=comm)/n
+    def _sse(x,xbar=xbar): return array((x-xbar)**2,copy=False).sum()
+    denom = n-1. if n>1 else 1.
+    return globalop(x,_sse,"SUM",0.,comm=comm)/denom
 
 # ---------------------------------------------------------------------------
 # Generic parallel element-by-element operation on a distributed array.
