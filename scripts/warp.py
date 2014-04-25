@@ -73,8 +73,9 @@ try:
         gist.pyg_unhook()
         from gistdummy import *
 except ImportError:
-    import warnings
-    warnings.warn("there was an error importing gist; if this is a problem, restart python and type 'import gist' for details, otherwise Warp will run OK but with no graphics")
+    if not warpoptions.quietImport:
+        import warnings
+        warnings.warn("there was an error importing gist; if this is a problem, restart python and type 'import gist' for details, otherwise Warp will run OK but with no graphics")
     from gistdummy import *
 
 # Import the warpC shared object which contains all of Warp
@@ -1430,6 +1431,7 @@ warpversions = versionstext()
 
 warpendtime = time.time()
 
-print warpversions[:-1] # --- skip last line feed
-print '# import warp time',warpendtime - warpstarttime,'seconds'
-print '# For more help, type warphelp()'
+if not warpoptions.quietImport:
+    print warpversions[:-1] # --- the last line feed is skipped
+    print '# import warp time',warpendtime - warpstarttime,'seconds'
+    print '# For more help, type warphelp()'
