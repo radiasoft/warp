@@ -3574,7 +3574,7 @@ def plotemlt(ie,m=0,p=0,scale=1.,zoffset=None,withscaling=True,
            "No such emlt element, %d, defined"%ie
     if top.lresetlat: resetlat()
     if zoffset is None: zoffset = top.zlatstrt
-    if top.emitid[ie] == 0: return
+    if top.emltid[ie] == 0: return
     id = top.emltid[ie] - 1
     dz = top.dzemlt[id]
     nz = top.nzemlt[id]
@@ -3607,7 +3607,7 @@ def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,getfield=0,
            "No such mmlt element, %d, defined"%im
     if top.lresetlat: resetlat()
     if zoffset is None: zoffset = top.zlatstrt
-    if top.mmitid[im] == 0: return
+    if top.mmltid[im] == 0: return
     id = top.mmltid[im] - 1
     dz = top.dzmmlt[id]
     nz = top.nzmmlt[id]
