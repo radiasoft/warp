@@ -109,6 +109,15 @@ class MultiGrid3D(SubcycledPoissonSolver):
         self.lwithselfe = 0
         self.lwithselfep = 0
 
+        # --- This allows some introspection.
+        self.dict_of_grids = {
+            'phi':{'getter':self.getphi, 'centering':'node', 'units':'V'},
+            'rho':{'getter':self.getrho, 'centering':'node', 'units':'C/m**3'},
+            'Ex':{'getter':self.getex, 'centering':'node', 'units':'V/m'},
+            'Ey':{'getter':self.getey, 'centering':'node', 'units':'V/m'},
+            'Ez':{'getter':self.getez, 'centering':'node', 'units':'V/m'},
+        }
+
     def initializeconductors(self):
         # --- Create the attributes for holding information about conductors
         # --- and conductor objects.
@@ -340,6 +349,15 @@ class MultiGrid3D(SubcycledPoissonSolver):
         return self.fieldp[:,self.nxguarde:-self.nxguarde or None,
                              self.nyguarde:-self.nyguarde or None,
                              self.nzguarde:-self.nzguarde or None]
+
+    def getex(self,recalculate=None,lzero=true):
+        return self.getselfe(recalculate,lzero)[0,...]
+
+    def getey(self,recalculate=None,lzero=true):
+        return self.getselfe(recalculate,lzero)[1,...]
+
+    def getez(self,recalculate=None,lzero=true):
+        return self.getselfe(recalculate,lzero)[2,...]
 
     def _setuprhoproperty():
         doc = "Charge density array"

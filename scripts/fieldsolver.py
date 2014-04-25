@@ -442,6 +442,12 @@ class FieldSolver(object):
         # --- Some flags
         self.sourcepfinalized = False
 
+        # --- Dict of grids that the solve supports. This needs to be defined by
+        # --- by the solvers inhereting this base class. It is expected that it
+        # --- be a dict of dicts. For each grid is a dict containing such things
+        # --- as 'getter' and 'centering'.
+        self.dict_of_grids = {}
+
     def processdefaultsfrompackage(self,defaults,package,kw):
         for name in defaults:
             if name not in self.__dict__:
