@@ -571,7 +571,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         zold = zold-zmin*dzi
         
         ! computes maximum number of cells traversed by particle in a given dimension
-        ncells = 1!+max( int(abs(x-xold)), int(abs(z-zold)))
+        ncells = 1!+max( int(abs(x-xold)), int(abs(y-yold)), int(abs(z-zold)))
         
         dtsdx = dtsdx0/ncells
         dtsdz = dtsdz0/ncells
@@ -1772,6 +1772,7 @@ end subroutine depose_jxjyjz_esirkepov_nnew
 subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,zmin, &
                                                  dt,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard, &
                                                  nox,noy,noz,l_particles_weight,l4symtry)
+   use Constant, only: clight
    implicit none
    integer(ISZ) :: np,nx,ny,nz,nox,noy,noz,nxguard,nyguard,nzguard
    real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
@@ -1780,19 +1781,32 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
    logical(ISZ) :: l_particles_weight,l4symtry
 
    real(kind=8) :: dxi,dyi,dzi,dtsdx,dtsdy,dtsdz,xint,yint,zint
-   real(kind=8),dimension(-int(nox/2)-1:int((nox+1)/2)+1, &
-                          -int(noy/2)-1:int((noy+1)/2)+1, &
-                          -int(noz/2)-1:int((noz+1)/2)+1) :: sdx,sdy,sdz
+   real(kind=8),dimension(:,:,:),allocatable :: sdx,sdy,sdz
    real(kind=8) :: xold,yold,zold,xmid,ymid,zmid,x,y,z,wq,wqx,wqy,wqz,tmp,vx,vy,vz,dts2dx,dts2dy,dts2dz, &
                    s1x,s2x,s1y,s2y,s1z,s2z,invvol,invdtdx,invdtdy,invdtdz, &
                    oxint,oyint,ozint,xintsq,yintsq,zintsq,oxintsq,oyintsq,ozintsq, &
                    dtsdx0,dtsdy0,dtsdz0,dts2dx0,dts2dy0,dts2dz0
    real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
-   real(kind=8), DIMENSION(-int(nox/2)-1:int((nox+1)/2)+1) :: sx, sx0, dsx
-   real(kind=8), DIMENSION(-int(noy/2)-1:int((noy+1)/2)+1) :: sy, sy0, dsy
-   real(kind=8), DIMENSION(-int(noz/2)-1:int((noz+1)/2)+1) :: sz, sz0, dsz
+   real(kind=8), DIMENSION(:),allocatable :: sx, sx0, dsx
+   real(kind=8), DIMENSION(:),allocatable :: sy, sy0, dsy
+   real(kind=8), DIMENSION(:),allocatable :: sz, sz0, dsz
    integer(ISZ) :: iixp0,ijxp0,ikxp0,iixp,ijxp,ikxp,ip,dix,diy,diz,idx,idy,idz,i,j,k,ic,jc,kc, &
-                   ixmin, ixmax, iymin, iymax, izmin, izmax, icell, ncells
+                   ixmin, ixmax, iymin, iymax, izmin, izmax, icell, ncells, ndtodx, ndtody, ndtodz, &
+                   xl,xu,yl,yu,zl,zu
+
+    ndtodx = int(clight*dt/dx)
+    ndtody = int(clight*dt/dy)
+    ndtodz = int(clight*dt/dz)
+    xl = -int(nox/2)-1-ndtodx
+    xu = int((nox+1)/2)+1+ndtodx
+    yl = -int(noy/2)-1-ndtody
+    yu = int((noy+1)/2)+1+ndtody
+    zl = -int(noz/2)-1-ndtodz
+    zu = int((noz+1)/2)+1+ndtodz
+    allocate(sdx(xl:xu,yl:yu,zl:zu),sdy(xl:xu,yl:yu,zl:zu),sdz(xl:xu,yl:yu,zl:zu))
+    allocate(sx(xl:xu), sx0(xl:xu), dsx(xl:xu))
+    allocate(sy(yl:yu), sy0(yl:yu), dsy(yl:yu))
+    allocate(sz(zl:zu), sz0(zl:zu), dsz(zl:zu))
 
     sx0=0.;sy0=0.;sz0=0.
     sdx=0.;sdy=0.;sdz=0.
@@ -2096,6 +2110,8 @@ subroutine depose_jxjyjz_esirkepov_n(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,
       end do
  
     end do
+
+    deallocate(sdx,sdy,sdz,sx,sx0,dsx,sy,sy0,dsy,sz,sz0,dsz)
 
   return
 end subroutine depose_jxjyjz_esirkepov_n
