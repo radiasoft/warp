@@ -268,7 +268,7 @@ class EM3D(SubcycledPoissonSolver):
             top.dt=self.dtcourant*self.dtcoef
           if top.dt>(self.dtcourant):
 #              self.ncyclesperstep = (nint(top.dt/(self.dtcourant))+0)
-              self.ncyclesperstep = int(top.dt/(self.dtcourant)+0.)
+              self.ncyclesperstep = int(top.dt/(self.dtcourant)+1.)
               print '#1', self.ncyclesperstep,top.dt,self.dtcourant
           elif self.l_enableovercycle:
               self.ncyclesperstep = 1./(nint((self.dtcourant)/top.dt)+0)
