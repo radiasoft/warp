@@ -16,6 +16,8 @@ def hcp_file(*x, **xx):
     pass
 def hcpon(*x, **xx):
     pass
+def hcpoff(*x, **xx):
+    pass
 def hcp(*x, **xx):
     pass
 def hcp_finish(*x, **xx):
