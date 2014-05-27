@@ -3385,7 +3385,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_x',**kw)
 
     def pfey(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getey',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getey',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3399,7 +3399,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_y',**kw)
 
     def pfez(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getez',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getez',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3413,7 +3413,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'E_z',**kw)
 
     def pfbx(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getbx',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getbx',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3427,7 +3427,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_x',**kw)
 
     def pfby(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getby',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getby',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3441,7 +3441,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_y',**kw)
 
     def pfbz(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getbz',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getbz',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3455,7 +3455,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'B_z',**kw)
 
     def pfexp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getexg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getexg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3469,7 +3469,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_x',**kw)
 
     def pfeyp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('geteyg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('geteyg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3483,7 +3483,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_y',**kw)
 
     def pfezp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getezg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getezg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3497,7 +3497,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Ep_z',**kw)
 
     def pfbxp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getbxg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getbxg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3511,7 +3511,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_x',**kw)
 
     def pfbyp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getbyg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getbyg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3525,7 +3525,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_y',**kw)
 
     def pfbzp(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getbzg',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getbzg',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3539,7 +3539,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Bp_z',**kw)
 
     def pfjx(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getjx',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getjx',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3553,7 +3553,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_x',**kw)
 
     def pfjy(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getjy',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getjy',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3567,7 +3567,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_y',**kw)
 
     def pfjz(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getjz',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getjz',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3581,7 +3581,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'J_z',**kw)
 
     def pfrho(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getrho',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getrho',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3595,7 +3595,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'Rho',**kw)
 
     def pff(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getf',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getf',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
@@ -3609,7 +3609,7 @@ class EMMRBlock(MeshRefinement,EM3D):
                         c.genericpfem3d(None,'F',**kw)
 
     def pfdive(self,l_children=1,guards=0,**kw):
-        cmin,cmax = self.fetchcmincmax('getdive',l_children,guards,kw)
+        slice,cmin,cmax = self.fetchcmincmax('getdive',l_children,guards,kw)
         kw['cmin'] = cmin
         kw['cmax'] = cmax
         kw['slice'] = slice
