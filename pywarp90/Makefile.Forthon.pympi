@@ -1,5 +1,5 @@
 DEBUG = #-g --farg "-O0"
-FARGS = --farg "-DMPIPARALLEL -I/usr/local/mpi/include"
+FARGS = #--farg "-I/usr/local/mpi/include"
 FCOMP =
 SO = so
 VERBOSE = #-v
@@ -9,6 +9,7 @@ BUILDBASEDIR = buildparallel
 -include Makefile.local.pympi
 BUILDBASE = --build-base $(BUILDBASEDIR)
 BUILDARGS = $(BUILDBASE) --build-platlib $(BUILDBASEDIR)/tempsofiles
+MPIPARALLEL = --farg "-DMPIPARALLEL"
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
 	$(PYTHON) setup.py $(FCOMP) --parallel build $(BUILDBASE)
@@ -20,43 +21,43 @@ install: installso
 	(cd ../scripts;$(PYTHON) setup.py install)
 
 toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F util.F topslave.F top.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F util.F topslave.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) top top_lattice.F top_fsl.F dtop.F util.F topslave.F $(BUILDARGS)
 
 envpy.$(SO): toppy.$(SO) env.F env.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) env $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) env $(BUILDARGS)
 
 w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_utilities.F w3d_load.F w3dslave.F w3d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_load.F w3d_utilities.F w3dslave.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_collisions.F w3d_load.F w3d_utilities.F w3dslave.F $(BUILDARGS)
 
 f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3d.v f3dslave.F
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3dslave.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F fft.F f3dslave.F $(BUILDARGS)
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) wxy $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) wxy $(BUILDARGS)
 
 fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) fxy fxy_mgrid.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) fxy fxy_mgrid.F $(BUILDARGS)
 
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --macros top.v wrz dwrz.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) --macros top.v wrz dwrz.F $(BUILDARGS)
 
 frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F frz.v frzslave.F90
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) --compile_first frzslave frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F $(BUILDARGS)
 
 herpy.$(SO): toppy.$(SO) her.F her.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) her $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) her $(BUILDARGS)
 
 cirpy.$(SO): toppy.$(SO) cir.F cir.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) cir $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) cir $(BUILDARGS)
 
 chopy.$(SO): toppy.$(SO) cho.F cho.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) cho $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) cho $(BUILDARGS)
 
 em2dpy.$(SO): toppy.$(SO) em2d.F90 em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 em2d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 $(BUILDARGS)
 
 em3dpy.$(SO): toppy.$(SO) em3d.F90 em3d_maxwell.F90 em3d.v
-	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) em3d em3d_maxwell.F90 $(BUILDARGS)
+	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) $(MPIPARALLEL) em3d em3d_maxwell.F90 $(BUILDARGS)
 
 ranffortran.c: ranffortran.m
 	$(PYTHON) -c "from Forthon.preprocess import main;main()" ranffortran.m ranffortran.c
