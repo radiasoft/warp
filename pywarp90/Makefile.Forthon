@@ -14,7 +14,7 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE)
 
 installso: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	$(PYTHON) setup.py build $(BUILDBASE) install
+	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE) install
 
 install: installso
 	(cd ../scripts;$(PYTHON) setup.py install)
