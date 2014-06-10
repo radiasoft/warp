@@ -2520,7 +2520,7 @@ class EM3D(SubcycledPoissonSolver):
       return slice
     else:
       dxob = DXCollect(dxob)
-      return dxob,colorbar,slice  
+      return dxob,colorbar#,slice  
 
   ##########################################################################
   # Gather requested array on processor 0
@@ -2705,27 +2705,27 @@ class EM3D(SubcycledPoissonSolver):
         return g[f.nxguard:-f.nxguard-ox,f.nyguard:-f.nyguard-oy,f.nzguard:-f.nzguard-oz]
       
   def pfex(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',
+      return self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',
       direction=direction,**kw)
 
   def pfey(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',
+      return self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',
       direction=direction,**kw)
 
   def pfez(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',
+      return self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',
       direction=direction,**kw)
 
   def pfbx(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',
+      return self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',
       direction=direction,**kw)
 
   def pfby(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',
+      return self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',
       direction=direction,**kw)
 
   def pfbz(self,l_children=1,guards=0,direction=None,**kw):
-      self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',
+      return self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',
       direction=direction,**kw)
 
   def pfexg(self,l_children=1,guards=0,direction=None,**kw):
