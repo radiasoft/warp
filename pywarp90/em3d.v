@@ -7,6 +7,7 @@ em3d
 # Alex Friedman,  LLNL, (510)422-0827
 
 *********** EM3D_APML:
+pml_user         integer /0/
 pml              integer /1/
 pml_sadjusted    integer /2/
 apml_exponential integer /3/
