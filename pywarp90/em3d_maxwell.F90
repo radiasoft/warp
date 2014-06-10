@@ -19,7 +19,8 @@ implicit none
 
 integer, parameter :: dirichlet=0, neumann=1, periodic=2, openbc=3, yeefield=-1 , splityeefield=-2
 
-INTEGER(ISZ), parameter :: pml = 1, &
+INTEGER(ISZ), parameter :: pml_user = 0, &
+                      pml = 1, &
                       pml_sadjusted = 2, &
                       apml_exponential = 3, &
                       apml_hybrid = 4, &
@@ -42,6 +43,8 @@ contains
                    lsigmaz(-sf%nzguard:sf%nz+sf%nzguard), lsigmaz_next(-sf%nzguard:sf%nz+sf%nzguard)
     integer(ISZ) :: j,which,jmin
     real(kind=8) :: dt
+    
+    if (bnd_cond==pml_user) return
     
     jmin = 1 ! number of cells after which to start absorbing 
     
@@ -196,6 +199,8 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
   tp  = EXP(-sigma*0.5*dx)
   tpp  = EXP(-sigma_next*0.5*dx)
   select case (bnd_cond)
+    case (pml_user)
+      return
     case (pml,pml_sadjusted)
       IF(bnd_cond==pml) then
         sigma_local = sigma
