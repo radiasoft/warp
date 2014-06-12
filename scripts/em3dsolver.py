@@ -2933,65 +2933,65 @@ class EM3D(SubcycledPoissonSolver):
       b2 = self.getarray(self.fields.Bx**2+self.fields.By**2+self.fields.Bz**2,guards,overlap)
       return e2+clight**2*b2
 
-  def gatherexg(self,guards=0,direction=None):
-      return self.gatherarray(self.getexg(guards),direction=direction)
+  def gatherexg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getexg(guards),direction=direction,**kw)
 
-  def gathereyg(self,guards=0,direction=None):
-      return self.gatherarray(self.geteyg(guards),direction=direction)
+  def gathereyg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.geteyg(guards),direction=direction,**kw)
 
-  def gatherezg(self,guards=0,direction=None):
-      return self.gatherarray(self.getezg(guards),direction=direction)
+  def gatherezg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getezg(guards),direction=direction,**kw)
 
-  def gatherbxg(self,guards=0,direction=None):
-      return self.gatherarray(self.getbxg(guards),direction=direction)
+  def gatherbxg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbxg(guards),direction=direction,**kw)
 
-  def gatherbyg(self,guards=0,direction=None):
-      return self.gatherarray(self.getbyg(guards),direction=direction)
+  def gatherbyg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbyg(guards),direction=direction,**kw)
 
-  def gatherbzg(self,guards=0,direction=None):
-      return self.gatherarray(self.getbzg(guards),direction=direction)
+  def gatherbzg(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbzg(guards),direction=direction,**kw)
 
-  def gatherex(self,guards=0,direction=None):
-      return self.gatherarray(self.getex(guards),direction=direction)
+  def gatherex(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getex(guards),direction=direction,**kw)
 
-  def gatherey(self,guards=0,direction=None):
-      return self.gatherarray(self.getey(guards),direction=direction)
+  def gatherey(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getey(guards),direction=direction,**kw)
 
-  def gatherez(self,guards=0,direction=None):
-      return self.gatherarray(self.getez(guards),direction=direction)
+  def gatherez(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getez(guards),direction=direction,**kw)
 
-  def gatherbx(self,guards=0,direction=None):
-      return self.gatherarray(self.getbx(guards),direction=direction)
+  def gatherbx(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbx(guards),direction=direction,**kw)
 
-  def gatherby(self,guards=0,direction=None):
-      return self.gatherarray(self.getby(guards),direction=direction)
+  def gatherby(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getby(guards),direction=direction,**kw)
 
-  def gatherbz(self,guards=0,direction=None):
-      return self.gatherarray(self.getbz(guards),direction=direction)
+  def gatherbz(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getbz(guards),direction=direction,**kw)
 
-  def gatherjx(self,guards=0,direction=None):
-      return self.gatherarray(self.getjx(guards),direction=direction)
+  def gatherjx(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjx(guards),direction=direction,**kw)
 
-  def gatherjy(self,guards=0,direction=None):
-      return self.gatherarray(self.getjy(guards),direction=direction)
+  def gatherjy(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjy(guards),direction=direction,**kw)
 
-  def gatherjz(self,guards=0,direction=None):
-      return self.gatherarray(self.getjz(guards),direction=direction)
+  def gatherjz(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getjz(guards),direction=direction,**kw)
 
-  def gatherrho(self,guards=0,direction=None):
-      return self.gatherarray(self.getrho(guards),direction=direction)
+  def gatherrho(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getrho(guards),direction=direction,**kw)
 
-  def gatherrhoold(self,guards=0,direction=None):
-      return self.gatherarray(self.getrhoold(guards),direction=direction)
+  def gatherrhoold(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getrhoold(guards),direction=direction,**kw)
 
-  def gatherf(self,guards=0,direction=None):
-      return self.gatherarray(self.getf(guards),direction=direction)
+  def gatherf(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getf(guards),direction=direction,**kw)
 
-  def gatherincond(self,guards=0,direction=None):
-      return self.gatherarray(self.getincond(guards),direction=direction)
+  def gatherincond(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getincond(guards),direction=direction,**kw)
 
-  def gatherdive(self,guards=0,direction=None):
-      return self.gatherarray(self.getdive(guards),direction=direction)
+  def gatherdive(self,guards=0,direction=None,**kw):
+      return self.gatherarray(self.getdive(guards),direction=direction,**kw)
 
   def get_tot_energy(self):
 #    yee2node3d(self.fields)
