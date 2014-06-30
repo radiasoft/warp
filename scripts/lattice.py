@@ -2706,7 +2706,7 @@ def addnewaccl(zs,ze,ez=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,xw=0.,sw=0.,
     if ie > top.naccl or top.acclzs[-1] != top.acclze[-1]:
         top.naccl = top.naccl + 100
         gchange("Lattice")
-    if isinstance(et,collections.Sequence) and len(et)-1 > top.ntaccl:
+    if isinstance(et,(ndarray,collections.Sequence)) and len(et)-1 > top.ntaccl:
         top.ntaccl = len(et) - 1
         gchange("Lattice")
 

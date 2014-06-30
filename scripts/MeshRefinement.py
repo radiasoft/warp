@@ -75,7 +75,7 @@ class MeshRefinement(VisualizableClass):
         # --- dimension to zero. (The code only works with XYZ and RZ now.)
         if self.solvergeom == w3d.RZgeom and 0:
             if refinement is not None:
-                if isinstance(refinement,collections.Sequence):
+                if isinstance(refinement,(ndarray,collections.Sequence)):
                     refinement = [refinement[0],1,refinement[-1]]
                 else:
                     refinement = [refinement,1,refinement]
