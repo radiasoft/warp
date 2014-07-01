@@ -478,54 +478,6 @@ if (.not. l_2dxz) then ! --- 3D XYZ
    end do
   end do
 
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-    w = zlaser-l
-    do k = -nyguard, ny+nyguard
-      do j = -nxguard, nx+nxguard
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
-          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
-          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
-        end if
-       end if
-
-      end do
-    end do
-  end if
-
 else ! --- now 1D Z, 2D XZ or RZ
 
  if (l_1dz) then ! 1D Z
@@ -576,63 +528,6 @@ else ! --- now 1D Z, 2D XZ or RZ
                             - mudt  * CJ(j,k,l,3)
     end do
   end do
-
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-      w = zlaser-l
-!      do j = -nxguard+1, nx+nxguard-1
-      do j = 0, nx
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
-          Ez(j,:,l  ) = Ez(j,:,l  ) + Ez_inz(j,:)*(1.-w)
-        end if
-        if (l>=-nzguard+1 .and. l<=nz+nzguard) then
-          Ez(j,:,l-1) = Ez(j,:,l-1) + Ez_inz(j,:)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
-          Ez(j,:,l+1) = Ez(j,:,l+1) + Ez_inz(j,:)*w
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ez(j,:,l)   = Ez(j,:,l)   + Ez_inz(j,:)*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
-          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
-          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
-        end if
-       end if
-
-!        Ex(j,k,l) = Ex_inz(j,k)
-!        Ey(j,k,l) = Ey_inz(j,k)
-      end do
-  end if
 
  else ! l_2drz=True
 
@@ -736,97 +631,6 @@ if (.not. l_2dxz) then ! --- 3D XYZ
    end do
   end do
 
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-    w = zlaser-l
-!    do k = -nyguard, ny+nyguard
-!      do j = -nxguard, nx+nxguard
-    do k = 0, ny
-      do j = 0, nx-1
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l-1) = Ex(j,k,l-1) + Ex_inz(j,k)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l  ) = Ex(j,k,l  ) + Ex_inz(j,k)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+1) = Ex(j,k,l+1) + Ex_inz(j,k)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,k,l+2) = Ex(j,k,l+2) + Ex_inz(j,k)*w/2
-        end if
-       end if
-
-      end do
-    end do
-
-    do k = 0, ny-1
-      do j = 0, nx
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l-1) = Ey(j,k,l-1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l  ) = Ey(j,k,l  ) + Ey_inz(j,k)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+1) = Ey(j,k,l+1) + Ey_inz(j,k)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,k,l+2) = Ey(j,k,l+2) + Ey_inz(j,k)*w/2
-        end if
-       end if
-
-      end do
-    end do
-  end if
-
 else ! --- now 2D XZ or RZ
 
  if (.not. l_2drz) then ! 2D XZ
@@ -859,71 +663,6 @@ else ! --- now 2D XZ or RZ
                             - mudt  * CJ(j,k,l,3)
     end do
   end do
-
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = floor(zlaser)
-  if (l>-nzguard-2 .and. l<nz+nzguard+2) then
-!  if (l>=-nzguard .and. l<nz+nzguard) then
-      w = zlaser-l
-!      do j = -nxguard, nx+nxguard
-      do j = 0, nx
-       if (.false.) then
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
-        end if
-       else
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
-        end if
-        if (l-1>=-nzguard .and. l-1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l>=-nzguard .and. l<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
-        end if
-        if (l+1>=-nzguard .and. l+1<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
-        end if
-        if (l+2>=-nzguard .and. l+2<=nz+nzguard) then
-          if (.not.incond(j,k,l) .or. .not.incond(j+1,k,l)) &
-          Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
-          if (.not.incond(j,k,l) .or. .not.incond(j,k+1,l)) &
-          Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
-        end if
-       end if
-
-!        Ex(j,k,l) = Ex_inz(j,k)
-!        Ey(j,k,l) = Ey_inz(j,k)
-      end do
-  end if
 
  else ! l_2drz=True
 
@@ -1365,19 +1104,6 @@ if (.not.l_2dxz) then
    end do
   end do
 
-  ! --- add laser field
-  if (E_inz_pos>-1) then
-    l=E_inz_pos
-    do k = 0, ny-1
-      do j = 0, nx
-!        Ex(j,k,l) = Ex(j,k,l) + Ex_inz(j,k)*2
-!        Ey(j,k,l) = Ey(j,k,l) + Ey_inz(j,k)*2
-        Ex(j,k,l) = Ey_inz(j,k)
-        Ey(j,k,l) = Ex_inz(j,k)
-      end do
-    end do
-  end if
-
 else
   k = 0
   ! advance Ex
@@ -1419,37 +1145,6 @@ else
                                                       +  CJ(j,k  ,l-1,3))  
     end do
   end do
-
-  ! --- add laser field
-  zlaser=(E_inz_pos-zmin)/dz
-  l = int(zlaser)
-  if (l>-1 .and. l<nz+1) then
-      w = zlaser-l
-      do j = 0, nx-1
-       if (.true.) then
-        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*2.*(1.-w)
-        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*2.*(1.-w)
-        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*2.*w
-        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*2.*w
-       else
-        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*(1.-w)
-        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*(1.-w)
-        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*w
-        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*w
-        Ex(j,:,l-1) = Ex(j,:,l-1) + Ex_inz(j,:)*(1.-w)/2
-        Ey(j,:,l-1) = Ey(j,:,l-1) + Ey_inz(j,:)*(1.-w)/2
-        Ex(j,:,l  ) = Ex(j,:,l  ) + Ex_inz(j,:)*w/2
-        Ey(j,:,l  ) = Ey(j,:,l  ) + Ey_inz(j,:)*w/2
-        Ex(j,:,l+1) = Ex(j,:,l+1) + Ex_inz(j,:)*(1.-w)/2
-        Ey(j,:,l+1) = Ey(j,:,l+1) + Ey_inz(j,:)*(1.-w)/2
-        Ex(j,:,l+2) = Ex(j,:,l+2) + Ex_inz(j,:)*w/2
-        Ey(j,:,l+2) = Ey(j,:,l+2) + Ey_inz(j,:)*w/2
-       end if
-
-!        Ex(j,k,l) = Ex_inz(j,k)
-!        Ey(j,k,l) = Ey_inz(j,k)
-      end do
-  end if
 
 end if
 
