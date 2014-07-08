@@ -68,6 +68,12 @@ push_em3d_a(f:EM3D_YEEFIELDtype,dt:real) subroutine
 push_em3d_block(f:EM3D_BLOCKtype,dt:real,which:integer) subroutine
 push_em3d_eef(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical,l_pushpot:logical) subroutine
 push_em3d_bf(f:EM3D_BLOCKtype,dt:real,which:integer,l_pushf:logical,l_pushpot:logical) subroutine
+push_em3d_blockbnde(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
+push_em3d_blockbndb(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
+push_em3d_blockbndef(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
+push_em3d_blockbndf(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
+scale_em3d_split_fields(sf:EM3D_SPLITYEEFIELDtype,dt:real,l_pushf:logical) subroutine
+scale_em3d_bnd_fields(b:EM3D_BLOCKtype,dt:real,l_pushf:logical) subroutine
 init_splitfield(sf:EM3D_SPLITYEEFIELDtype, 
                 nx:integer,ny:integer,nz:integer, 
                 nxguard:integer,nyguard:integer,nzguard:integer, 
@@ -77,7 +83,8 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
                 nnx:integer, smaxx:real, sdeltax:real, 
                 nny:integer, smaxy:real, sdeltay:real, 
                 nnz:integer, smaxz:real, sdeltaz:real, 
-                l_2dxz:logical, l_1dz:logical, l_2drz:logical) subroutine
+                l_2dxz:logical, l_1dz:logical, l_2drz:logical,
+                pml_method:integer,l_nodalgrid:logical) subroutine
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -226,6 +233,15 @@ getf2dxz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          nxguard:integer,nyguard:integer,nzguard:integer,
          nox:integer,noz:integer,
          exg:real,eyg:real,ezg:real,l4symtry:logical,l_2drz:logical)
+                           subroutine
+getfs2dxz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
+         fs(n):real,
+         xmin:real,zmin:real,
+         dx:real,dz:real,
+         nx:integer,ny:integer,nz:integer,
+         nxguard:integer,nyguard:integer,nzguard:integer,
+         nox:integer,noz:integer,
+         fsg:real,l4symtry:logical,l_2drz:logical)
                            subroutine
 getf2drz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          ex(n):real,ey(n):real,ez(n):real,
@@ -406,12 +422,20 @@ getdive(ex:real,ey:real,ez:real,dive:real,dx:real,dy:real,dz:real,
 %%%%%%%% EM3D_SPLITYEEFIELDtype:
 fieldtype integer /-2/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
+pml_method integer /1/
+l_nodalgrid logical /.false./
 nx integer
 ny integer
 nz integer
 nxguard integer /1/
 nyguard integer /1/
 nzguard integer /1/
+nxes integer /0/
+nyes integer /0/
+nzes integer /0/
+nxbs integer /1/
+nybs integer /1/
+nzbs integer /1/
 ixmin integer /0/ # position of first node of grid interior in the x direction (FORTRAN indexing)
 iymin integer /0/ # position of first node of grid interior in the y direction (FORTRAN indexing)
 izmin integer /0/ # position of first node of grid interior in the z direction (FORTRAN indexing)
@@ -481,15 +505,21 @@ eyz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 ezx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 ezy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 ezz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bxx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 bxy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 bxz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 byx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+byy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 byz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 bzx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 bzy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+bzz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 fz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+gx(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+gy(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
+gz(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) _real
 ax(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
@@ -498,27 +528,34 @@ incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) 
 afx(-nxguard:nx+nxguard) _real
 bpfx(-nxguard:nx+nxguard) _real
 bmfx(-nxguard:nx+nxguard) _real
+sfx(-nxguard:nx+nxguard) _real
 agx(-nxguard:nx+nxguard) _real
 bpgx(-nxguard:nx+nxguard) _real
 bmgx(-nxguard:nx+nxguard) _real
+sgx(-nxguard:nx+nxguard) _real
 afy(-nyguard:ny+nyguard) _real
 bpfy(-nyguard:ny+nyguard) _real
 bmfy(-nyguard:ny+nyguard) _real
+sfy(-nyguard:ny+nyguard) _real
 agy(-nyguard:ny+nyguard) _real
 bpgy(-nyguard:ny+nyguard) _real
 bmgy(-nyguard:ny+nyguard) _real
+sgy(-nyguard:ny+nyguard) _real
 afz(-nzguard:nz+nzguard) _real
 bpfz(-nzguard:nz+nzguard) _real
 bmfz(-nzguard:nz+nzguard) _real
+sfz(-nzguard:nz+nzguard) _real
 agz(-nzguard:nz+nzguard) _real
 bpgz(-nzguard:nz+nzguard) _real
 bmgz(-nzguard:nz+nzguard) _real
+sgz(-nzguard:nz+nzguard) _real
 
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 spectral logical /.false./
-l_nodecentered logical /.false./
+l_nodalgrid logical /.false./
+l_nodecentered logical /.false./ # specifies whether field data have been gathered at nodes (when computing with staggered "Yee" grid)
 l_macroscopic logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
@@ -529,6 +566,12 @@ nzs integer /0/ # nb of mesh cells of grid interior in the z direction for condu
 nxguard integer /1/ # nb of guard cells in the x direction
 nyguard integer /1/ # nb of guard cells in the y direction
 nzguard integer /1/ # nb of guard cells in the z direction
+nxes integer /0/
+nyes integer /0/
+nzes integer /0/
+nxbs integer /1/
+nybs integer /1/
+nzbs integer /1/
 ixmin integer /0/ # position of first node of grid interior in the x direction (FORTRAN indexing)
 iymin integer /0/ # position of first node of grid interior in the y direction (FORTRAN indexing)
 izmin integer /0/ # position of first node of grid interior in the z direction (FORTRAN indexing)
@@ -571,6 +614,9 @@ nzpnext integer /0/
 nxf integer /0/
 nyf integer /0/
 nzf integer /0/
+nxg integer /0/
+nyg integer /0/
+nzg integer /0/
 nxpo integer /0/
 nypo integer /0/
 nzpo integer /0/
@@ -633,6 +679,7 @@ Bxpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzgua
 Bypnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
 Bzpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
 F(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
+G(-nxguard:nxg+nxguard,-nyguard:nyg+nyguard,-nzguard:nzg+nzguard) _real
 Rho(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rhoold(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 Rhoarray(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard,ntimes) _real
