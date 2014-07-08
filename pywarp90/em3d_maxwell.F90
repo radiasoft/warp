@@ -54,6 +54,12 @@ contains
     sf%agy = 1.
     sf%afz = 1.
     sf%agz = 1.
+    sf%sfx = 1.
+    sf%sgx = 1.
+    sf%sfy = 1.
+    sf%sgy = 1.
+    sf%sfz = 1.
+    sf%sgz = 1.
     if (which==0) then
       sf%bpfx = sf%clight*dt/sf%dx
       sf%bmfx = -sf%clight*dt/sf%dx
@@ -83,37 +89,66 @@ contains
       sf%bmgz = -0.5*sf%clight*dt/sf%dz
       sf%dt = 0.5*dt
     end if
-
+    
+    if (bnd_cond==0) return
+    
     if (sf%lsx/=0) then
       sigmax=0.
       sigmax_next=0.
       lsigmax=0.
       lsigmax_next=0.
-      do j = 0, sf%nx
+      do j = 0, sf%nx+sf%nxguard
         if (j>=jmin) then
           sigmax(j)      = (sf%smaxx/sf%dx)*(REAL(j-jmin,8)/sf%sdeltax)**sf%nnx
-          sigmax_next(j) = (sf%smaxx/sf%dx)*((REAL(j-jmin,8)+0.5)/sf%sdeltax)**sf%nnx
+          if (sf%l_nodalgrid) then
+            sigmax_next(j) = (sf%smaxx/sf%dx)*((REAL(j-jmin,8)+1.)/sf%sdeltax)**sf%nnx
+          else
+            sigmax_next(j) = (sf%smaxx/sf%dx)*((REAL(j-jmin,8)+0.5)/sf%sdeltax)**sf%nnx
+          end if
         end if
-        lsigmax(sf%nx-j) = sigmax(j)
-        lsigmax_next(sf%nx-j-1) = sigmax_next(j)
+        if (j<sf%nx+sf%nxguard) then
+          lsigmax(sf%nx-j) = sigmax(j)
+          lsigmax_next(sf%nx-j-1) = sigmax_next(j)
+        end if
       end do
 
       select case(sf%lsx)
         case(1)
-          do j = 0, sf%nx-1
-            call assign_coefs(bnd_cond,sf%afx(j),sf%bpfx(j),sf%bmfx(j),sf%clight*dt,sf%dx,sigmax(j),sigmax_next(j),sb_coef,which)
-            call assign_coefs(bnd_cond,sf%agx(j),sf%bpgx(j),sf%bmgx(j),sf%clight*dt,sf%dx,sigmax_next(j),sigmax(j+1),sb_coef,which)
+          do j = 0, sf%nx+sf%nxguard-1
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%afx(j),sf%bpfx(j),sf%bmfx(j),sf%sfx(j),sf%clight*dt,sf%dx, &
+                              sigmax(j),sigmax_next(j+1), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%afx(j),sf%bpfx(j),sf%bmfx(j),sf%sfx(j),sf%clight*dt,sf%dx, &
+                              sigmax(j),sigmax_next(j), &
+                              sb_coef,which,sf%pml_method)
+           end if
+          call assign_coefs(bnd_cond,sf%agx(j),sf%bpgx(j),sf%bmgx(j),sf%sgx(j),sf%clight*dt,sf%dx, &
+                              sigmax_next(j),sigmax(j+1), &
+                              sb_coef,which,sf%pml_method)
           end do
         case(-1)
-          do j = sf%nx, 1, -1
-           call assign_coefs(bnd_cond,sf%afx(j),sf%bmfx(j),sf%bpfx(j),sf%clight*dt,sf%dx,lsigmax(j),lsigmax_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agx(j-1),sf%bmgx(j-1),sf%bpgx(j-1),sf%clight*dt,sf%dx,lsigmax_next(j-1),lsigmax(j-1), &
-                             sb_coef,which)
+          do j = sf%nx, -sf%nxguard+1, -1
+            call assign_coefs(bnd_cond,sf%afx(j),sf%bmfx(j),sf%bpfx(j),sf%sfx(j),sf%clight*dt,sf%dx, &
+                              lsigmax(j),lsigmax_next(j-1), &
+                              sb_coef,which,sf%pml_method)
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%agx(j),sf%bmgx(j),sf%bpgx(j),sf%sgx(j),sf%clight*dt,sf%dx, &
+                              lsigmax_next(j-1),lsigmax(j), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%agx(j-1),sf%bmgx(j-1),sf%bpgx(j-1),sf%sgx(j-1),sf%clight*dt,sf%dx, &
+                              lsigmax_next(j-1),lsigmax(j-1), &
+                              sb_coef,which,sf%pml_method)
+           end if
           end do
-          sf%bmfx(1:sf%nx)=-sf%bmfx(1:sf%nx)
-          sf%bpfx(1:sf%nx)=-sf%bpfx(1:sf%nx)
-          sf%bmgx(0:sf%nx-1)=-sf%bmgx(0:sf%nx-1)
-          sf%bpgx(0:sf%nx-1)=-sf%bpgx(0:sf%nx-1)
+          if (sf%pml_method==1) then
+            sf%bmfx(1:sf%nx+sf%nxguard)=-sf%bmfx(1:sf%nx+sf%nxguard)
+            sf%bpfx(1:sf%nx+sf%nxguard)=-sf%bpfx(1:sf%nx+sf%nxguard)
+            sf%bmgx(0:sf%nx+sf%nxguard-1)=-sf%bmgx(0:sf%nx+sf%nxguard-1)
+            sf%bpgx(0:sf%nx+sf%nxguard-1)=-sf%bpgx(0:sf%nx+sf%nxguard-1)
+          end if
        end select
     end if
 
@@ -123,30 +158,57 @@ contains
       sigmay_next=0.
       lsigmay=0.
       lsigmay_next=0.
-      do j = jmin, sf%ny
+      do j = jmin, sf%ny+sf%nyguard
         if (j>=jmin) then
           sigmay(j)      = (sf%smaxy/sf%dy)*(REAL(j-jmin,8)/sf%sdeltay)**sf%nny
-          sigmay_next(j) = (sf%smaxy/sf%dy)*((REAL(j-jmin,8)+0.5)/sf%sdeltay)**sf%nny
+          if (sf%l_nodalgrid) then
+            sigmay_next(j) = (sf%smaxy/sf%dy)*((REAL(j-jmin,8)+1.)/sf%sdeltay)**sf%nny
+          else
+            sigmay_next(j) = (sf%smaxy/sf%dy)*((REAL(j-jmin,8)+0.5)/sf%sdeltay)**sf%nny
+          end if
         end if
-        lsigmay(sf%ny-j) = sigmay(j)
-        lsigmay_next(sf%ny-j-1) = sigmay_next(j)
+        if (j<sf%ny+sf%nyguard) then
+          lsigmay(sf%ny-j) = sigmay(j)
+          lsigmay_next(sf%ny-j-1) = sigmay_next(j)
+        end if
       end do
       select case(sf%lsy)
         case(1)
-          do j = 0, sf%ny-1
-            call assign_coefs(bnd_cond,sf%afy(j),sf%bpfy(j),sf%bmfy(j),sf%clight*dt,sf%dy,sigmay(j),sigmay_next(j),sb_coef,which)
-            call assign_coefs(bnd_cond,sf%agy(j),sf%bpgy(j),sf%bmgy(j),sf%clight*dt,sf%dy,sigmay_next(j),sigmay(j+1),sb_coef,which)
+          do j = 0, sf%ny+sf%nyguard-1
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%afy(j),sf%bpfy(j),sf%bmfy(j),sf%sfy(j),sf%clight*dt,sf%dy, &
+                              sigmay(j),sigmay_next(j+1), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%afy(j),sf%bpfy(j),sf%bmfy(j),sf%sfy(j),sf%clight*dt,sf%dy, &
+                              sigmay(j),sigmay_next(j), &
+                              sb_coef,which,sf%pml_method)
+           end if
+            call assign_coefs(bnd_cond,sf%agy(j),sf%bpgy(j),sf%bmgy(j),sf%sgy(j),sf%clight*dt,sf%dy, &
+                              sigmay_next(j),sigmay(j+1), &
+                              sb_coef,which,sf%pml_method)
           end do
         case(-1)
-          do j = sf%ny, 1, -1
-           call assign_coefs(bnd_cond,sf%afy(j),sf%bmfy(j),sf%bpfy(j),sf%clight*dt,sf%dy,lsigmay(j),lsigmay_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agy(j-1),sf%bmgy(j-1),sf%bpgy(j-1),sf%clight*dt,sf%dy,lsigmay_next(j-1),lsigmay(j-1), &
-                             sb_coef,which)
+          do j = sf%ny, -sf%nyguard+1, -1
+            call assign_coefs(bnd_cond,sf%afy(j),sf%bmfy(j),sf%bpfy(j),sf%sfy(j),sf%clight*dt,sf%dy, &
+                              lsigmay(j),lsigmay_next(j-1), &
+                              sb_coef,which,sf%pml_method)
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%agy(j),sf%bmgy(j),sf%bpgy(j),sf%sgy(j),sf%clight*dt,sf%dy, &
+                              lsigmay_next(j-1),lsigmay(j), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%agy(j-1),sf%bmgy(j-1),sf%bpgy(j-1),sf%sgy(j-1),sf%clight*dt,sf%dy, &
+                              lsigmay_next(j-1),lsigmay(j-1), &
+                              sb_coef,which,sf%pml_method)
+           end if
           end do
-          sf%bmfy(1:sf%ny)=-sf%bmfy(1:sf%ny)
-          sf%bpfy(1:sf%ny)=-sf%bpfy(1:sf%ny)
-          sf%bmgy(0:sf%ny-1)=-sf%bmgy(0:sf%ny-1)
-          sf%bpgy(0:sf%ny-1)=-sf%bpgy(0:sf%ny-1)
+          if (sf%pml_method==1) then
+            sf%bmfy(1:sf%ny+sf%nyguard)=-sf%bmfy(1:sf%ny+sf%nyguard)
+            sf%bpfy(1:sf%ny+sf%nyguard)=-sf%bpfy(1:sf%ny+sf%nyguard)
+            sf%bmgy(0:sf%ny+sf%nyguard-1)=-sf%bmgy(0:sf%ny+sf%nyguard-1)
+            sf%bpgy(0:sf%ny+sf%nyguard-1)=-sf%bpgy(0:sf%ny+sf%nyguard-1)
+          end if
        end select
     end if
 
@@ -155,31 +217,57 @@ contains
       sigmaz_next=0.
       lsigmaz=0.
       lsigmaz_next=0.
-      do j = jmin, sf%nz
+      do j = jmin, sf%nz+sf%nzguard
         if (j>=jmin) then
           sigmaz(j)      = (sf%smaxz/sf%dz)*(REAL(j-jmin,8)/sf%sdeltaz)**sf%nnz
-          sigmaz_next(j) = (sf%smaxz/sf%dz)*((REAL(j-jmin,8)+0.5)/sf%sdeltaz)**sf%nnz
+          if (sf%l_nodalgrid) then
+            sigmaz_next(j) = (sf%smaxz/sf%dz)*((REAL(j-jmin,8)+1.)/sf%sdeltaz)**sf%nnz
+          else
+            sigmaz_next(j) = (sf%smaxz/sf%dz)*((REAL(j-jmin,8)+0.5)/sf%sdeltaz)**sf%nnz
+          end if
         end if
-        lsigmaz(sf%nz-j) = sigmaz(j)
-        lsigmaz_next(sf%nz-j-1) = sigmaz_next(j)
+        if (j<sf%nz+sf%nzguard) then
+          lsigmaz(sf%nz-j) = sigmaz(j)
+          lsigmaz_next(sf%nz-j-1) = sigmaz_next(j)
+        end if
       end do
       select case(sf%lsz)
         case(1)
-          do j = 0, sf%nz-1
-            call assign_coefs(bnd_cond,sf%afz(j),sf%bpfz(j),sf%bmfz(j),sf%clight*dt,sf%dz,sigmaz(j),sigmaz_next(j),sb_coef,which)
-            call assign_coefs(bnd_cond,sf%agz(j),sf%bpgz(j),sf%bmgz(j),sf%clight*dt,sf%dz,sigmaz_next(j),sigmaz(j+1),sb_coef,which)
+          do j = 0, sf%nz+sf%nzguard-1
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%afz(j),sf%bpfz(j),sf%bmfz(j),sf%sfz(j),sf%clight*dt,sf%dz, &
+                              sigmaz(j),sigmaz_next(j+1), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%afz(j),sf%bpfz(j),sf%bmfz(j),sf%sfz(j),sf%clight*dt,sf%dz, &
+                              sigmaz(j),sigmaz_next(j), &
+                              sb_coef,which,sf%pml_method)
+           end if
+            call assign_coefs(bnd_cond,sf%agz(j),sf%bpgz(j),sf%bmgz(j),sf%sgz(j),sf%clight*dt,sf%dz,sigmaz_next(j),sigmaz(j+1), &
+                              sb_coef,which,sf%pml_method)
           end do
         case(-1)
-          do j = sf%nz, 1, -1
-           call assign_coefs(bnd_cond,sf%afz(j),sf%bmfz(j),sf%bpfz(j),sf%clight*dt,sf%dz,lsigmaz(j),lsigmaz_next(j-1),sb_coef,which)
-           call assign_coefs(bnd_cond,sf%agz(j-1),sf%bmgz(j-1),sf%bpgz(j-1),sf%clight*dt,sf%dz,lsigmaz_next(j-1),lsigmaz(j-1), &
-                             sb_coef,which)
+          do j = sf%nz, -sf%nzguard+1, -1
+            call assign_coefs(bnd_cond,sf%afz(j),sf%bmfz(j),sf%bpfz(j),sf%sfz(j),sf%clight*dt,sf%dz, &
+                              lsigmaz(j),lsigmaz_next(j-1), &
+                              sb_coef,which,sf%pml_method)
+           if (sf%l_nodalgrid) then
+            call assign_coefs(bnd_cond,sf%agz(j),sf%bmgz(j),sf%bpgz(j),sf%sgz(j),sf%clight*dt,sf%dz, &
+                              lsigmaz_next(j-1),lsigmaz(j), &
+                              sb_coef,which,sf%pml_method)
+           else
+            call assign_coefs(bnd_cond,sf%agz(j-1),sf%bmgz(j-1),sf%bpgz(j-1),sf%sgz(j-1),sf%clight*dt,sf%dz, &
+                              lsigmaz_next(j-1),lsigmaz(j-1), &
+                              sb_coef,which,sf%pml_method)
+           end if
           end do
-          sf%bmfz(1:sf%nz)=-sf%bmfz(1:sf%nz)
-          sf%bpfz(1:sf%nz)=-sf%bpfz(1:sf%nz)
-          sf%bmgz(0:sf%nz-1)=-sf%bmgz(0:sf%nz-1)
-          sf%bpgz(0:sf%nz-1)=-sf%bpgz(0:sf%nz-1)
-       end select
+          if (sf%pml_method==1) then
+            sf%bmfz(1:sf%nz+sf%nzguard)=-sf%bmfz(1:sf%nz+sf%nzguard)
+            sf%bpfz(1:sf%nz+sf%nzguard)=-sf%bpfz(1:sf%nz+sf%nzguard)
+            sf%bmgz(0:sf%nz+sf%nzguard-1)=-sf%bmgz(0:sf%nz+sf%nzguard-1)
+            sf%bpgz(0:sf%nz+sf%nzguard-1)=-sf%bpgz(0:sf%nz+sf%nzguard-1)
+          end if
+      end select
     end if
 
     return 
@@ -188,14 +276,18 @@ contains
 
 !************* SUBROUTINE assign_coefs  ********
 
-subroutine assign_coefs(bnd_cond,a,bp,bm,dt,dx,sigma,sigma_next,coef_sigmab,which)
+subroutine assign_coefs(bnd_cond,a,bp,bm,s,dt,dx,sigma,sigma_next,coef_sigmab,which,method)
 implicit none
-REAL(kind=8), INTENT(OUT) :: a,bp,bm
+REAL(kind=8), INTENT(OUT) :: a,bp,bm,s
 REAL(kind=8), INTENT(IN) :: dt,dx,sigma,sigma_next,coef_sigmab
-INTEGER(ISZ),INTENT(IN) :: bnd_cond, which
+INTEGER(ISZ),INTENT(IN) :: bnd_cond, which, method
 
 REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
 
+  if (method==2 .and. (bnd_cond/=pml .and. bnd_cond/=pml_sadjusted)) then
+    write(0,*) 'Error: bnd_cond must be either pml or pml_sadjusted with method=2.'
+    call abort()
+  end if
   tp  = EXP(-sigma*0.5*dx)
   tpp  = EXP(-sigma_next*0.5*dx)
   select case (bnd_cond)
@@ -207,17 +299,22 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
       else
         sigma_local = MIN(1.e15,abs(tpp-1./tp)/dx)
       END if
-      IF(sigma_local == 0.) then
-      ! --- end of mesh
-        a  =  1.
-        bp =  dt / dx
+      if (method==1) then
+        IF(sigma_local == 0.) then
+        ! --- end of mesh
+          a  =  1.
+          bp =  dt / dx
+        else
+          a  =  EXP(-sigma_local*dt) ! one can use the exponential intergration or
+!                                       direct differenciation as below for about the same effect.
+!          a  = (1.-sigma_local*dt/2)/(1.+sigma_local*dt/2)
+          bp =  (1.-a)/(sigma_local*dx)
+        END if
+        bm =  -bp
       else
-        a  =  EXP(-sigma_local*dt) ! one can use the exponential intergration or
-!                                     direct differenciation as below for about the same effect.
-!        a  = (1.-sigma_local*dt/2)/(1.+sigma_local*dt/2)
-        bp =  (1.-a)/(sigma_local*dx)
-      END if
-      bm =  -bp
+        s  =  EXP(-sigma_local*dt)
+        
+      end if
     case (apml_exponential)
       sigmab = coef_sigmab*sigma
       IF(sigma == 0.) then
@@ -263,37 +360,42 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
       write(0,*) 'Error in assign_coefs: bnd_cond out fo bounds'
   end select
 
-  select case (which)
-    case (0)
-      ! full time step, do nothing
-    case (1)
-      ! first half time step
-      bp = bp*0.5
-      bm = bm*0.5
-      a  = (1.+a)*0.5
-    case (2)
-      ! second half time step
-      bp = bp/(1.+a)
-      bm = bm/(1.+a)
-      a  = 2.*a/(1.+a)
-    case default
-      write(0,*) 'Error in assign_coefs: which out fo bounds'
-      stop
-  end select
+  if (method==1) then
+    select case (which)
+      case (0)
+        ! full time step, do nothing
+      case (1)
+        ! first half time step
+        bp = bp*0.5
+        bm = bm*0.5
+        a  = (1.+a)*0.5
+      case (2)
+        ! second half time step
+        bp = bp/(1.+a)
+        bm = bm/(1.+a)
+        a  = 2.*a/(1.+a)
+      case default
+        write(0,*) 'Error in assign_coefs: which out fo bounds'
+        stop
+    end select
+  end if
 
 END subroutine assign_coefs
 
 end module mod_emfield3d
 
   subroutine init_splitfield(sf, nx, ny, nz, nxguard, nyguard, nzguard, dt, dx, dy, dz, xmin, ymin, zmin, clight, lsx, lsy, lsz, &
-                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz)
+                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, l_nodalgrid,  &
+                             pml_method)
     use mod_emfield3d
     TYPE(EM3D_SPLITYEEFIELDtype) :: sf
-    INTEGER(ISZ), INTENT(IN) :: nx, ny, nz, nxguard, nyguard, nzguard, nnx, nny, nnz, lsx, lsy, lsz
+    INTEGER(ISZ), INTENT(IN) :: nx, ny, nz, nxguard, nyguard, nzguard, nnx, nny, nnz, lsx, lsy, lsz, pml_method
     REAL(kind=8), INTENT(IN) :: dt, dx, dy, dz, clight, smaxx, smaxy, smaxz, sdeltax, sdeltay, sdeltaz, xmin, ymin, zmin
     integer(ISZ) :: j
-    logical(ISZ) :: l_1dz, l_2dxz, l_2drz
+    logical(ISZ) :: l_1dz, l_2dxz, l_2drz, l_nodalgrid
     
+    sf%pml_method = pml_method
+    sf%l_nodalgrid = l_nodalgrid
     sf%nx = nx
     sf%ny = ny
     sf%nz = nz
@@ -372,10 +474,10 @@ dtsdy = f%clight**2*dt/f%dy
 dtsdz = f%clight**2*dt/f%dz
 mudt  = f%mu0*f%clight**2*dt
 
-if (f%spectral) then
-  call callpythonfunc("push_spectral","em3dsolverFFT")
-  return
-end if
+!if (f%spectral) then
+!  call callpythonfunc("push_spectral","em3dsolverFFT")
+!  return
+!end if
 
 if (f%theta_damp/=0.) then
 !  f%exbar = f%theta_damp*f%exbar + f%exold
@@ -413,6 +515,7 @@ if (f%stencil==0 .or. f%stencil==1) then
                       mudt,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard, &
+                      f%nxes,f%nyes,f%nzes, &
                       f%E_inz_pos,f%E_inz_vel,f%Ex_inz,f%Ey_inz,f%Ez_inz, &
                       f%l_1dz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dy,f%dz,f%clight)
   end if
@@ -428,9 +531,9 @@ return
 end subroutine push_em3d_e
 
 subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,e_inz_pos,e_inz_vel,Ex_inz,Ey_inz,Ez_inz, &
+                          nxguard,nyguard,nzguard,nxs,nys,nzs,e_inz_pos,e_inz_vel,Ex_inz,Ey_inz,Ez_inz, &
                           l_1dz,l_2dxz,l_2drz,xmin,zmin,dx,dy,dz,clight)
-integer :: nx,ny,nz,nxguard,nyguard,nzguard
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz,Ez_inz
@@ -446,9 +549,9 @@ gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
 ! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
 if (.not. l_2dxz) then ! --- 3D XYZ
   ! advance Ex
-  do l = 0, nz
-   do k = 0, ny
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-1
       Ex(j,k,l) = Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
                             - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
@@ -457,9 +560,9 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   end do
 
   ! advance Ey
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -468,9 +571,9 @@ if (.not. l_2dxz) then ! --- 3D XYZ
   end do
 
   ! advance Ez 
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                             - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
                             - mudt  * CJ(j,k,l,3)
@@ -485,19 +588,19 @@ else ! --- now 1D Z, 2D XZ or RZ
   j = 0
   k = 0
   ! advance Ex
-  do l = 0, nz
+  do l = -nzs, nz+nzs
       Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
   end do
 
   ! advance Ey
-  do l = 0, nz
+  do l = -nzs, nz+nzs
       Ey(j,k,l) = Ey(j,k,l) + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
   end do
 
   ! advance Ez 
-  do l = 0, nz-1
+  do l = -nzs, nz+nzs-1
       Ez(j,k,l) = Ez(j,k,l) - mudt  * CJ(j,k,l,3)
   end do
 
@@ -505,16 +608,16 @@ else ! --- now 1D Z, 2D XZ or RZ
 
   k = 0
   ! advance Ex
-  do l = 0, nz
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-1
       Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
     end do
   end do
 
   ! advance Ey
-  do l = 0, nz
-    do j = 0, nx
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -522,8 +625,8 @@ else ! --- now 1D Z, 2D XZ or RZ
   end do
 
   ! advance Ez 
-  do l = 0, nz-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
                             - mudt  * CJ(j,k,l,3)
     end do
@@ -533,16 +636,17 @@ else ! --- now 1D Z, 2D XZ or RZ
 
   k = 0
   ! advance Er
-  do l = 0, nz
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-1
       Ex(j,k,l) = Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
                             - mudt  * CJ(j,k,l,1)
     end do
   end do
 
   ! advance Etheta
-  do l = 0, nz
-    do j = 1, nx
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs
+     if (j/=0) &
       Ey(j,k,l) = Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
                             + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
                             - mudt  * CJ(j,k,l,2)
@@ -556,12 +660,14 @@ else ! --- now 1D Z, 2D XZ or RZ
   end do
 
   ! advance Ez 
-  do l = 0, nz-1
-    do j = 1, nx
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
+     if (j/=0) then
       ru = 1.+0.5/(xmin/dx+j)
       rd = 1.-0.5/(xmin/dx+j)
       Ez(j,k,l) = Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
                             - mudt  * CJ(j,k,l,3)
+     end if
     end do
     j = 0
     if (xmin==0.) then
@@ -1165,7 +1271,7 @@ dtsdx = dt/f%dx
 dtsdy = dt/f%dy
 dtsdz = dt/f%dz
 
-if (f%spectral) return
+!if (f%spectral) return
 
 if (f%theta_damp/=0.) then
   f%excp = f%ex
@@ -1189,7 +1295,9 @@ if (f%stencil==0 .or. f%stencil==2) then
                       f%dx,f%dy,f%dz, &
                       f%xmin,f%ymin,f%zmin, &
                       f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard,f%l_1dz,f%l_2dxz,f%l_2drz)
+                      f%nxguard,f%nyguard,f%nzguard, &
+                      f%nxbs,f%nybs,f%nzbs, &
+                      f%l_1dz,f%l_2dxz,f%l_2drz)
  endif
 else
   call push_em3d_kyeebvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
@@ -1208,8 +1316,9 @@ return
 end subroutine push_em3d_b
 
 subroutine push_em3d_bvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,dx,dy,dz, &
-                          xmin,ymin,zmin,nx,ny,nz,nxguard,nyguard,nzguard,l_1dz,l_2dxz,l_2drz)
-integer :: nx,ny,nz,nxguard,nyguard,nzguard
+                          xmin,ymin,zmin,nx,ny,nz,nxguard,nyguard,nzguard, &
+                          nxs,nys,nzs,l_1dz,l_2dxz,l_2drz)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz,xmin,ymin,zmin,dx,dy,dz
 integer(ISZ) :: j,k,l
@@ -1219,9 +1328,9 @@ real(kind=8) :: rd, ru
 if (.not.l_2dxz) then
 
   ! advance Bx
-  do l = 0, nz-1
-   do k = 0, ny-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs
       Bx(j,k,l) = Bx(j,k,l) - dtsdy * (Ez(j,k+1,l  ) - Ez(j,k,l)) &
                             + dtsdz * (Ey(j,k,  l+1) - Ey(j,k,l))
     end do
@@ -1229,9 +1338,9 @@ if (.not.l_2dxz) then
   end do
 
   ! advance By
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-1
       By(j,k,l) = By(j,k,l) + dtsdx * (Ez(j+1,k,l  ) - Ez(j,k,l)) &  
                             - dtsdz * (Ex(j  ,k,l+1) - Ex(j,k,l)) 
     end do
@@ -1239,9 +1348,9 @@ if (.not.l_2dxz) then
   end do
 
   ! advance Bz 
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs-1
       Bz(j,k,l) = Bz(j,k,l) - dtsdx * (Ey(j+1,k,l) - Ey(j,k,l)) &
                             + dtsdy * (Ex(j,k+1,l) - Ex(j,k,l))
     end do
@@ -1253,35 +1362,35 @@ else
   j=0
   k=0
   ! advance Bx
-  do l = 0, nz-1
+  do l = -nzs, nz+nzs-1
       Bx(j,k,l) = Bx(j,k,l) + dtsdz * (Ey(j,k,  l+1) - Ey(j,k,l))
   end do
 
   ! advance By
-  do l = 0, nz-1
+  do l = -nzs, nz+nzs-1
       By(j,k,l) = By(j,k,l) - dtsdz * (Ex(j  ,k,l+1) - Ex(j,k,l)) 
   end do
 
  else if (.not. l_2drz) then
   k=0
   ! advance Bx
-  do l = 0, nz-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
       Bx(j,k,l) = Bx(j,k,l) + dtsdz * (Ey(j,k,  l+1) - Ey(j,k,l))
     end do
   end do
 
   ! advance By
-  do l = 0, nz-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs-1
       By(j,k,l) = By(j,k,l) + dtsdx * (Ez(j+1,k,l  ) - Ez(j,k,l)) &  
                             - dtsdz * (Ex(j  ,k,l+1) - Ex(j,k,l)) 
     end do
   end do
 
   ! advance Bz 
-  do l = 0, nz
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-1
       Bz(j,k,l) = Bz(j,k,l) - dtsdx * (Ey(j+1,k,l) - Ey(j,k,l)) 
     end do
   end do
@@ -1290,23 +1399,23 @@ else
 
   k=0
   ! advance Br
-  do l = 0, nz-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
       Bx(j,k,l) = Bx(j,k,l) + dtsdz * (Ey(j,k,  l+1) - Ey(j,k,l))
     end do
   end do
 
   ! advance Btheta
-  do l = 0, nz-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs-1
       By(j,k,l) = By(j,k,l) + dtsdx * (Ez(j+1,k,l  ) - Ez(j,k,l)) &  
                             - dtsdz * (Ex(j  ,k,l+1) - Ex(j,k,l)) 
     end do
   end do
 
   ! advance Bz 
-  do l = 0, nz
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-1
       ru = 1.+0.5/(xmin/dx+j+0.5)
       rd = 1.-0.5/(xmin/dx+j+0.5)
       Bz(j,k,l) = Bz(j,k,l) - dtsdx * (ru*Ey(j+1,k,l) - rd*Ey(j,k,l)) 
@@ -1456,7 +1565,7 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,dtsepsi
 
-if (f%spectral) return
+!if (f%spectral) return
 
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
@@ -1770,7 +1879,7 @@ REAL(kind=8), INTENT(IN) :: dt
 INTEGER :: j, k, l
 real(kind=8) :: dtsdx,dtsdy,dtsdz,mudt
 
-if (f%spectral) return
+!if (f%spectral) return
 
 dtsdx = f%clight*dt/f%dx
 dtsdy = f%clight*dt/f%dy
@@ -2090,13 +2199,13 @@ INTEGER :: j, k, l,which
 
   if (sf%stencil==0 .or. sf%stencil==1) then
     call push_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
-                             sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
+                             sf%exy,sf%exz,sf%eyx,sf%eyz,sf%ezx,sf%ezy, &
                              sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
                              sf%afx,sf%afy,sf%afz, &
                              sf%bpfx,sf%bpfy,sf%bpfz, &
                              sf%bmfx,sf%bmfy,sf%bmfz,sf%l_1dz,sf%l_2dxz,sf%l_2drz, &
                              sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
-    if(sf%nconds>0) then 
+    if (sf%nconds>0) then 
        call push_em3d_splite_setcond(sf%nx,sf%ny,sf%nz,sf%nxcond,sf%nycond,sf%nzcond,sf%nxguard,sf%nyguard,sf%nzguard, &
                                      sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz,sf%incond,sf%l_2dxz,sf%l_2drz, &
                                      sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
@@ -2110,16 +2219,16 @@ INTEGER :: j, k, l,which
 end subroutine push_em3d_splite
 
 subroutine push_em3d_splitevec(nx,ny,nz,nxguard,nyguard,nzguard, &
-                               exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
+                               exy,exz,eyx,eyz,ezx,ezy,bxy,byx,bzx,bxz,byz,bzy, &
                                afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_1dz,l_2dxz,l_2drz, &
                                xmin,ymin,zmin,dx,dy,dz)
 implicit none
 
 integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(in) :: bxy,byx,bzx,bxz,byz,bzy
-real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exx,exy,exz, &
-                                                                                                       eyx,eyy,eyz, &
-                                                                                                       ezx,ezy,ezz
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exy,exz, &
+                                                                                                       eyx,eyz, &
+                                                                                                       ezx,ezy
 real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: afx,bpfx,bmfx
 real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: afy,bpfy,bmfy
 real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: afz,bpfz,bmfz
@@ -2282,6 +2391,71 @@ end if
 
   return
 end subroutine push_em3d_splitevec
+
+subroutine scale_em3d_splitevec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               exy,exz,eyx,eyz,ezx,ezy,&
+                               sfx,sfy,sfz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exy,exz, &
+                                                                                                       eyx,eyz, &
+                                                                                                       ezx,ezy
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sfx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sfy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sfz
+
+INTEGER :: j, k, l
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      exy(j,k,l) = sfy(k)*exy(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      exz(j,k,l) = sfz(l)*exz(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      eyx(j,k,l) = sfx(j)*eyx(j,k,l)
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      eyz(j,k,l) = sfz(l)*eyz(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      ezx(j,k,l) = sfx(j)*ezx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      ezy(j,k,l) = sfy(k)*ezy(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitevec
 
 subroutine push_em3d_splite_setcond(nx,ny,nz,nxcond,nycond,nzcond,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,incond,l_2dxz,l_2drz, &
@@ -2474,6 +2648,49 @@ end if
   return
 end subroutine push_em3d_splitefvec
 
+subroutine scale_em3d_splitefvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               exx,eyy,ezz,&
+                               sgx,sgy,sgz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exx, &
+                                                                                                       eyy, &
+                                                                                                       ezz
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sgx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sgy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sgz
+
+INTEGER :: j, k, l
+logical(ISZ) :: l_1dz,l_2dxz,l_2drz
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      exx(j,k,l) = sgx(j)*exx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      eyy(j,k,l) = sgy(k)*eyy(j,k,l)
+    end do
+   end do
+  end do
+
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      ezz(j,k,l) = sgz(l)*ezz(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitefvec
+
 subroutine push_em3d_splitkyeeefvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,eyy,ezz,fx,fy,fz, &
                                agx,agy,agz,bpgx,bpgy,bpgz,bmgx,bmgy,bmgz,l_2dxz)
@@ -2610,6 +2827,7 @@ INTEGER :: j, k, l,which
 
   if (sf%stencil==0 .or. sf%stencil==2) then
     call push_em3d_splitbvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%nxbs,sf%nybs,sf%nzbs, &
                              sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
                              sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
                              sf%agx,sf%agy,sf%agz, &
@@ -2628,13 +2846,13 @@ INTEGER :: j, k, l,which
   return
 end subroutine push_em3d_splitb
 
-subroutine push_em3d_splitbvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+subroutine push_em3d_splitbvec(nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
                                agx,agy,agz,bpgx,bpgy,bpgz,bmgx,bmgy,bmgz,l_1dz,l_2dxz,l_2drz, &
                                xmin,ymin,zmin,dx,dy,dz)
 implicit none
 
-integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxs,nys,nzs,nxguard,nyguard,nzguard
 real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: bxy,byx,bzx,bxz,byz,bzy
 real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(in) :: exx,exy,exz, &
                                                                                                     eyx,eyy,eyz, &
@@ -2657,54 +2875,54 @@ real(8) :: ru
 
 if (.not.l_2dxz) then
 
-  do l = 0, nz-1
-   do k = 0, ny-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs
       bxy(j,k,l) = agy(k)*bxy(j,k,l) - bpgy(k)*(ezx(j,k+1,l  )+ezy(j,k+1,l  )+ezz(j,k+1,l  )) &
                                      - bmgy(k)*(ezx(j,k  ,l  )+ezy(j,k  ,l  )+ezz(j,k  ,l  ))
     end do
    end do
   end do
 
-  do l = 0, nz-1
-   do k = 0, ny-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*(eyx(j,k  ,l+1)+eyy(j,k  ,l+1)+eyz(j,k  ,l+1)) &
                                      + bmgz(l)*(eyx(j,k  ,l  )+eyy(j,k  ,l  )+eyz(j,k  ,l  ))
     end do
    end do
   end do
 
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-1
       byx(j,k,l) = agx(j)*byx(j,k,l) + bpgx(j)*(ezx(j+1,k,l  )+ezy(j+1,k,l  )+ezz(j+1,k,l  )) &
                                      + bmgx(j)*(ezx(j  ,k,l  )+ezy(j  ,k,l  )+ezz(j  ,k,l  ))
     end do
    end do
   end do
 
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*(exx(j  ,k,l+1)+exy(j  ,k,l+1)+exz(j  ,k,l+1)) &
                                      - bmgz(l)*(exx(j  ,k,l  )+exy(j  ,k,l  )+exz(j  ,k,l  ))
     end do
    end do
   end do
 
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs-1
       bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*(eyx(j+1,k  ,l)+eyy(j+1,k  ,l)+eyz(j+1,k  ,l)) &
                                      - bmgx(j)*(eyx(j  ,k  ,l)+eyy(j  ,k  ,l)+eyz(j  ,k  ,l))
     end do
    end do
   end do
 
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-1
+    do j = -nxs, nx+nxs-1
       bzy(j,k,l) = agy(k)*bzy(j,k,l) + bpgy(k)*(exx(j  ,k+1,l)+exy(j  ,k+1,l)+exz(j  ,k+1,l)) &
                                      + bmgy(k)*(exx(j  ,k  ,l)+exy(j  ,k  ,l)+exz(j  ,k  ,l))
     end do
@@ -2715,50 +2933,50 @@ else
   if (l_1dz) then
    j = 0
    k = 0
-   do l = 0, nz-1
+   do l = -nzs, nz+nzs-1
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*(eyx(j,k  ,l+1)+eyz(j,k  ,l+1)) &
                                      + bmgz(l)*(eyx(j,k  ,l  )+eyz(j,k  ,l  ))
    end do
 
-   do l = 0, nz-1
+   do l = -nzs, nz+nzs-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*(exx(j  ,k,l+1)+exz(j  ,k,l+1)) &
                                      - bmgz(l)*(exx(j  ,k,l  )+exz(j  ,k,l  ))
    end do
 
   else
    k = 0
-   do l = 0, nz-1
-    do j = 0, nx
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
       bxz(j,k,l) = agz(l)*bxz(j,k,l) + bpgz(l)*(eyx(j,k  ,l+1)+eyz(j,k  ,l+1)) &
                                      + bmgz(l)*(eyx(j,k  ,l  )+eyz(j,k  ,l  ))
     end do
    end do
 
-   do l = 0, nz-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs-1
       byx(j,k,l) = agx(j)*byx(j,k,l) + bpgx(j)*(ezx(j+1,k,l  )+ezz(j+1,k,l  )) &
                                      + bmgx(j)*(ezx(j  ,k,l  )+ezz(j  ,k,l  ))
     end do
    end do
 
-   do l = 0, nz-1
-    do j = 0, nx-1
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs-1
       byz(j,k,l) = agz(l)*byz(j,k,l) - bpgz(l)*(exx(j  ,k,l+1)+exz(j  ,k,l+1)) &
                                      - bmgz(l)*(exx(j  ,k,l  )+exz(j  ,k,l  ))
     end do
    end do
 
    if (l_2drz) then
-    do l = 0, nz
-      do j = 0, nx-1
+    do l = -nzs, nz+nzs
+      do j = -nxs, nx+nxs-1
         ru = (xmin+(j+1)*dx)/(xmin+j*dx+0.5*dx)
         bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*ru*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
                                        - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
       end do
     end do
    else
-    do l = 0, nz
-      do j = 0, nx-1
+    do l = -nzs, nz+nzs
+      do j = -nxs, nx+nxs-1
         bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
                                        - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
       end do
@@ -2771,6 +2989,70 @@ end if
   return
 end subroutine push_em3d_splitbvec
 
+subroutine scale_em3d_splitbvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               bxy,bxz,byx,byz,bzx,bzy,&
+                               sgx,sgy,sgz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: bxy,bxz, &
+                                                                                                       byx,byz, &
+                                                                                                       bzx,bzy
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sgx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sgy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sgz
+
+INTEGER :: j, k, l
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      bxy(j,k,l) = sgy(k)*bxy(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      bxz(j,k,l) = sgz(l)*bxz(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      byx(j,k,l) = sgx(j)*byx(j,k,l)
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      byz(j,k,l) = sgz(l)*byz(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard-1
+      bzx(j,k,l) = sgx(j)*bzx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard-1
+      bzy(j,k,l) = sgy(k)*bzy(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitbvec
 
 subroutine push_em3d_splitkyeebvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
@@ -3093,6 +3375,35 @@ INTEGER :: j, k, l,which
   return
 end subroutine push_em3d_splitf
 
+subroutine scale_em3d_split_fields(sf,dt,l_pushf)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_SPLITYEEFIELDtype) :: sf
+REAL(kind=8), INTENT(IN) :: dt
+logical:: l_pushf
+
+  if (sf%pml_method==2) then
+    call set_bndcoeffsem3d(sf,dt,0)
+    call scale_em3d_splitbvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                           sf%bxy,sf%bxz,sf%byx,sf%byz,sf%bzx,sf%bzy, &
+                           sf%sgx,sf%sgy,sf%sgz)
+    call scale_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                           sf%exy,sf%exz,sf%eyx,sf%eyz,sf%ezx,sf%ezy, &
+                           sf%sfx,sf%sfy,sf%sfz)
+    if (l_pushf) then
+      call scale_em3d_splitfvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%fx,sf%fy,sf%fz, &
+                             sf%sfx,sf%sfy,sf%sfz)
+      call scale_em3d_splitefvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%exx,sf%eyy,sf%ezz, &
+                             sf%sgx,sf%sgy,sf%sgz)
+    end if
+  end if
+  return
+end subroutine scale_em3d_split_fields
+
+
 subroutine push_em3d_splitfvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,fx,fy,fz, &
                                afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_2dxz,l_2drz, &
@@ -3187,6 +3498,46 @@ end if
   return
 end subroutine push_em3d_splitfvec
 
+subroutine scale_em3d_splitfvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               fx,fy,fz,&
+                               sfx,sfy,sfz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: fx, &
+                                                                                                       fy, &
+                                                                                                       fz
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sfx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sfy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sfz
+
+INTEGER :: j, k, l
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      fx(j,k,l) = sfx(j)*fx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      fy(j,k,l) = sfy(k)*fy(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      fz(j,k,l) = sfz(l)*fz(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitfvec
 
 subroutine push_em3d_splitf_setcond(nx,ny,nz,nxcond,nycond,nzcond,nxguard,nyguard,nzguard, &
                                fx,fy,fz, &
@@ -3638,6 +3989,47 @@ integer(ISZ) :: which
 
   return
 end subroutine push_em3d_blockbndf
+
+subroutine scale_em3d_bnd_fields(b,dt,l_pushf)
+use mod_emfield3d
+implicit none
+
+TYPE(EM3D_BLOCKtype) :: b
+REAL(kind=8), INTENT(IN) :: dt
+logical(ISZ) :: l_pushf
+
+!if (b%core%yf%spectral) return
+
+  if(b%xlbnd==openbc) call scale_em3d_split_fields(b%sidexl%syf,dt,l_pushf)
+  if(b%xrbnd==openbc) call scale_em3d_split_fields(b%sidexr%syf,dt,l_pushf)
+  if(b%ylbnd==openbc) call scale_em3d_split_fields(b%sideyl%syf,dt,l_pushf)
+  if(b%yrbnd==openbc) call scale_em3d_split_fields(b%sideyr%syf,dt,l_pushf)
+  if(b%zlbnd==openbc) call scale_em3d_split_fields(b%sidezl%syf,dt,l_pushf)
+  if(b%zrbnd==openbc) call scale_em3d_split_fields(b%sidezr%syf,dt,l_pushf)
+
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexlyl%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexryl%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexlyr%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexryr%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexlzl%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexrzl%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexlzr%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexrzr%syf,dt,l_pushf)
+  if(b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeylzl%syf,dt,l_pushf)
+  if(b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeyrzl%syf,dt,l_pushf)
+  if(b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeylzr%syf,dt,l_pushf)
+  if(b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeyrzr%syf,dt,l_pushf)
+
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxlylzl%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxrylzl%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxlyrzl%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxryrzl%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxlylzr%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxrylzr%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxlyrzr%syf,dt,l_pushf)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxryrzr%syf,dt,l_pushf)
+
+end subroutine scale_em3d_bnd_fields
 
 subroutine shift_em3dblock_ncells_z(b,n)
 use mod_emfield3d
@@ -8122,7 +8514,7 @@ implicit none
 TYPE(EM3D_BLOCKtype) :: b
 integer(ISZ) :: ibuf
  
-  if (b%core%yf%spectral) return
+!  if (b%core%yf%spectral) return
   
   ibuf = 200
   
