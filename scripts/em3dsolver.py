@@ -21,6 +21,7 @@ class EM3D(SubcycledPoissonSolver):
   __flaginputs__ = {'mode':1,'l_apply_pml':true,
                     'nbndx':10,'nbndy':10,'nbndz':10,
                     'nxguard':1,'nyguard':1,'nzguard':1,
+                    'norderx':2,'nordery':2,'norderz':2,
                     'l_particles_weight':false,'l_usecoeffs':false,
                     'l_pushf':false,'l_pushpot':false,'l_verbose':false,
                     'l_nodalgrid':false,'l_deposit_rho':false,'l_pushg':false,
@@ -112,6 +113,9 @@ class EM3D(SubcycledPoissonSolver):
     self.stride_smooth  = array(self.stride_smooth)
 #    minguards = array([1+aint(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
     minguards = 0+2+aint(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
+    minguards[0] = max(minguards[0],self.norderx/2+1)
+    minguards[1] = max(minguards[1],self.nordery/2+1)
+    minguards[2] = max(minguards[2],self.norderz/2+1)
     if self.nxguard==1:self.nxguard = minguards[0]
     if self.nyguard==1:self.nyguard = minguards[1]
     if self.nzguard==1:self.nzguard = minguards[2]
@@ -385,6 +389,9 @@ class EM3D(SubcycledPoissonSolver):
                                    self.nxguard, 
                                    self.nyguard, 
                                    self.nzguard, 
+                                   self.norderx,
+                                   self.nordery,
+                                   self.norderz,
                                    top.dt, 
                                    self.dx, 
                                    self.dy, 
@@ -3970,6 +3977,7 @@ def allocatef(f,stencil):
 def pyinit_3dem_block(nx, ny, nz, 
                       nbndx, nbndy, nbndz, 
                       nxguard, nyguard, nzguard, 
+                      norderx,nordery,norderz,
                       dt, dx, dy, dz, 
                       clight, mu0, 
                       xmin, ymin, zmin, 
@@ -4057,6 +4065,9 @@ def pyinit_3dem_block(nx, ny, nz,
   f.nx = nx
   f.ny = ny
   f.nz = nz
+  f.norderx = norderx
+  f.nordery = nordery
+  f.norderz = norderz
   f.theta_damp=theta_damp
   f.sigmae=sigmae
   f.sigmab=sigmab
@@ -4149,6 +4160,15 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nzmp=f.nz
 
   f.gchange()
+
+  if l_nodalgrid:
+    f.xcoefs[:] = FD_weights(0.,f.norderx+1,1)[-1,f.norderx/2+1:]
+    f.ycoefs[:] = FD_weights(0.,f.nordery+1,1)[-1,f.nordery/2+1:]
+    f.zcoefs[:] = FD_weights(0.,f.norderz+1,1)[-1,f.norderz/2+1:]
+  else:
+    f.xcoefs[:] = FD_weights(0.5,f.norderx+1,1)[-1,f.norderx/2+1:]
+    f.ycoefs[:] = FD_weights(0.5,f.nordery+1,1)[-1,f.nordery/2+1:]
+    f.zcoefs[:] = FD_weights(0.5,f.norderz+1,1)[-1,f.norderz/2+1:]
   
   if excoef is not None:
     # --- sets field deposition transformation stencil
@@ -4202,6 +4222,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sidexl,stencil)
     init_splitfield(b.sidexl.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zmin0, 
                     clight,-1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sidexl.proc=me
   if xlb==periodic:
@@ -4214,6 +4235,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sidexr,stencil)
     init_splitfield(b.sidexr.syf,nbndx,ny,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zmin0, 
                     clight, 1, 0, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sidexr.proc=me
   if xrb==periodic:
@@ -4227,6 +4249,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sideyl,stencil)
     init_splitfield(b.sideyl.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zmin0, 
                     clight, 0,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sideyl.proc=me
   if ylb==periodic:
@@ -4239,6 +4262,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sideyr,stencil)
     init_splitfield(b.sideyr.syf,nx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zmin0, 
                     clight, 0, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sideyr.proc=me
   if yrb==periodic:
@@ -4252,6 +4276,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sidezl,stencil)
     init_splitfield(b.sidezl.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, ymin0, zminm, 
                     clight, 0, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sidezl.proc=me
   if zlb==periodic:
@@ -4264,6 +4289,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.sidezr,stencil)
     init_splitfield(b.sidezr.syf,nx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, ymin0, zminp, 
                     clight, 0, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   b.sidezr.proc=me
   if zrb==periodic:
@@ -4279,6 +4305,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexlyl,stencil)
     init_splitfield(b.edgexlyl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zmin0, 
                     clight,-1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc:
@@ -4299,6 +4326,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexryl,stencil)
     init_splitfield(b.edgexryl.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zmin0, 
                     clight, 1,-1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc:
@@ -4319,6 +4347,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexlyr,stencil)
     init_splitfield(b.edgexlyr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zmin0, 
                     clight,-1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc:
@@ -4339,6 +4368,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexryr,stencil)
     init_splitfield(b.edgexryr.syf,nbndx,nbndy,nz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zmin0, 
                     clight, 1, 1, 0, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc:
@@ -4359,6 +4389,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexlzl,stencil)
     init_splitfield(b.edgexlzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zminm, 
                     clight,-1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc:
@@ -4379,6 +4410,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexrzl,stencil)
     init_splitfield(b.edgexrzl.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zminm, 
                     clight, 1, 0,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc:
@@ -4399,6 +4431,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexlzr,stencil)
     init_splitfield(b.edgexlzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, ymin0, zminp, 
                     clight,-1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc:
@@ -4419,6 +4452,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgexrzr,stencil)
     init_splitfield(b.edgexrzr.syf,nbndx,ny,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, ymin0, zminp, 
                     clight, 1, 0, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc:
@@ -4440,6 +4474,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgeylzl,stencil)
     init_splitfield(b.edgeylzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zminm, 
                     clight, 0,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if ylb==openbc:
@@ -4459,6 +4494,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgeyrzl,stencil)
     init_splitfield(b.edgeyrzl.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zminm, 
                     clight, 0, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if yrb==openbc:
@@ -4478,6 +4514,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgeylzr,stencil)
     init_splitfield(b.edgeylzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminm, zminp, 
                     clight, 0,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if ylb==openbc:
@@ -4497,6 +4534,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.edgeyrzr,stencil)
     init_splitfield(b.edgeyrzr.syf,nx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xmin0, yminp, zminp, 
                     clight, 0, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if yrb==openbc:
@@ -4518,6 +4556,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxlylzl,stencil)
     init_splitfield(b.cornerxlylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zminm, 
                     clight,-1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc and ylb==openbc:
@@ -4543,6 +4582,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxrylzl,stencil)
     init_splitfield(b.cornerxrylzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zminm, 
                     clight, 1,-1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc and ylb==openbc:
@@ -4568,6 +4608,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxlyrzl,stencil)
     init_splitfield(b.cornerxlyrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zminm, 
                     clight,-1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc and yrb==openbc:
@@ -4593,6 +4634,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxryrzl,stencil)
     init_splitfield(b.cornerxryrzl.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zminm, 
                     clight, 1, 1,-1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc and yrb==openbc:
@@ -4618,6 +4660,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxlylzr,stencil)
     init_splitfield(b.cornerxlylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminm, zminp, 
                     clight,-1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc and ylb==openbc:
@@ -4643,6 +4686,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxrylzr,stencil)
     init_splitfield(b.cornerxrylzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminm, zminp, 
                     clight, 1,-1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc and ylb==openbc:
@@ -4668,6 +4712,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxlyrzr,stencil)
     init_splitfield(b.cornerxlyrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminm, yminp, zminp, 
                     clight,-1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xlb==openbc and yrb==openbc:
@@ -4693,6 +4738,7 @@ def pyinit_3dem_block(nx, ny, nz,
     allocatesf(b.cornerxryrzr,stencil)
     init_splitfield(b.cornerxryrzr.syf,nbndx,nbndy,nbndz,nxguard,nyguard,nzguard, dt, dx, dy, dz, xminp, yminp, zminp, 
                     clight, 1, 1, 1, nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, 
+                    f.norderx,f.nordery,f.norderz,f.xcoefs,f.ycoefs,f.zcoefs,
                     l_nodalgrid,pml_method)
   else:
     if xrb==openbc and yrb==openbc:
@@ -4715,6 +4761,34 @@ def pyinit_3dem_block(nx, ny, nz,
         b.cornerxryrzr.proc=procxr      
 
   return b
+
+def FD_weights(z,n,m):
+    """
+ adapted from Matlab code from Fornberg (1998)
+ Calculates FD weights. The parameters are:
+  z   location where approximations are to be accurate,
+  n   number of grid points,
+  m   highest derivative that we want to find weights for
+  c   array size m+1,lentgh(x) containing (as output) in 
+      successive rows the weights for derivatives 0,1,...,m.
+    """
+
+    x = arange(-n/2+1,n/2+1)*1.
+
+    c=zeros([m+1,n]); c1=1.; c4=x[0]-z; c[0,0]=1.;
+    for i in range(1,n):
+      mn=min(i+1,m+1); c2=1.; c5=c4; c4=x[i]-z;
+      for j in range(0,i-0):
+         c3=x[i]-x[j];  c2=c2*c3;
+         if j==i-1: 
+            c[1:mn,i]=c1*(arange(1,mn)*c[0:mn-1,i-1]-c5*c[1:mn,i-1])/c2;
+            c[0,i]=-c1*c5*c[0,i-1]/c2;
+         c[1:mn,j]=(c4*c[1:mn,j]-arange(1,mn)*c[0:mn-1,j])/c3;
+         c[0,j]=c4*c[0,j]/c3;
+      c1=c2;
+   
+    return c
+           
 
 
 ##############################################################################
