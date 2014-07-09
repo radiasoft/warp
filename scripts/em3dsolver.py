@@ -321,7 +321,22 @@ class EM3D(SubcycledPoissonSolver):
     self.finalized = False
 
     # --- This allows some introspection.
-    self.dict_of_grids = {
+    if self.l_nodalgrid:
+      self.dict_of_grids = {
+        'rho':{'getter':self.getrho, 'centering':'node', 'units':'C/m**3'},
+        'Jx':{'getter':self.getjx, 'centering':'Yee', 'units':'A/m**2'},
+        'Jy':{'getter':self.getjy, 'centering':'Yee', 'units':'A/m**2'},
+        'Jz':{'getter':self.getjz, 'centering':'Yee', 'units':'A/m**2'},
+        'Ex':{'getter':self.getexg, 'centering':'node', 'units':'V/m'},
+        'Ey':{'getter':self.geteyg, 'centering':'node', 'units':'V/m'},
+        'Ez':{'getter':self.getezg, 'centering':'node', 'units':'V/m'},
+        'Bx':{'getter':self.getbxg, 'centering':'node', 'units':'T'},
+        'By':{'getter':self.getbyg, 'centering':'node', 'units':'T'},
+        'Bz':{'getter':self.getbzg, 'centering':'node', 'units':'T'},
+        'divE':{'getter':self.getdive, 'centering':'node', 'units':'V/m**2'},
+      }
+    else:
+      self.dict_of_grids = {
         'rho':{'getter':self.getrho, 'centering':'node', 'units':'C/m**3'},
         'Jx':{'getter':self.getjx, 'centering':'Yee', 'units':'A/m**2'},
         'Jy':{'getter':self.getjy, 'centering':'Yee', 'units':'A/m**2'},
@@ -333,7 +348,7 @@ class EM3D(SubcycledPoissonSolver):
         'By':{'getter':self.getbyg, 'centering':'Yee', 'units':'T'},
         'Bz':{'getter':self.getbzg, 'centering':'Yee', 'units':'T'},
         'divE':{'getter':self.getdive, 'centering':'node', 'units':'V/m**2'},
-    }
+      }
 
   def processdefaultsfrompackage(self,defaults,package,kw):
     for name in defaults:
