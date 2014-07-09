@@ -520,7 +520,7 @@ if (f%stencil==0 .or. f%stencil==1) then
                        f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
    endif
   else
-   if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2)) then
+   if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
      call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                           mudt,dtsdx,dtsdy,dtsdz, &
                           f%nx,f%ny,f%nz, &
@@ -1503,7 +1503,7 @@ end if
 
 if (f%stencil==0 .or. f%stencil==2) then
  if (f%sigmab==0.) then
-  if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2)) then
+  if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
     call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                         dtsdx,dtsdy,dtsdz, &
                         f%dx,f%dy,f%dz, &
@@ -2576,7 +2576,7 @@ INTEGER :: j, k, l,which
   call set_bndcoeffsem3d(sf,dt,which)
 
   if (sf%stencil==0 .or. sf%stencil==1) then
-   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2)) then
+   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2) .and. .not. sf%l_nodalgrid) then
     call push_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exy,sf%exz,sf%eyx,sf%eyz,sf%ezx,sf%ezy, &
                              sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
@@ -3442,7 +3442,7 @@ INTEGER :: j, k, l,which
   call set_bndcoeffsem3d(sf,dt,which)
 
   if (sf%stencil==0 .or. sf%stencil==2) then
-   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2)) then
+   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2) .and. .not. sf%l_nodalgrid) then
     call push_em3d_splitbvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%nxbs,sf%nybs,sf%nzbs, &
                              sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
