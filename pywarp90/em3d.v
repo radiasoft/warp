@@ -84,7 +84,9 @@ init_splitfield(sf:EM3D_SPLITYEEFIELDtype,
                 nny:integer, smaxy:real, sdeltay:real, 
                 nnz:integer, smaxz:real, sdeltaz:real, 
                 l_2dxz:logical, l_1dz:logical, l_2drz:logical,
-                pml_method:integer,l_nodalgrid:logical) subroutine
+                norderx:integer,nordery:integer,norderz:integer,
+                xcoefs(norderx/2):real,ycoefs(nordery/2):real,zcoefs(norderz/2):real,
+                l_nodalgrid:logical,pml_method:integer) subroutine
 depose_jxjyjz_esirkepov_linear_serial(j:real,
                            n:integer,x(n):real,y(n):real,z(n):real,
                            ux(n):real,uy(n):real,uz(n):real,
@@ -423,7 +425,7 @@ getdive(ex:real,ey:real,ez:real,dive:real,dx:real,dy:real,dz:real,
 fieldtype integer /-2/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 pml_method integer /1/
-l_nodalgrid logical /.false./
+l_nodalgrid logical /.false./    # specifies whether FDTD calculation is on nodal (true) or staggerd (false) grid
 nx integer
 ny integer
 nz integer
@@ -549,12 +551,18 @@ agz(-nzguard:nz+nzguard) _real
 bpgz(-nzguard:nz+nzguard) _real
 bmgz(-nzguard:nz+nzguard) _real
 sgz(-nzguard:nz+nzguard) _real
+norderx integer /2/ # order of finite-difference approximation in x
+nordery integer /2/ # order of finite-difference approximation in y
+norderz integer /2/ # order of finite-difference approximation in z
+xcoefs(norderx/2) _real # coefficients of finite-difference stencil in x
+ycoefs(nordery/2) _real # coefficients of finite-difference stencil in x
+zcoefs(norderz/2) _real # coefficients of finite-difference stencil in x
 
 %%%%%%%% EM3D_YEEFIELDtype:
 fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 spectral logical /.false./
-l_nodalgrid logical /.false./
+l_nodalgrid logical /.false./    # specifies whether FDTD calculation is on nodal (true) or staggerd (false) grid
 l_nodecentered logical /.false./ # specifies whether field data have been gathered at nodes (when computing with staggered "Yee" grid)
 l_macroscopic logical /.false./
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
@@ -718,6 +726,12 @@ dmasky(-nyguard:ny+nyguard) _real
 dmaskz(-nzguard:nz+nzguard) _real
 ex_stencil(0:4) _real
 by_stencil(0:4) _real
+norderx integer /2/ # order of finite-difference approximation in x
+nordery integer /2/ # order of finite-difference approximation in y
+norderz integer /2/ # order of finite-difference approximation in z
+xcoefs(norderx/2) _real # coefficients of finite-difference stencil in x
+ycoefs(nordery/2) _real # coefficients of finite-difference stencil in x
+zcoefs(norderz/2) _real # coefficients of finite-difference stencil in x
 
 %%%%%%%% EM3D_FIELDtype:
 fieldtype integer /0/
