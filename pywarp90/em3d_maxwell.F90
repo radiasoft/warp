@@ -385,12 +385,15 @@ END subroutine assign_coefs
 end module mod_emfield3d
 
   subroutine init_splitfield(sf, nx, ny, nz, nxguard, nyguard, nzguard, dt, dx, dy, dz, xmin, ymin, zmin, clight, lsx, lsy, lsz, &
-                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, l_nodalgrid,  &
-                             pml_method)
+                             nnx, smaxx, sdeltax, nny, smaxy, sdeltay, nnz, smaxz, sdeltaz, l_1dz, l_2dxz, l_2drz, &
+                             norderx,nordery,norderz,xcoefs,ycoefs,zcoefs, &
+                             l_nodalgrid, pml_method)
     use mod_emfield3d
     TYPE(EM3D_SPLITYEEFIELDtype) :: sf
-    INTEGER(ISZ), INTENT(IN) :: nx, ny, nz, nxguard, nyguard, nzguard, nnx, nny, nnz, lsx, lsy, lsz, pml_method
-    REAL(kind=8), INTENT(IN) :: dt, dx, dy, dz, clight, smaxx, smaxy, smaxz, sdeltax, sdeltay, sdeltaz, xmin, ymin, zmin
+    INTEGER(ISZ), INTENT(IN) :: nx, ny, nz, nxguard, nyguard, nzguard, nnx, nny, nnz, lsx, lsy, lsz, pml_method, &     
+                                norderx,nordery,norderz
+    REAL(kind=8), INTENT(IN) :: dt, dx, dy, dz, clight, smaxx, smaxy, smaxz, sdeltax, sdeltay, sdeltaz, xmin, ymin, zmin, &
+                                xcoefs(norderx/2),ycoefs(nordery/2),zcoefs(norderz/2)
     integer(ISZ) :: j
     logical(ISZ) :: l_1dz, l_2dxz, l_2drz, l_nodalgrid
     
@@ -454,7 +457,13 @@ end module mod_emfield3d
     sf%l_1dz = l_1dz
     sf%l_2dxz = l_2dxz
     sf%l_2drz = l_2drz
+    sf%norderx = norderx
+    sf%nordery = nordery
+    sf%norderz = norderz
     call EM3D_SPLITYEEFIELDtypeallot(sf)
+    sf%xcoefs = xcoefs
+    sf%ycoefs = ycoefs
+    sf%zcoefs = zcoefs
 
     return 
   end subroutine init_splitfield
@@ -507,17 +516,29 @@ if (f%stencil==0 .or. f%stencil==1) then
       call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                        mudt,dtsdx,dtsdy,dtsdz, &
                        f%nx,f%ny,f%nz, &
-                       f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos, &
-                       f%Ex_inz,f%Ey_inz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
+                       f%nxguard,f%nyguard,f%nzguard, &
+                       f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
    endif
   else
-   call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
-                      mudt,dtsdx,dtsdy,dtsdz, &
-                      f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard, &
-                      f%nxes,f%nyes,f%nzes, &
-                      f%E_inz_pos,f%E_inz_vel,f%Ex_inz,f%Ey_inz,f%Ez_inz, &
-                      f%l_1dz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dy,f%dz,f%clight)
+   if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2)) then
+     call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                          mudt,dtsdx,dtsdy,dtsdz, &
+                          f%nx,f%ny,f%nz, &
+                          f%nxguard,f%nyguard,f%nzguard, &
+                          f%nxes,f%nyes,f%nzes, &
+                          f%l_1dz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin, &
+                          f%dx,f%dy,f%dz,f%clight)
+    else
+     call push_em3d_evec_norder(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                          mudt,dtsdx*f%xcoefs,dtsdy*f%ycoefs,dtsdz*f%zcoefs, &
+                          f%nx,f%ny,f%nz, &
+                          f%norderx,f%nordery,f%norderz, &
+                          f%nxguard,f%nyguard,f%nzguard, &
+                          f%nxes,f%nyes,f%nzes, &
+                          f%l_1dz,f%l_2dxz,f%l_2drz,f%l_nodalgrid, &
+                          f%xmin,f%zmin, &
+                          f%dx,f%dy,f%dz,f%clight)
+    end if
   end if
  endif
 else
@@ -531,20 +552,16 @@ return
 end subroutine push_em3d_e
 
 subroutine push_em3d_evec(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,nxs,nys,nzs,e_inz_pos,e_inz_vel,Ex_inz,Ey_inz,Ez_inz, &
+                          nxguard,nyguard,nzguard,nxs,nys,nzs, &
                           l_1dz,l_2dxz,l_2drz,xmin,zmin,dx,dy,dz,clight)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
-real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz,Ez_inz
-real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,E_inz_vel,xmin,zmin,dx,dy,dz,clight
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,xmin,zmin,dx,dy,dz,clight
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_1dz,l_2dxz,l_2drz
-real(kind=8) :: w,zlaser,rd,ru,gammafrm,betafrm
+real(kind=8) :: w,zlaser,rd,ru
 !real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ez_inz
-
-betafrm = e_inz_vel/clight
-gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
 
 ! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
 if (.not. l_2dxz) then ! --- 3D XYZ
@@ -687,14 +704,210 @@ end if
 return
 end subroutine push_em3d_evec
 
+subroutine push_em3d_evec_norder(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
+                          norderx,nordery,norderz, &
+                          nxguard,nyguard,nzguard,nxs,nys,nzs, &
+                          l_1dz,l_2dxz,l_2drz,l_nodalgrid, &
+                          xmin,zmin,dx,dy,dz,clight)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs,norderx,nordery,norderz
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
+real(kind=8), intent(IN) :: mudt,dtsdx(norderx/2),dtsdy(norderx/2),dtsdz(norderx/2),xmin,zmin,dx,dy,dz,clight
+integer(ISZ) :: i,j,k,l,ist
+logical(ISZ) :: l_1dz,l_2dxz,l_2drz,l_nodalgrid
+real(kind=8) :: w,zlaser,rd,ru
+!real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ez_inz
+
+if (l_nodalgrid) then
+  ist = 0
+else
+  ist = 1
+end if
+
+! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
+if (.not. l_2dxz) then ! --- 3D XYZ
+  ! advance Ex
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-ist
+      Ex(j,k,l) = Ex(j,k,l) - mudt  * CJ(j,k,l,1)
+      do i = 1, nordery/2
+        Ex(j,k,l) = Ex(j,k,l) + dtsdy(i) * (Bz(j,k+i-ist,l)   - Bz(j,k-i,l  ))
+      end do
+      do i = 1, norderz/2
+        Ex(j,k,l) = Ex(j,k,l) - dtsdz(i) * (By(j,k,l+i-ist)   - By(j,k  ,l-i)) 
+      end do
+    end do
+   end do
+  end do
+
+  ! advance Ey
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs
+      Ey(j,k,l) = Ey(j,k,l) - mudt  * CJ(j,k,l,2)
+      do i = 1, norderx/2
+        Ey(j,k,l) = Ey(j,k,l) - dtsdx(i) * (Bz(j+i-ist,k,l)   - Bz(j-i,k,l))
+      end do
+      do i = 1, norderz/2
+        Ey(j,k,l) = Ey(j,k,l) + dtsdz(i) * (Bx(j,k,l+i-ist)   - Bx(j,k,l-i))
+      end do
+    end do
+   end do
+  end do
+
+  ! advance Ez 
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs
+      Ez(j,k,l) = Ez(j,k,l) - mudt  * CJ(j,k,l,3)
+      do i = 1, norderx/2
+        Ez(j,k,l) = Ez(j,k,l) + dtsdx(i) * (By(j+i-ist,k,l) - By(j-i,k  ,l))
+      end do
+      do i = 1, nordery/2
+        Ez(j,k,l) = Ez(j,k,l) - dtsdy(i) * (Bx(j,k+i-ist,l) - Bx(j  ,k-i,l))
+      end do
+    end do
+   end do
+  end do
+
+else ! --- now 1D Z, 2D XZ or RZ
+
+ if (l_1dz) then ! 1D Z
+
+  j = 0
+  k = 0
+  ! advance Ex
+  do l = -nzs, nz+nzs
+      Ex(j,k,l) = Ex(j,k,l) - mudt  * CJ(j,k,l,1)
+      do i = 1, norderz/2
+        Ex(j,k,l) = Ex(j,k,l) - dtsdz(i) * (By(j,k,l+i-ist)   - By(j,k  ,l-i))
+      end do
+  end do
+
+  ! advance Ey
+  do l = -nzs, nz+nzs
+      Ey(j,k,l) = Ey(j,k,l) - mudt  * CJ(j,k,l,2)
+      do i = 1, norderz/2
+        Ey(j,k,l) = Ey(j,k,l) + dtsdz(i) * (Bx(j,k,l+i-ist)   - Bx(j,k,l-i)) 
+      end do
+  end do
+
+  ! advance Ez 
+  do l = -nzs, nz+nzs-1
+      Ez(j,k,l) = Ez(j,k,l) - mudt  * CJ(j,k,l,3)
+  end do
+
+ else if (.not. l_2drz) then ! 2D XZ
+
+  k = 0
+  ! advance Ex
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-ist
+      Ex(j,k,l) = Ex(j,k,l) - mudt  * CJ(j,k,l,1)
+      do i = 1, norderz/2
+        Ex(j,k,l) = Ex(j,k,l) - dtsdz(i) * (By(j,k,l+i-ist)   - By(j,k  ,l-i)) 
+      end do
+    end do
+  end do
+
+  ! advance Ey
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs
+      Ey(j,k,l) = Ey(j,k,l) - mudt  * CJ(j,k,l,2)
+      do i = 1, norderx/2
+        Ey(j,k,l) = Ey(j,k,l) - dtsdx(i) * (Bz(j+i-ist,k,l)   - Bz(j-i,k,l)) 
+      end do
+      do i = 1, norderz/2 
+        Ey(j,k,l) = Ey(j,k,l) + dtsdz(i) * (Bx(j,k,l+i-ist)   - Bx(j,k,l-i)) 
+      end do
+    end do
+  end do
+
+  ! advance Ez 
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs
+      Ez(j,k,l) = Ez(j,k,l) - mudt  * CJ(j,k,l,3)
+      do i = 1, norderx/2
+        Ez(j,k,l) = Ez(j,k,l) + dtsdx(i) * (By(j+i-ist,k,l) - By(j-i,k  ,l))
+      end do
+    end do
+  end do
+
+ else ! l_2drz=True
+
+  if (norderx.ne.2) then
+    write(0,*) 'Error: norderx>2 not supported in RZ axisymmetric mode'
+    call abort()
+  end if
+
+  k = 0
+  ! advance Er
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-ist
+      Ex(j,k,l) = Ex(j,k,l) - mudt  * CJ(j,k,l,1)
+      do i = 1, norderz/2
+        Ex(j,k,l) = Ex(j,k,l) - dtsdz(i) * (By(j,k,l+i-ist)   - By(j,k  ,l-i))
+      end do
+    end do
+  end do
+
+  ! advance Etheta
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs
+     if (j/=0) then
+        Ey(j,k,l) = Ey(j,k,l) - dtsdx(1) * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                              - mudt  * CJ(j,k,l,2)
+        do i = 1, norderz/2
+           Ey(j,k,l) = Ey(j,k,l) + dtsdz(i) * (Bx(j,k,l+i-ist) - Bx(j,k,l-i)) 
+        end do
+      end if
+    end do
+    j = 0
+    if (xmin/=0.) then
+      Ey(j,k,l) = Ey(j,k,l) - dtsdx(1) * (Bz(j,k,l) - Bz(j-1,k,l)) &
+                            - mudt  * CJ(j,k,l,2)
+      do i = 1, norderz/2
+         Ey(j,k,l) = Ey(j,k,l) + dtsdz(i) * (Bx(j,k,l+i-ist) - Bx(j,k,l-i))
+      end do
+    end if
+  end do
+
+  ! advance Ez 
+  do l = -nzs, nz+nzs-1
+    do j = -nxs, nx+nxs
+     if (j/=0) then
+      ru = 1.+0.5/(xmin/dx+j)
+      rd = 1.-0.5/(xmin/dx+j)
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx(1) * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+     end if
+    end do
+    j = 0
+    if (xmin==0.) then
+      Ez(j,k,l) = Ez(j,k,l) + 4.*dtsdx(1) * By(j,k,l)  &
+                            - mudt  * CJ(j,k,l,3)
+    else
+      ru = 1.+0.5/(xmin/dx)
+      rd = 1.-0.5/(xmin/dx)
+      Ez(j,k,l) = Ez(j,k,l) + dtsdx(1) * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
+                            - mudt  * CJ(j,k,l,3)
+    endif
+  end do
+ end if
+end if
+
+
+return
+end subroutine push_em3d_evec_norder
+
 subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
-                          nxguard,nyguard,nzguard,e_inz_pos,Ex_inz,Ey_inz,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
+                          nxguard,nyguard,nzguard,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
 logical(ISZ), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: incond
-real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard) :: Ex_inz,Ey_inz
-real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,E_inz_pos,xmin,zmin,dx,dz
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdy,dtsdz,xmin,zmin,dx,dz
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_2dxz,l_2drz
 real(kind=8) :: w,zlaser,rd,ru
@@ -1290,14 +1503,26 @@ end if
 
 if (f%stencil==0 .or. f%stencil==2) then
  if (f%sigmab==0.) then
-  call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
-                      dtsdx,dtsdy,dtsdz, &
-                      f%dx,f%dy,f%dz, &
-                      f%xmin,f%ymin,f%zmin, &
-                      f%nx,f%ny,f%nz, &
-                      f%nxguard,f%nyguard,f%nzguard, &
-                      f%nxbs,f%nybs,f%nzbs, &
-                      f%l_1dz,f%l_2dxz,f%l_2drz)
+  if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2)) then
+    call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
+                        dtsdx,dtsdy,dtsdz, &
+                        f%dx,f%dy,f%dz, &
+                        f%xmin,f%ymin,f%zmin, &
+                        f%nx,f%ny,f%nz, &
+                        f%nxguard,f%nyguard,f%nzguard, &
+                        f%nxbs,f%nybs,f%nzbs, &
+                        f%l_1dz,f%l_2dxz,f%l_2drz)
+  else
+    call push_em3d_bvec_norder(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
+                        dtsdx*f%xcoefs,dtsdy*f%ycoefs,dtsdz*f%zcoefs, &
+                        f%dx,f%dy,f%dz, &
+                        f%xmin,f%ymin,f%zmin, &
+                        f%nx,f%ny,f%nz, &
+                        f%nxguard,f%nyguard,f%nzguard, &
+                        f%norderx,f%nordery,f%norderz, &
+                        f%nxbs,f%nybs,f%nzbs, &
+                        f%l_1dz,f%l_2dxz,f%l_2drz,f%l_nodalgrid)
+  end if
  endif
 else
   call push_em3d_kyeebvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
@@ -1427,6 +1652,159 @@ end if
 
 return
 end subroutine push_em3d_bvec
+
+subroutine push_em3d_bvec_norder(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,dx,dy,dz, &
+                          xmin,ymin,zmin,nx,ny,nz,nxguard,nyguard,nzguard, &
+                          norderx,nordery,norderz, &
+                          nxs,nys,nzs,l_1dz,l_2dxz,l_2drz,l_nodalgrid)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs,norderx,nordery,norderz
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN) :: dtsdx(norderx/2),dtsdy(norderx/2),dtsdz(norderx/2),xmin,ymin,zmin,dx,dy,dz
+integer(ISZ) :: i,j,k,l,ist
+logical(ISZ) :: l_1dz,l_2dxz,l_2drz,l_nodalgrid
+real(kind=8) :: rd, ru
+
+if (l_nodalgrid) then
+  ist = 0
+else
+  ist = 1
+end if
+
+if (.not.l_2dxz) then
+
+  ! advance Bx
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs
+      do i = 1, nordery/2
+        Bx(j,k,l) = Bx(j,k,l) - dtsdy(i) * (Ez(j,k+i,l  ) - Ez(j,k-i+ist,l))
+      end do
+      do i = 1, norderz/2
+        Bx(j,k,l) = Bx(j,k,l) + dtsdz(i) * (Ey(j,k,  l+i) - Ey(j,k,l-i+ist))
+      end do
+    end do
+   end do
+  end do
+
+  ! advance By
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-ist
+      do i = 1, norderx/2
+        By(j,k,l) = By(j,k,l) + dtsdx(i) * (Ez(j+i,k,l  ) - Ez(j-i+ist,k,l)) 
+      end do
+      do i = 1, norderz/2
+        By(j,k,l) = By(j,k,l) - dtsdz(i) * (Ex(j  ,k,l+i) - Ex(j,k,l-i+ist)) 
+      end do
+    end do
+   end do
+  end do
+
+  ! advance Bz 
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs-ist
+      do i = 1, norderx/2
+        Bz(j,k,l) = Bz(j,k,l) - dtsdx(i) * (Ey(j+i,k,l) - Ey(j-i+ist,k,l))
+      end do
+      do i = 1, nordery/2
+        Bz(j,k,l) = Bz(j,k,l) + dtsdy(i) * (Ex(j,k+i,l) - Ex(j,k-i+ist,l))
+      end do
+    end do
+   end do
+  end do
+
+else
+ if (l_1dz) then
+  j=0
+  k=0
+  ! advance Bx
+  do l = -nzs, nz+nzs-ist
+    do i = 1, norderz/2
+      Bx(j,k,l) = Bx(j,k,l) + dtsdz(i) * (Ey(j,k,  l+i) - Ey(j,k,l-i+ist))
+    end do
+  end do
+
+  ! advance By
+  do l = -nzs, nz+nzs-ist
+    do i = 1, norderz/2
+      By(j,k,l) = By(j,k,l) - dtsdz(i) * (Ex(j  ,k,l+i) - Ex(j,k,l-i+ist)) 
+    end do
+  end do
+
+ else if (.not. l_2drz) then
+  k=0
+  ! advance Bx
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs
+      do i = 1, norderz/2
+        Bx(j,k,l) = Bx(j,k,l) + dtsdz(i) * (Ey(j,k,  l+i) - Ey(j,k,l-i+ist))
+      end do
+    end do
+  end do
+
+  ! advance By
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs-ist
+      do i = 1, norderx/2
+        By(j,k,l) = By(j,k,l) + dtsdx(i) * (Ez(j+i,k,l  ) - Ez(j-i+ist,k,l))  
+      end do
+      do i = 1, norderz/2
+        By(j,k,l) = By(j,k,l) - dtsdz(i) * (Ex(j  ,k,l+i) - Ex(j,k,l-i+ist)) 
+      end do
+    end do
+  end do
+
+  ! advance Bz 
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-ist
+      do i = 1, norderx/2
+        Bz(j,k,l) = Bz(j,k,l) - dtsdx(i) * (Ey(j+i,k,l) - Ey(j-i+ist,k,l)) 
+      end do
+    end do
+  end do
+
+ else ! l_2drz = True
+
+  if (norderx.ne.2) then
+    write(0,*) 'Error: norderx>2 not supported in RZ axisymmetric mode'
+    call abort()
+  end if
+
+  k=0
+  ! advance Br
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs
+      do i = 1, norderz/2
+        Bx(j,k,l) = Bx(j,k,l) + dtsdz(i) * (Ey(j,k,  l+i) - Ey(j,k,l-i+ist))
+      end do
+    end do
+  end do
+
+  ! advance Btheta
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs-1
+      By(j,k,l) = By(j,k,l) + dtsdx(1) * (Ez(j+1,k,l  ) - Ez(j,k,l))   
+      do i = 1, norderz/2
+        By(j,k,l) = By(j,k,l) - dtsdz(i) * (Ex(j  ,k,l+i) - Ex(j,k,l-i+ist)) 
+      end do
+    end do
+  end do
+
+  ! advance Bz 
+  do l = -nzs, nz+nzs
+    do j = -nxs, nx+nxs-1
+      ru = 1.+0.5/(xmin/dx+j+0.5)
+      rd = 1.-0.5/(xmin/dx+j+0.5)
+      Bz(j,k,l) = Bz(j,k,l) - dtsdx(1) * (ru*Ey(j+1,k,l) - rd*Ey(j,k,l)) 
+    end do
+   end do
+
+ end if
+end if
+
+return
+end subroutine push_em3d_bvec_norder
 
 subroutine push_em3d_kyeebvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
 use EM3D_kyee
@@ -2198,6 +2576,7 @@ INTEGER :: j, k, l,which
   call set_bndcoeffsem3d(sf,dt,which)
 
   if (sf%stencil==0 .or. sf%stencil==1) then
+   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2)) then
     call push_em3d_splitevec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exy,sf%exz,sf%eyx,sf%eyz,sf%ezx,sf%ezy, &
                              sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
@@ -2205,11 +2584,22 @@ INTEGER :: j, k, l,which
                              sf%bpfx,sf%bpfy,sf%bpfz, &
                              sf%bmfx,sf%bmfy,sf%bmfz,sf%l_1dz,sf%l_2dxz,sf%l_2drz, &
                              sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
-    if (sf%nconds>0) then 
+   else
+    call push_em3d_splitevec_norder(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%norderx,sf%nordery,sf%norderz, &
+                             sf%xcoefs,sf%ycoefs,sf%zcoefs, &
+                             sf%exy,sf%exz,sf%eyx,sf%eyz,sf%ezx,sf%ezy, &
+                             sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
+                             sf%afx,sf%afy,sf%afz, &
+                             sf%bpfx,sf%bpfy,sf%bpfz, &
+                             sf%bmfx,sf%bmfy,sf%bmfz,sf%l_1dz,sf%l_2dxz,sf%l_2drz,sf%l_nodalgrid, &
+                             sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+   end if
+   if (sf%nconds>0) then 
        call push_em3d_splite_setcond(sf%nx,sf%ny,sf%nz,sf%nxcond,sf%nycond,sf%nzcond,sf%nxguard,sf%nyguard,sf%nzguard, &
                                      sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz,sf%incond,sf%l_2dxz,sf%l_2drz, &
                                      sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
-    end if
+   end if
   else
     write(0,*) 'splite extended pml not implemented'
     stop
@@ -2391,6 +2781,232 @@ end if
 
   return
 end subroutine push_em3d_splitevec
+
+
+subroutine push_em3d_splitevec_norder(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               norderx,nordery,norderz, &
+                               xcoefs,ycoefs,zcoefs, &
+                               exy,exz,eyx,eyz,ezx,ezy,bxy,byx,bzx,bxz,byz,bzy, &
+                               afx,afy,afz,bpfx,bpfy,bpfz,bmfx,bmfy,bmfz,l_1dz,l_2dxz,l_2drz,l_nodalgrid, &
+                               xmin,ymin,zmin,dx,dy,dz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard,norderx,nordery,norderz
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(in) :: bxy,byx,bzx,bxz,byz,bzy
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: exy,exz, &
+                                                                                                       eyx,eyz, &
+                                                                                                       ezx,ezy
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: afx,bpfx,bmfx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: afy,bpfy,bmfy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: afz,bpfz,bmfz
+real(kind=8), intent(in) :: xmin,ymin,zmin,dx,dy,dz
+real(kind=8), intent(in) :: xcoefs(norderx/2),ycoefs(nordery/2),zcoefs(norderz/2)
+
+INTEGER :: i, j, k, l, ist
+logical(ISZ) :: l_1dz,l_2dxz,l_2drz,l_nodalgrid
+real(8) :: ru,rd
+
+if (l_nodalgrid) then
+  ist = 0
+else
+  ist = 1
+end if
+
+if (.not.l_2dxz) then
+
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-ist
+     exy(j,k,l) = afy(k)*exy(j,k,l) 
+     do i = 1, nordery/2
+      exy(j,k,l) = exy(j,k,l) + ycoefs(i)*bpfy(k)*(bzx(j,k+i-ist,l)+bzy(j,k+i-ist,l))  &
+                              + ycoefs(i)*bmfy(k)*(bzx(j,k-i,l)+bzy(j,k-i,l)) !- 0.5_8*dt*j(j,k,l,1)
+     end do
+    end do
+   end do
+  end do
+
+  do l = 0, nz
+   do k = 0, ny
+    do j = 0, nx-ist
+     exz(j,k,l) = afz(l)*exz(j,k,l)
+     do i = 1, norderz/2
+      exz(j,k,l) = exz(j,k,l) - zcoefs(i)*bpfz(l)*(byx(j,k,l+i-ist)+byz(j,k,l+i-ist))  &
+                              - zcoefs(i)*bmfz(l)*(byx(j,k,l-i)+byz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,1)
+     end do
+    end do
+   end do
+  end do
+
+  do l = 0, nz
+   do k = 0, ny-ist
+    do j = 0, nx
+     eyx(j,k,l) = afx(j)*eyx(j,k,l)
+     do i = 1, norderx/2
+      eyx(j,k,l) = eyx(j,k,l) - xcoefs(i)*bpfx(j)*(bzx(j+i-ist,k,l)+bzy(j+i-ist,k,l))  &
+                              - xcoefs(i)*bmfx(j)*(bzx(j-i,k,l)+bzy(j-i,k,l)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+    end do
+   end do
+  end do
+
+  do l = 0, nz
+   do k = 0, ny-ist
+    do j = 0, nx
+     eyz(j,k,l) = afz(l)*eyz(j,k,l)
+     do i = 1, norderz/2
+      eyz(j,k,l) = eyz(j,k,l) + zcoefs(i)*bpfz(l)*(bxy(j,k,l+i-ist)+bxz(j,k,l+i-ist))  &
+                              + zcoefs(i)*bmfz(l)*(bxy(j,k,l-i)+bxz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+    end do
+   end do
+  end do
+
+  do l = 0, nz-ist
+   do k = 0, ny
+    do j = 0, nx
+     ezx(j,k,l) = afx(j)*ezx(j,k,l)
+     do i = 1, norderx/2
+      ezx(j,k,l) = ezx(j,k,l) + xcoefs(i)*bpfx(j)*(byx(j+i-ist,k,l)+byz(j+i-ist,k,l))  &
+                              + xcoefs(i)*bmfx(j)*(byx(j-i,k,l)+byz(j-i,k,l)) !- 0.5_8*dt*j(j,k,l,3)
+     end do
+    end do
+   end do
+  end do
+
+  do l = 0, nz-ist
+   do k = 0, ny
+    do j = 0, nx
+     ezy(j,k,l) = afy(k)*ezy(j,k,l)
+     do i = 1, nordery/2
+      ezy(j,k,l) = ezy(j,k,l) - ycoefs(i)*bpfy(k)*(bxy(j,k+i-ist,l)+bxz(j,k+i-ist,l))  &
+                              - ycoefs(i)*bmfy(k)*(bxy(j,k-i,l)+bxz(j,k-i,l)) !- 0.5_8*dt*j(j,k,l,3)
+     end do
+    end do
+   end do
+  end do
+
+else
+ k = 0
+
+ if (l_1dz) then
+  j = 0
+
+  do l = 0, nz
+     exz(j,k,l) = afz(l)*exz(j,k,l)
+     do i = 1, norderz/2
+      exz(j,k,l) = exz(j,k,l) - zcoefs(i)*bpfz(l)*(byx(j,k,l+i-ist)+byz(j,k,l+i-ist))  &
+                                     - zcoefs(i)*bmfz(l)*(byx(j,k,l-i)+byz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,1)
+     end do
+  end do
+
+  do l = 0, nz
+     eyz(j,k,l) = afz(l)*eyz(j,k,l)
+     do i = 1, norderz/2
+      eyz(j,k,l) = eyz(j,k,l) + zcoefs(i)*bpfz(l)*(bxz(j,k,l+i-ist))  &
+                                     + zcoefs(i)*bmfz(l)*(bxz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+  end do
+
+ else if (.not. l_2drz) then
+
+  do l = 0, nz
+    do j = 0, nx-ist
+     exz(j,k,l) = afz(l)*exz(j,k,l)
+     do i = 1, norderz/2
+      exz(j,k,l) = exz(j,k,l) - zcoefs(i)*bpfz(l)*(byx(j,k,l+i-ist)+byz(j,k,l+i-ist))  &
+                              - zcoefs(i)*bmfz(l)*(byx(j,k,l-i)+byz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,1)
+     end do
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+     eyx(j,k,l) = afx(j)*eyx(j,k,l)
+     do i = 1, norderx/2
+      eyx(j,k,l) = eyx(j,k,l) - xcoefs(i)*bpfx(j)*(bzx(j+i-ist,k,l))  &
+                              - xcoefs(i)*bmfx(j)*(bzx(j-i,k,l)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+     eyz(j,k,l) = afz(l)*eyz(j,k,l)
+     do i = 1, norderz/2
+      eyz(j,k,l) = eyz(j,k,l) + zcoefs(i)*bpfz(l)*(bxz(j,k,l+i-ist))  &
+                              + zcoefs(i)*bmfz(l)*(bxz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+    end do
+  end do
+
+  do l = 0, nz-ist
+    do j = 0, nx
+     ezx(j,k,l) = afx(j)*ezx(j,k,l)
+     do i = 1, norderx/2
+      ezx(j,k,l) = ezx(j,k,l) + xcoefs(i)*bpfx(j)*(byx(j+i-ist,k,l)+byz(j+i-ist,k,l))  &
+                              + xcoefs(i)*bmfx(j)*(byx(j-i,k,l)+byz(j-i,k,l)) !- 0.5_8*dt*j(j,k,l,3)
+     end do
+    end do
+  end do
+
+ else ! l_2drz=True
+
+  do l = 0, nz
+    do j = 0, nx-ist
+     exz(j,k,l) = afz(l)*exz(j,k,l)
+     do i = 1, norderz/2
+      exz(j,k,l) = exz(j,k,l) - zcoefs(i)*bpfz(l)*(byx(j,k,l+i-ist)+byz(j,k,l+i-ist))  &
+                                     - zcoefs(i)*bmfz(l)*(byx(j,k,l-i)+byz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,1)
+     end do
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+      eyx(j,k,l) = afx(j)*eyx(j,k,l) - bpfx(j)*(bzx(j,k,l))  &
+                                     - bmfx(j)*(bzx(j-1,k,l)) !- 0.5_8*dt*j(j,k,l,2)
+    end do
+  end do
+
+  do l = 0, nz
+    do j = 0, nx
+     eyz(j,k,l) = afz(l)*eyz(j,k,l)
+     do i = 1, norderz/2
+      eyz(j,k,l) = eyz(j,k,l) + zcoefs(i)*bpfz(l)*(bxz(j,k,l+i-ist))  &
+                                     + zcoefs(i)*bmfz(l)*(bxz(j,k,l-i)) !- 0.5_8*dt*j(j,k,l,2)
+     end do
+    end do
+  end do
+
+  if (xmin==0.) then
+    do l = 0, nz-1
+      j = 0
+      ezx(j,k,l) = afx(j)*ezx(j,k,l) + 4*bpfx(j)*(byx(j,k,l)+byz(j,k,l))  
+      do j = 1, nx
+        ru = 1.+0.5/j
+        rd = 1.-0.5/j
+        ezx(j,k,l) = afx(j)*ezx(j,k,l) + ru*bpfx(j)*(byx(j,k,l)+byz(j,k,l))  &
+                                       + rd*bmfx(j)*(byx(j-1,k,l)+byz(j-1,k,l)) !- 0.5_8*dt*j(j,k,l,3)
+      end do
+    end do
+  else
+    do l = 0, nz-1
+      do j = 0, nx
+        ru = 1.+0.5/(xmin/dx+j)
+        rd = 1.-0.5/(xmin/dx+j)
+        ezx(j,k,l) = afx(j)*ezx(j,k,l) + ru*bpfx(j)*(byx(j,k,l)+byz(j,k,l))  &
+                                       + rd*bmfx(j)*(byx(j-1,k,l)+byz(j-1,k,l)) !- 0.5_8*dt*j(j,k,l,3)
+      end do
+    end do
+  end if 
+
+ end if
+ 
+end if
+
+  return
+end subroutine push_em3d_splitevec_norder
 
 subroutine scale_em3d_splitevec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exy,exz,eyx,eyz,ezx,ezy,&
@@ -2826,6 +3442,7 @@ INTEGER :: j, k, l,which
   call set_bndcoeffsem3d(sf,dt,which)
 
   if (sf%stencil==0 .or. sf%stencil==2) then
+   if ((sf%norderx==2) .and. (sf%nordery==2) .and. (sf%norderz==2)) then
     call push_em3d_splitbvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%nxbs,sf%nybs,sf%nzbs, &
                              sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
@@ -2834,6 +3451,18 @@ INTEGER :: j, k, l,which
                              sf%bpgx,sf%bpgy,sf%bpgz, &
                              sf%bmgx,sf%bmgy,sf%bmgz,sf%l_1dz,sf%l_2dxz,sf%l_2drz, &
                              sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+   else
+    call push_em3d_splitbvec_norder(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%nxbs,sf%nybs,sf%nzbs, &
+                             sf%norderx,sf%nordery,sf%norderz, &
+                             sf%xcoefs,sf%ycoefs,sf%zcoefs, &
+                             sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
+                             sf%bxy,sf%byx,sf%bzx,sf%bxz,sf%byz,sf%bzy, &
+                             sf%agx,sf%agy,sf%agz, &
+                             sf%bpgx,sf%bpgy,sf%bpgz, &
+                             sf%bmgx,sf%bmgy,sf%bmgz,sf%l_1dz,sf%l_2dxz,sf%l_2drz,sf%l_nodalgrid, &
+                             sf%xmin,sf%ymin,sf%zmin,sf%dx,sf%dy,sf%dz)
+   end if
   else
     call push_em3d_splitkyeebvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exx,sf%exy,sf%exz,sf%eyx,sf%eyy,sf%eyz,sf%ezx,sf%ezy,sf%ezz, &
@@ -2988,6 +3617,187 @@ end if
 
   return
 end subroutine push_em3d_splitbvec
+
+subroutine push_em3d_splitbvec_norder(nx,ny,nz,nxguard,nyguard,nzguard,nxs,nys,nzs, &
+                               norderx,nordery,norderz, &
+                               xcoefs,ycoefs,zcoefs, &
+                               exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
+                               agx,agy,agz,bpgx,bpgy,bpgz,bmgx,bmgy,bmgz,l_1dz,l_2dxz,l_2drz,l_nodalgrid, &
+                               xmin,ymin,zmin,dx,dy,dz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxs,nys,nzs,nxguard,nyguard,nzguard,norderx,nordery,norderz
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: bxy,byx,bzx,bxz,byz,bzy
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(in) :: exx,exy,exz, &
+                                                                                                    eyx,eyy,eyz, &
+                                                                                                    ezx,ezy,ezz
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: agx,bpgx,bmgx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: agy,bpgy,bmgy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: agz,bpgz,bmgz
+real(kind=8), intent(in) :: xmin,ymin,zmin,dx,dy,dz
+real(kind=8), intent(in) :: xcoefs(norderx/2),ycoefs(nordery/2),zcoefs(norderz/2)
+
+INTEGER :: i, j, k, l, ist
+logical(ISZ) :: l_1dz, l_2dxz,l_2drz,l_nodalgrid
+real(8) :: ru
+
+if (l_nodalgrid) then
+  ist = 0
+else
+  ist = 1
+end if
+
+if (.not.l_2dxz) then
+
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs
+     bxy(j,k,l) = agy(k)*bxy(j,k,l)
+     do i = 1, nordery/2
+      bxy(j,k,l) = bxy(j,k,l) - ycoefs(i)*bpgy(k)*(ezx(j,k+i,l  )+ezy(j,k+i,l  )+ezz(j,k+i,l  )) &
+                              - ycoefs(i)*bmgy(k)*(ezx(j,k-i+ist,l  )+ezy(j,k-i+ist,l  )+ezz(j,k-i+ist,l  ))
+     end do
+    end do
+   end do
+  end do
+
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs
+     bxz(j,k,l) = agz(l)*bxz(j,k,l)
+     do i = 1, norderx/2
+      bxz(j,k,l) = bxz(j,k,l) + zcoefs(i)*bpgz(l)*(eyx(j,k  ,l+i)+eyy(j,k  ,l+i)+eyz(j,k  ,l+i)) &
+                              + zcoefs(i)*bmgz(l)*(eyx(j,k  ,l-i+ist)+eyy(j,k  ,l-i+ist)+eyz(j,k  ,l-i+ist))
+     end do
+    end do
+   end do
+  end do
+
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-ist
+     byx(j,k,l) = agx(j)*byx(j,k,l)
+     do i = 1, norderx/2
+      byx(j,k,l) = byx(j,k,l) + xcoefs(i)*bpgx(j)*(ezx(j+i,k,l  )+ezy(j+i,k,l  )+ezz(j+i,k,l  )) &
+                              + xcoefs(i)*bmgx(j)*(ezx(j-i+ist,k,l  )+ezy(j-i+ist,k,l  )+ezz(j-i+ist,k,l  ))
+     end do
+    end do
+   end do
+  end do
+
+  do l = -nzs, nz+nzs-ist
+   do k = -nys, ny+nys
+    do j = -nxs, nx+nxs-ist
+     byz(j,k,l) = agz(l)*byz(j,k,l)
+     do i = 1, norderz/2
+      byz(j,k,l) = byz(j,k,l) - zcoefs(i)*bpgz(l)*(exx(j  ,k,l+i)+exy(j  ,k,l+i)+exz(j  ,k,l+i)) &
+                              - zcoefs(i)*bmgz(l)*(exx(j  ,k,l-i+ist)+exy(j  ,k,l-i+ist)+exz(j  ,k,l-i+ist))
+     end do
+    end do
+   end do
+  end do
+
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs-ist
+     bzx(j,k,l) = agx(j)*bzx(j,k,l)
+     do i = 1, norderx/2
+      bzx(j,k,l) = bzx(j,k,l) - xcoefs(i)*bpgx(j)*(eyx(j+i,k  ,l)+eyy(j+i,k  ,l)+eyz(j+i,k  ,l)) &
+                              - xcoefs(i)*bmgx(j)*(eyx(j-i+ist,k  ,l)+eyy(j-i+ist,k  ,l)+eyz(j-i+ist,k  ,l))
+     end do
+    end do
+   end do
+  end do
+
+  do l = -nzs, nz+nzs
+   do k = -nys, ny+nys-ist
+    do j = -nxs, nx+nxs-ist
+     bzy(j,k,l) = agy(k)*bzy(j,k,l)
+     do i = 1, nordery/2
+      bzy(j,k,l) = bzy(j,k,l) + ycoefs(i)*bpgy(k)*(exx(j  ,k+i,l)+exy(j  ,k+i,l)+exz(j  ,k+i,l)) &
+                              + ycoefs(i)*bmgy(k)*(exx(j  ,k-i+ist,l)+exy(j  ,k-i+ist,l)+exz(j  ,k-i+ist,l))
+     end do
+    end do
+   end do
+  end do
+
+else
+  if (l_1dz) then
+   j = 0
+   k = 0
+   do l = -nzs, nz+nzs-ist
+     bxz(j,k,l) = agz(l)*bxz(j,k,l)
+     do i = 1, norderz/2
+      bxz(j,k,l) = bxz(j,k,l) + zcoefs(i)*bpgz(l)*(eyx(j,k  ,l+i)+eyz(j,k  ,l+i)) &
+                              + zcoefs(i)*bmgz(l)*(eyx(j,k  ,l-i+ist)+eyz(j,k  ,l-i+ist))
+     end do
+   end do
+
+   do l = -nzs, nz+nzs-ist
+     byz(j,k,l) = agz(l)*byz(j,k,l)
+     do i = 1, norderz/2
+      byz(j,k,l) = byz(j,k,l) - zcoefs(i)*bpgz(l)*(exx(j  ,k,l+i)+exz(j  ,k,l+i)) &
+                              - zcoefs(i)*bmgz(l)*(exx(j  ,k,l-i+ist)+exz(j  ,k,l-i+ist))
+     end do
+   end do
+
+  else
+   k = 0
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs
+     bxz(j,k,l) = agz(l)*bxz(j,k,l)
+     do i = 1, norderz/2
+      bxz(j,k,l) = bxz(j,k,l) + zcoefs(i)*bpgz(l)*(eyx(j,k  ,l+i)+eyz(j,k  ,l+i)) &
+                              + zcoefs(i)*bmgz(l)*(eyx(j,k  ,l-i+ist)+eyz(j,k  ,l-i+ist))
+     end do
+    end do
+   end do
+
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs-ist
+     byx(j,k,l) = agx(j)*byx(j,k,l)
+     do i = 1, norderx/2
+      byx(j,k,l) = byx(j,k,l) + xcoefs(i)*bpgx(j)*(ezx(j+i,k,l  )+ezz(j+i,k,l  )) &
+                              + xcoefs(i)*bmgx(j)*(ezx(j-i+ist,k,l  )+ezz(j-i+ist,k,l  ))
+     end do
+    end do
+   end do
+
+  do l = -nzs, nz+nzs-ist
+    do j = -nxs, nx+nxs-ist
+     byz(j,k,l) = agz(l)*byz(j,k,l)
+     do i = 1, norderz/2
+      byz(j,k,l) = byz(j,k,l) - zcoefs(i)*bpgz(l)*(exx(j  ,k,l+i)+exz(j  ,k,l+i)) &
+                              - zcoefs(i)*bmgz(l)*(exx(j  ,k,l-i+ist)+exz(j  ,k,l-i+ist))
+     end do
+    end do
+   end do
+
+   if (l_2drz) then
+    do l = -nzs, nz+nzs
+      do j = -nxs, nx+nxs-1
+        ru = (xmin+(j+1)*dx)/(xmin+j*dx+0.5*dx)
+        bzx(j,k,l) = agx(j)*bzx(j,k,l) - bpgx(j)*ru*(eyx(j+1,k  ,l)+eyz(j+1,k  ,l)) &
+                                       - bmgx(j)*(eyx(j  ,k  ,l)+eyz(j  ,k  ,l))
+      end do
+    end do
+   else
+    do l = -nzs, nz+nzs
+     do j = -nxs, nx+nxs-ist
+       bzx(j,k,l) = agx(j)*bzx(j,k,l)
+       do i = 1, norderx/2
+        bzx(j,k,l) = bzx(j,k,l) - xcoefs(i)*bpgx(j)*(eyx(j+i,k  ,l)+eyz(j+i,k  ,l)) &
+                                - xcoefs(i)*bmgx(j)*(eyx(j-i+ist,k  ,l)+eyz(j-i+ist,k  ,l))
+       end do
+     end do
+    end do
+   end if
+  end if
+
+end if
+
+  return
+end subroutine push_em3d_splitbvec_norder
 
 subroutine scale_em3d_splitbvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                bxy,bxz,byx,byz,bzx,bzy,&
