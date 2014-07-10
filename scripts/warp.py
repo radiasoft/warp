@@ -240,6 +240,7 @@ GeV = 1.0e9    # GeV to eV
 mA = 1.0e-3    # mA to A
 uC = 1.0e-6    # micro-Coulombs to Coulombs
 nC = 1.0e-9    # nano-Coulombs to Coulombs
+gauss = 1.e-4  # gauss to T
 deg = pi/180.0 # degrees to radians
 
 # --- Set pgroup
