@@ -1468,8 +1468,8 @@ c         --- Compute normalized generalized emittances
      &         -(delxvx + delyvy)**2 - (delxvy - delyvx)**2)
           epsnr(0,js) = sqrt(max(0.,tr))*clighti*1.e6
           tg = 0.5*(epsnx(0,js)**2 + epsny(0,js)**2) +
-     &             16*(delxy*delvxvy - delxvy*delyvx)
-          epsng(0,js) = sqrt(max(0.,tg))*clighti*1.e6
+     &             16*(delxy*delvxvy - delxvy*delyvx)*clighti**2*1.e12
+          epsng(0,js) = sqrt(max(0.,tg))
           th = epsnx(0,js)**2*epsny(0,js)**2 +
      &       256*((delxy*delvxvy)**2 + (delxvy*delyvx)**2 -
      &       delxsq*delysq*(delvxvy)**2 - delxsq*delvysq*(delyvx)**2 -
@@ -1477,8 +1477,8 @@ c         --- Compute normalized generalized emittances
      &       2*delxy*delxvy*delyvx*delvxvy + 2*delxvx*delvysq*delxy*delyvx -
      &       2*delxvx*delyvy*delxy*delvxvy - 2*delxvx*delyvy*delxvy*delyvx +
      &       2*delvxsq*delyvy*delxy*delxvy + 2*delxsq*delyvy*delyvx*delvxvy +
-     &       2*delxvx*delysq*delvxvy*delxvy)
-          epsnh(0,js) = sqrt(sqrt(max(0.,th)))*clighti*1.e6
+     &       2*delxvx*delysq*delvxvy*delxvy)*clighti**4*1.e24
+          epsnh(0,js) = sqrt(sqrt(max(0.,th)))
 
 c         --- RMS beam length
           bmlen(js) = sqrt(max(0., zsqbar(0,js)-zbar(0,js)**2))
@@ -1616,8 +1616,8 @@ c             --- Compute normalized generalized emittances
      &             -(delxvx + delyvy)**2 - (delxvy - delyvx)**2)
               epsnrz(izm,js) = sqrt(max(0.,tr))*clighti*1.e6
               tg = 0.5*(epsnxz(izm,js)**2 + epsnyz(izm,js)**2) +
-     &           16*(delxy*delvxvy - delxvy*delyvx)
-              epsngz(izm,js) = sqrt(max(0.,tg))*clighti*1.e6
+     &           16*(delxy*delvxvy - delxvy*delyvx)*clighti**2*1.e12
+              epsngz(izm,js) = sqrt(max(0.,tg))
               th = epsnxz(izm,js)**2*epsnyz(izm,js)**2 +
      &          256*((delxy*delvxvy)**2 + (delxvy*delyvx)**2 -
      &          delxsq*delysq*(delvxvy)**2 - delxsq*delvysq*(delyvx)**2 -
@@ -1625,8 +1625,8 @@ c             --- Compute normalized generalized emittances
      &          2*delxy*delxvy*delyvx*delvxvy + 2*delxvx*delvysq*delxy*delyvx -
      &          2*delxvx*delyvy*delxy*delvxvy - 2*delxvx*delyvy*delxvy*delyvx +
      &          2*delvxsq*delyvy*delxy*delxvy + 2*delxsq*delyvy*delyvx*delvxvy +
-     &          2*delxvx*delysq*delvxvy*delxvy)
-              epsnhz(izm,js) = sqrt(sqrt(max(0.,th)))*clighti*1.e6
+     &          2*delxvx*delysq*delvxvy*delxvy)*clighti**4*1.e24
+              epsnhz(izm,js) = sqrt(sqrt(max(0.,th)))
 
             enddo
 
