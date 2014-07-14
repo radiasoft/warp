@@ -352,6 +352,28 @@ c=============================================================================
       return
       end
 c=============================================================================
+      subroutine addsortedpotential(n,isort,tpotential,potential)
+      use Subtimersw3d
+      integer(ISZ):: n
+      integer(ISZ):: isort(0:n-1)
+      real(kind=8),dimension(0:n-1):: tpotential,potential
+
+      integer(ISZ):: i
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      do i=0,n-1
+        potential(isort(i)) = potential(isort(i)) + tpotential(i)
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timeaddsortedpotential = timeaddsortedpotential +
+     &                                        wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
       subroutine getabsgrad3d(nx,ny,nz,f,gr,dx,dy,dz)
       use Subtimersw3d
       integer(ISZ):: nx,ny,nz

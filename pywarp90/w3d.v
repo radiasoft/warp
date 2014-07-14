@@ -1258,6 +1258,10 @@ addsortedefield(n:integer,isort(0:n-1):integer,
                 tex(0:n-1):real,tey(0:n-1):real,tez(0:n-1):real,
                 ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
+addsortedpotential(n:integer,isort(0:n-1):integer,
+                tpotential(0:n-1):real,
+                potential(0:n-1):real)
+      subroutine
 getextpart(pgroup:ParticleGroup)  subroutine
 setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
       # Checks the consistency of Grid3dtype input and allocates the grid
@@ -1474,6 +1478,7 @@ timeaddrhotoowner real /0./
 timegetrhofromowner real /0./
 timegetabsgrad real /0./
 timeaddsortedefield real /0./
+timeaddsortedpotential real /0./
 
 timeinit_w3d_parallel real /0./
 timesw_globalsum real /0./

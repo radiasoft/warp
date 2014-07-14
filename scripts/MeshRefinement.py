@@ -1404,6 +1404,10 @@ class MeshRefinement(VisualizableClass):
                 if len(tdx) > 0: addsortedefield(len(tdx),isort,tdx,tdy,tdz,dx,dy,dz)
 
     def fetchpotentialfrompositions(self,x,y,z,potential):
+        if not self.finalized: return
+        self.fetchpotentialfrompositionswithoutsort(x,y,z,potential)
+
+    def fetchpotentialfrompositions_old(self,x,y,z,potential):
         """
     Fetches the potential, given a list of positions
         """
@@ -1455,6 +1459,42 @@ class MeshRefinement(VisualizableClass):
 
             # --- Get potential from this domain
             self.__class__.__bases__[1].fetchpotentialfrompositions(self,x,y,z,potential)
+
+    def fetchpotentialfrompositionswithoutsort(self,x,y,z,potential):
+        """
+    This is the version of fetchpotentialfrompositions that doesn't rely on having
+    access to the particle group and does not sort the input data.
+        """
+
+        if len(self.children) > 0:
+
+            ichild = zeros(len(x),'l')
+            # --- This assumes that the root block has blocknumber zero.
+            self.getichild_positiveonly(x,y,z,ichild)
+
+            x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
+
+            # --- Create temporary arrays to hold the potential
+            tpotential = zeros(len(potential),'d')
+
+        else:
+            isort = None
+            nperchild = [len(x)]
+            tpotential = potential
+
+        # --- For each block, pass to it the particles in it's domain.
+        i = 0
+        for block,n in zip(self.root.listofblocks,nperchild):
+            if n == 0: continue
+            self.__class__.__bases__[1].fetchpotentialfrompositions(block,
+                                            x[i:i+n],y[i:i+n],z[i:i+n],
+                                            tpotential[i:i+n])
+            i = i + n
+
+        # --- Now, put the potentials back into the original arrays, unsorting
+        # --- the data
+        if isort is not None:
+            if len(tpotential) > 0: addsortedpotential(len(tpotential),isort,tpotential,potential)
 
     def sortbyichildgetisort(self,ichild,x,y,z):
         xout,yout,zout = empty((3,len(x)),'d')
