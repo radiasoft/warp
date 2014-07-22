@@ -6,6 +6,7 @@ VERBOSE = #-v
 FORTHON = Forthon
 PYTHON = python
 BUILDBASEDIR = build
+INSTALLOPTIONS = #--user
 -include Makefile.local
 BUILDBASE = --build-base $(BUILDBASEDIR)
 BUILDARGS = $(BUILDBASE) --build-platlib $(BUILDBASEDIR)/tempsofiles
@@ -14,10 +15,10 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE)
 
 installso: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE) install
+	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE) install $(INSTALLOPTIONS)
 
 install: installso
-	(cd ../scripts;$(PYTHON) setup.py install)
+	(cd ../scripts;$(PYTHON) setup.py install $(INSTALLOPTIONS))
 
 toppy.$(SO): top.F top_lattice.F top_fsl.F dtop.F util.F top.v
 	$(FORTHON) -a $(VERBOSE) $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F top_fsl.F dtop.F util.F $(BUILDARGS)
