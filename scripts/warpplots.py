@@ -1659,8 +1659,10 @@ def ppgeneric(y=None,x=None,kwdict={},**kw):
 
     # --- Calculate extrema of the particles
     if isinstance(x,ndarray) and isinstance(y,ndarray):
+        if xoffset != 0.:
+            x = x - xoffset
         # --- Get slope subtracted value of y
-        yms = y - x*slope + (xoffset*slope - yoffset - offset)
+        yms = y - x*slope - yoffset - offset
         # --- For the particles, get mins and maxs that were not supplied by the user.
         if lparallel and not local:
             if xmin is None: xmintemp = globalmin(x)
