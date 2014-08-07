@@ -1928,8 +1928,7 @@ class EM3D(SubcycledPoissonSolver):
       self.push_spectral_psaotd()
     else:
       self.push_e()
-#      if self.pml_method<2:
-#        self.exchange_e()
+      self.exchange_e()
       for i in range(int(self.ncyclesperstep)-1):
         self.push_b_full()
         if self.l_pushf:self.exchange_f()
@@ -1939,7 +1938,8 @@ class EM3D(SubcycledPoissonSolver):
       self.push_b_part_1()
     if self.pml_method==2:
       scale_em3d_bnd_fields(self.block,top.dt,self.l_pushf)
-    self.exchange_e()
+    if self.fields.spectral:
+      self.exchange_e()
     if self.l_pushf:self.exchange_f()
     self.exchange_b()
     self.setebp()
