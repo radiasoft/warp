@@ -365,10 +365,15 @@ c           --- Increment the particle counter for the digit reversed seed
 c             --- Check if the particle is within the transverse injection
 c             --- region. This is only really needed when
 c             --- l_inj_user_particles is true.
-              if (xt(ip) < inj_xmmin(ij)) cycle
-              if (yt(ip) < inj_ymmin(ij)) cycle
-              if (xt(ip) >= inj_xmmin(ij) + inj_nx*inj_dx) cycle
-              if (yt(ip) >= inj_ymmin(ij) + inj_ny*inj_dy) cycle
+              if(l_inj_rz .or. l_inj_rz_grid) then
+                if (abs(xt(ip)) >= inj_nx*inj_dx) cycle
+                if (abs(yt(ip)) >= inj_nx*inj_dx) cycle
+              else
+                if (xt(ip) < inj_xmmin(ij)) cycle
+                if (yt(ip) < inj_ymmin(ij)) cycle
+                if (xt(ip) >= inj_xmmin(ij) + inj_nx*inj_dx) cycle
+                if (yt(ip) >= inj_ymmin(ij) + inj_ny*inj_dy) cycle
+              endif
 
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
@@ -411,7 +416,7 @@ c                 --- the grid boundary or they will never be accelerated.
               else
                 if (vzinj > 0.) then
                   if (zpmin+zgrid > zs+zinj .or. zs+zinj >= zpmax+zgrid) cycle
-                 else
+                else
                   if (zpmin+zgrid >= zs+zinj .or. zs+zinj > zpmax+zgrid) cycle
                 endif
               endif
