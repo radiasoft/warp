@@ -4292,7 +4292,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
-      if (lbeforelr) call callpythonfunc("beforelr","controllers")
+      if (lbeforelr) call callpythonfunc("beforeloadrho","controllers")
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
