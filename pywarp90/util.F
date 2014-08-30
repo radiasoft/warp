@@ -4869,7 +4869,7 @@ c
       return
       end
 c************************************************************************** 
-      SUBROUTINE DPBSV( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
+      SUBROUTINE WARP_DPBSV( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
 *
 *  -- LAPACK driver routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -4978,7 +4978,7 @@ c**************************************************************************
       external::         warp_lsame
 *     ..
 *     .. External Subroutines ..
-      external::         DPBTRF, DPBTRS, WARP_XERBLA
+      external::         WARP_DPBTRF, WARP_DPBTRS, WARP_XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MAX
@@ -5008,12 +5008,12 @@ c**************************************************************************
 *
 *     Compute the Cholesky factorization A = U'*U or A = L*L'.
 *
-      CALL DPBTRF( UPLO, N, KD, AB, LDAB, INFO )
+      CALL WARP_DPBTRF( UPLO, N, KD, AB, LDAB, INFO )
       IF( INFO.EQ.0 ) THEN
 *
 *        Solve the system A*X = B, overwriting B with X.
 *
-         CALL DPBTRS( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
+         CALL WARP_DPBTRS( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
 *
       END IF
       RETURN
@@ -5022,7 +5022,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE DPBTRF( UPLO, N, KD, AB, LDAB, INFO )
+      SUBROUTINE WARP_DPBTRF( UPLO, N, KD, AB, LDAB, INFO )
 *
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
@@ -5031,7 +5031,7 @@ c**************************************************************************
 *
 *     .. Scalar Arguments ..
       character::        UPLO
-      integer::          INFO, KD, LDAB, N
+      integer(ISZ)::          INFO, KD, LDAB, N
 *     ..
 *     .. Array Arguments ..
       real(kind=8)::   AB( LDAB, * )
@@ -5040,7 +5040,7 @@ c**************************************************************************
 *  Purpose
 *  =======
 *
-*  DPBTRF computes the Cholesky factorization of a real symmetric
+*  WARP_DPBTRF computes the Cholesky factorization of a real symmetric
 *  positive definite band matrix A.
 *
 *  The factorization has the form
@@ -5430,7 +5430,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE DPBTRS( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
+      SUBROUTINE WARP_DPBTRS( UPLO, N, KD, NRHS, AB, LDAB, B, LDB, INFO )
 *
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,

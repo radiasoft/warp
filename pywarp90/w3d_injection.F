@@ -5160,9 +5160,9 @@ c       --- set temporaries
         n = inj_nz-1
         nrhs4 = nrhs
 #ifdef CYGWIN
-        call dpbsv_('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
+        call warp_dpbsv_('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
 #else
-        call dpbsv('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
+        call warp_dpbsv('u',n,kd,nrhs4,ab,ldab,rhs,ldb,info)
 #endif
         if(info/=0) then
           write(0,*) 'ERROR in subroutine getinj_phi_mr at exit of call to LAPACK routine dpbsv'
