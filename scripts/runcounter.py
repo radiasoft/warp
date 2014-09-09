@@ -36,7 +36,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
     if not prefix: prefix = arraytostr(top.runid)
 
     # --- Handle ensembles
-    assert type(ensembles) in [int,list,tuple,ndarray],\
+    assert type(ensembles) in [types.IntType,types.ListType,types.TupleType,ndarray],\
            'ensembles must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list and make sure that it is a copy since it is
     # --- appended to.
@@ -47,7 +47,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
     ensembles.append(sys.maxint)
 
     # --- Handle init values
-    assert type(init) in [int,list,tuple,ndarray],\
+    assert type(init) in [types.IntType,types.ListType,types.TupleType,ndarray],\
            'init must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list
     if isinstance(init,types.IntType): init = [init]
@@ -56,7 +56,7 @@ def runcounter(init=0,delta=1,ensembles=[],prefix=None,suffix="_runcounter",
     while len(init) < len(ensembles): init.append(0)
 
     # --- Handle delta values
-    assert type(delta) in [int,list,tuple,ndarray],\
+    assert type(delta) in [types.IntType,types.ListType,types.TupleType,ndarray],\
            'delta must either be an integer or one of a list, tuple, or array'
     # --- Make sure it is a list
     if isinstance(delta,types.IntType): delta = [delta]
