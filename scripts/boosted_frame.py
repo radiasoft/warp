@@ -339,132 +339,132 @@ to be lifted in the future.
     n2 = getn(pgroup=self.pgroup)
     return n1+n2
     
-  def getx(self):
-    n1 = self.species.getn()
+  def getx(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getx()
+      z1 = self.species.getx(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getx(pgroup=self.pgroup)
+      z2 = getx(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def gety(self):
-    n1 = self.species.getn()
+  def gety(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.gety()
+      z1 = self.species.gety(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = gety(pgroup=self.pgroup)
+      z2 = gety(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getz(self):
-    n1 = self.species.getn()
+  def getz(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getz()
+      z1 = self.species.getz(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getz(pgroup=self.pgroup)
+      z2 = getz(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getgaminv(self):
-    n1 = self.species.getn()
+  def getgaminv(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getgaminv()
+      z1 = self.species.getgaminv(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getgaminv(pgroup=self.pgroup)
+      z2 = getgaminv(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
         
-  def getux(self):
-    n1 = self.species.getn()
+  def getux(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getux()
+      z1 = self.species.getux(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getux(pgroup=self.pgroup)
+      z2 = getux(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getuy(self):
-    n1 = self.species.getn()
+  def getuy(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getuy()
+      z1 = self.species.getuy(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getuy(pgroup=self.pgroup)
+      z2 = getuy(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getuz(self):
-    n1 = self.species.getn()
+  def getuz(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getuz()
+      z1 = self.species.getuz(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getuz(pgroup=self.pgroup)
+      z2 = getuz(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getvx(self):
-    n1 = self.species.getn()
+  def getvx(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getvx()
+      z1 = self.species.getvx(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getvx(pgroup=self.pgroup)
+      z2 = getvx(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getvy(self):
-    n1 = self.species.getn()
+  def getvy(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getvy()
+      z1 = self.species.getvy(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getvy(pgroup=self.pgroup)
+      z2 = getvy(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
     
-  def getvz(self):
-    n1 = self.species.getn()
+  def getvz(self,**kw):
+    n1 = self.species.getn(**kw)
     if n1>0:
-      z1 = self.species.getvz()
+      z1 = self.species.getvz(**kw)
     else:
       z1 = array([])
-    n2 = getn(pgroup=self.pgroup)
+    n2 = getn(pgroup=self.pgroup,**kw)
     if n2>0:
-      z2 = getvz(pgroup=self.pgroup)
+      z2 = getvz(pgroup=self.pgroup,**kw)
     else:
       z2 = array([])
     return concatenate([z1,z2])
