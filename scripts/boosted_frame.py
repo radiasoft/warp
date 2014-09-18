@@ -333,3 +333,269 @@ to be lifted in the future.
       fs.aftersetsourcep()
 #      fs.aftersetsourcep(lzero=1)
     w3d.lbeforelr=1
+
+  def getn(self):
+    n1 = self.species.getn()
+    n2 = getn(pgroup=self.pgroup)
+    return n1+n2
+    
+  def getx(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getx()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getx(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def gety(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.gety()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = gety(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getz(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getz()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getz(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getgaminv(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getgaminv()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getgaminv(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+        
+  def getux(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getux()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getux(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getuy(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getuy()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getuy(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getuz(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getuz()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getuz(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getvx(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getvx()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getvx(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getvy(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getvy()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getvy(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+    
+  def getvz(self):
+    n1 = self.species.getn()
+    if n1>0:
+      z1 = self.species.getvz()
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup)
+    if n2>0:
+      z2 = getvz(pgroup=self.pgroup)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+
+  def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
+                    nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1,l4symtry=None,l2symtry=None):
+        if l_minmax_grid:
+            if xmin is None:xmin=w3d.xmmin
+            if xmax is None:xmax=w3d.xmmax
+            if ymin is None:ymin=w3d.ymmin
+            if ymax is None:ymax=w3d.ymmax
+            if zmin is None:zmin=w3d.zmmin+top.zgrid
+            if zmax is None:zmax=w3d.zmmax+top.zgrid
+            if l4symtry is None:l4symtry=w3d.l4symtry
+            if l2symtry is None:l2symtry=w3d.l2symtry
+        else:
+            if xmin is None:xmin=min(self.getx())
+            if xmax is None:xmax=max(self.getx())
+            if ymin is None:ymin=min(self.gety())
+            if ymax is None:ymax=max(self.gety())
+            if zmin is None:zmin=min(self.getz())
+            if zmax is None:zmax=max(self.getz())
+            if l4symtry is None:l4symtry=false
+            if l2symtry is None:l2symtry=false
+        if dens is None:
+            if nx is None:nx=w3d.nx
+            if ny is None:ny=w3d.ny
+            if nz is None:nz=w3d.nz
+            if w3d.solvergeom is w3d.XYgeom:
+                density = fzeros([nx+1,ny+1],'d')
+                densityc = fzeros([nx+1,ny+1],'d')
+            else:
+                if w3d.solvergeom in [w3d.Zgeom]:
+                    density = fzeros([nz+1],'d')
+                    densityc = fzeros([nz+1],'d')
+                elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+                    density = fzeros([nx+1,nz+1],'d')
+                    densityc = fzeros([nx+1,nz+1],'d')
+                else:
+                    density = fzeros([nx+1,ny+1,nz+1],'d')
+                    densityc = fzeros([nx+1,ny+1,nz+1],'d')
+        else:
+            if w3d.solvergeom is w3d.XYgeom:
+                nx = shape(dens)[0]-1
+                ny = shape(dens)[1]-1
+            else:
+                if w3d.solvergeom in [w3d.Zgeom]:
+                    nz = shape(dens)[0]-1
+                if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+                    nx = shape(dens)[0]-1
+                    nz = shape(dens)[1]-1
+                else:
+                    nx = shape(dens)[0]-1
+                    ny = shape(dens)[1]-1
+                    nz = shape(dens)[2]-1
+            density = dens
+            densityc = 0.*dens
+
+        np=0
+        for pgroup in [top.pgroup,self.pgroup]:
+          for js in self.species.jslist:
+            np+=getn(pgroup=pgroup,js=js)
+        if np == 0:
+            if dens is None:
+                return density
+            else:
+                return
+        for pgroup in [top.pgroup,self.pgroup]:
+          for js in self.species.jslist:
+            x=getx(pgroup=pgroup,js=js,lost=lost,gather=0)
+            y=gety(pgroup=pgroup,js=js,lost=lost,gather=0)
+            z=getz(pgroup=pgroup,js=js,lost=lost,gather=0)
+            if w3d.solvergeom==w3d.RZgeom:x=sqrt(x*x+y*y)
+            np=shape(x)[0]
+            if np > 0:
+                if top.wpid == 0:
+                    w=self.pgroup.sw[js]*ones(np,'d')
+                else:
+                    w=self.pgroup.sw[js]*getpid(pgroup=pgroup,js=js,id=top.wpid-1,gather=0)
+                if charge:w*=self.pgroup.sq[js]
+                if w3d.solvergeom is w3d.Zgeom:
+                    deposgrid1d(1,np,z,w,nz,density,densityc,zmin,zmax)
+                elif w3d.solvergeom is w3d.XYgeom:
+                    deposgrid2d(1,np,x,y,w,nx,ny,density,densityc,xmin,xmax,ymin,ymax)
+                elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+                    deposgrid2d(1,np,x,z,w,nx,nz,density,densityc,xmin,xmax,zmin,zmax)
+                else:
+                    deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+        if w3d.solvergeom is w3d.Zgeom:
+            if l_dividebyvolume:
+                density*=nz/(zmax-zmin)
+        elif w3d.solvergeom is w3d.XYgeom:
+            if l_dividebyvolume:
+                density*=nx*ny/((xmax-xmin)*(ymax-ymin))
+                if l4symtry:
+                    density[0,:] *= 2
+                    density[:,0] *= 2
+                if l2symtry:
+                    density[:,0] *= 2
+                if w3d.boundxy is periodic:
+                    density[0,:] += density[-1,:]; density[-1,:]=density[0,:]
+                    density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
+        else:
+            if w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+                if l_dividebyvolume:
+                    density*=nx*nz/((xmax-xmin)*(zmax-zmin))
+                    if l4symtry:
+                        density[0,:] *= 2
+                    if w3d.boundxy is periodic:
+                        density[0,:] += density[-1,:]; density[-1,:]=density[0,:]
+                    if w3d.bound0 is periodic:
+                        density[:,0] += density[:,-1]; density[:,-1]=density[:,0]
+                    if w3d.solvergeom==w3d.RZgeom:
+                        dr = (xmax-xmin)/nx
+                        r = arange(nx+1)*dr
+                        for j in range(1,nx+1):
+                            density[j,:] /= 2.*pi*r[j]
+                        density[0,:] /= pi*dr/2
+            else:
+                if l_dividebyvolume:
+                    density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+                    if l4symtry:
+                        density[0,:,:] *= 2
+                        density[:,0,:] *= 2
+                    if l2symtry:
+                        density[:,0,:] *= 2
+                    if w3d.boundxy is periodic:
+                        density[0,:,:] += density[-1,:,:]; density[-1,:,:]=density[0,:,:]
+                        density[:,0,:] += density[:,-1,:]; density[:,-1,:]=density[:,0,:]
+                    if w3d.bound0 is periodic:
+                        density[:,:,0] += density[:,:,-1]; density[:,:,-1]=density[:,:,0]
+        density[...] = parallelsum(density)
+        if dens is None: return density
+      
