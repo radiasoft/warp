@@ -5,7 +5,7 @@ import collections
 import types
 
 try:
-  from Opyndx import *
+  import Opyndx 
   l_opyndx = 1
 except:
   l_opyndx = 0
@@ -2492,7 +2492,7 @@ class EM3D(SubcycledPoissonSolver):
               doautocolormap=False
               color = transpose(array([rp,gp,bp])/255.)
               ncolor = shape(color)[0]
-              colormap,opacity = DXColormap(data=colordata,ncolors=ncolor,
+              colormap,opacity = Opyndx.DXColormap(data=colordata,ncolors=ncolor,
                                               colors=color,min=cmin,max=cmax,
                                               opacitystart=opacitystart,
                                               opacityend=opacityend,
@@ -2516,13 +2516,13 @@ class EM3D(SubcycledPoissonSolver):
                 color.append(g+r*((i*4./ncolor)-2.))
               else:
                 color.append(g*(4.-(i*4./ncolor))+r)
-            colormap,opacity  = DXColormap(data=colordata,
+            colormap,opacity  = Opyndx.DXColormap(data=colordata,
                                            ncolors=ncolor,
                                            colors=color,
                                            opacitystart=opacitystart,
                                            opacityend=opacityend,
                                            opacities=opacities)
-        DXReference(colormap)
+        Opyndx.DXReference(colormap)
         # --- sets isosurfaces values
         if isos is None:
           if niso is None:niso=ncolor
@@ -2531,7 +2531,7 @@ class EM3D(SubcycledPoissonSolver):
           dei = (isomax-isomin)/niso
           isos = isomin+arange(niso)*dei+dei/2
         # --- renders isosurfaces
-        e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
+        e3d,colorbar = Opyndx.viewisosurface1(data,isos,color=color,display=0,
                         origins=origins,
                         deltas=deltas,
                         opacity=opacity,
@@ -2543,15 +2543,15 @@ class EM3D(SubcycledPoissonSolver):
           xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
           origins = [xminp*xscale,yminp*yscale,zminp*zscale]
           deltas = [dxp*xscale,dyp*yscale,dzp*zscale]
-          DXReference(colormap)
-          e3d,colorbar = viewisosurface1(data,isos,color=color,display=0,
+          Opyndx.DXReference(colormap)
+          e3d,colorbar = Opyndx.viewisosurface1(data,isos,color=color,display=0,
                           origins=origins,
                           deltas=deltas,
                           opacity=opacity,
                           colormap=colormap)
           dxob.append(e3d)
         if l_box:
-          box = viewboundingbox(w3d.xmmin*xscale,
+          box = Opyndx.viewboundingbox(w3d.xmmin*xscale,
                                 w3d.xmmax*xscale,
                                 w3d.ymmin*yscale,
                                 w3d.ymmax*yscale,
@@ -2560,12 +2560,12 @@ class EM3D(SubcycledPoissonSolver):
           dxob.append(box)
         if display:
           dxob.append(colorbar)
-          dxob = DXCollect(dxob)
+          dxob = Opyndx.DXCollect(dxob)
           if camera is None:
-            camera = DXAutocamera(dxob,direction=[-1.,1.,-1.],width=100.,resolution=640,
+            camera = Opyndx.DXAutocamera(dxob,direction=[-1.,1.,-1.],width=100.,resolution=640,
                                   aspect=2.,up=[0,1,0],perspective=1,angle=60.,
                                   background='black')
-          DXImage(dxob,camera=camera,
+          Opyndx.DXImage(dxob,camera=camera,
                        l_interactive=interactive,
                        labels=labels,
                        adjust=adjust,
@@ -2574,7 +2574,7 @@ class EM3D(SubcycledPoissonSolver):
     if display:
       return slice
     else:
-      dxob = DXCollect(dxob)
+      dxob = Opyndx.DXCollect(dxob)
       return dxob,colorbar#,slice  
 
   ##########################################################################
