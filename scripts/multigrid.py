@@ -111,11 +111,11 @@ class MultiGrid3D(SubcycledPoissonSolver):
 
         # --- This allows some introspection.
         self.dict_of_grids = {
-            'phi':{'getter':self.getphi, 'centering':'node', 'units':'V'},
-            'rho':{'getter':self.getrho, 'centering':'node', 'units':'C/m**3'},
-            'Ex':{'getter':self.getex, 'centering':'node', 'units':'V/m'},
-            'Ey':{'getter':self.getey, 'centering':'node', 'units':'V/m'},
-            'Ez':{'getter':self.getez, 'centering':'node', 'units':'V/m'},
+            'phi':{'getter':'getphi', 'centering':'node', 'units':'V'},
+            'rho':{'getter':'getrho', 'centering':'node', 'units':'C/m**3'},
+            'Ex':{'getter':'getex', 'centering':'node', 'units':'V/m'},
+            'Ey':{'getter':'getey', 'centering':'node', 'units':'V/m'},
+            'Ez':{'getter':'getez', 'centering':'node', 'units':'V/m'},
         }
 
     def initializeconductors(self):

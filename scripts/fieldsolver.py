@@ -1045,6 +1045,10 @@ class FieldSolver(object):
             top.zpmin = self.zmmin
             top.zpmax = top.zpmin + w3d.nz*w3d.dz
 
+    def get_grid(self, grid_name, *args, **kwargs):
+        'Calls the specified grid getter'
+        return getattr(self, self.dict_of_grids[grid_name]['getter'])(*args, **kwargs)
+
     # --- Diagnostic routines
     def rhodia(self):
         pass
