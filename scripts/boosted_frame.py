@@ -468,6 +468,19 @@ to be lifted in the future.
     else:
       z2 = array([])
     return concatenate([z1,z2])
+    
+  def getke(self,**kw):
+    n1 = self.species.getn(**kw)
+    if n1>0:
+      z1 = self.species.getke(**kw)
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup,**kw)
+    if n2>0:
+      z2 = getke(pgroup=self.pgroup,**kw)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
 
   def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
                     nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1,l4symtry=None,l2symtry=None):
