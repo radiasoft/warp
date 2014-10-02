@@ -481,6 +481,49 @@ to be lifted in the future.
     else:
       z2 = array([])
     return concatenate([z1,z2])
+    
+  def getpid(self,**kw):
+    n1 = self.species.getn(**kw)
+    if n1>0:
+      z1 = self.species.getpid(**kw)
+    else:
+      z1 = array([])
+    n2 = getn(pgroup=self.pgroup,**kw)
+    if n2>0:
+      z2 = getpid(pgroup=self.pgroup,**kw)
+    else:
+      z2 = array([])
+    return concatenate([z1,z2])
+
+  def dump(self,filename='pdump.pdb'):
+        if self.getn()==0:
+            return
+            x=y=z=ux=uy=uz=gi=pidNone
+        else:
+            x=self.getx()
+            y=self.gety()
+            z=self.getz()
+            ux=self.getux()
+            uy=self.getuy()
+            uz=self.getuz()
+            gi=self.getgaminv()
+            if top.npid>0:
+                pid=self.getpid()
+            else:
+                pid=None
+        if me==0:
+            import PWpickle as PW
+            f=PW.PW(filename)
+            f.time=top.time
+            f.x=x
+            f.y=y
+            f.z=z
+            f.ux=ux
+            f.uy=uy
+            f.uz=uz
+            f.gi=gi
+            f.pid=pid
+            f.close()
 
   def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
                     nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1,l4symtry=None,l2symtry=None):
