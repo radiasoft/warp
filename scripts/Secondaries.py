@@ -132,7 +132,7 @@ Class for generating secondaries
     self.power_dep=AppendableArray(typecode='d') # instantaneous power deposition [W] 
     self.power_emit=AppendableArray(typecode='d') # instantaneous power emission [W] 
     self.power_diff=AppendableArray(typecode='d') # instantaneous power deposition [W] 
-    if pos.nsteps==0:
+    if pos.nsteps_g==0:
       self.piditype=0
     else:
       self.piditype=nextpid()-1
