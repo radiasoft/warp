@@ -1593,6 +1593,7 @@ c  called after all of the element have been updated.
       call countemlts
       call countmmlts
       call countegrds
+      call countbgrds
       call countpgrds
       call countbsqgrads
       call countlmaps
