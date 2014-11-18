@@ -57,7 +57,7 @@ class EM3D(SubcycledPoissonSolver):
                     'sigmae':0.,'sigmab':0.,
                     'colecoefs':None,'l_setcowancoefs':False,
                     'pml_method':1,
-                    'excoef':None,'bycoef':None}
+                    'l_correct_num_Cherenkov':False}
 
   def __init__(self,**kw):
     self.solveroff=False # flag to turn off the solver, for testing purpose
@@ -280,6 +280,12 @@ class EM3D(SubcycledPoissonSolver):
               print '#2', self.ncyclesperstep,top.dt,self.dtcourant
       else:
         self.ncyclesperstep=sibling.ncyclesperstep
+    dtodz = clight*top.dt/self.dz
+    if self.l_correct_num_Cherenkov and top.efetch[0]==4 and self.l_lower_order_in_v and dtodz>0.756 and dtodz<0.764:
+       print "*** Warning: Coefficients for Galerkin algorithm are ill behaved for 0.756<c*Dt/Dz<0.764 and should not be used."
+       print "*** Rescaling top.dt to 0.75*Dz/c"
+       top.dt = 0.75*self.dz/clight 
+
     self.dtinit = top.dt
     
     if  top.vbeamfrm != 0.:self.bounds[-2:]=-1
@@ -410,6 +416,14 @@ class EM3D(SubcycledPoissonSolver):
     self.finalized = True
 
   def allocatefieldarrays(self):
+    
+    # --- Sets correction of Numerical Cherenkov
+    if self.l_correct_num_Cherenkov:
+      self.set_num_Cherenkov_cor_coefs()
+      excoef,bycoef = self.get_num_Cherenkov_cor_coefs()
+    else:
+      excoef=bycoef=None
+      
     self.block = pyinit_3dem_block(self.nxlocal, 
                                    self.nylocal, 
                                    self.nzlocal,
@@ -452,8 +466,8 @@ class EM3D(SubcycledPoissonSolver):
                                    self.theta_damp,
                                    self.sigmae,
                                    self.sigmab,
-                                   self.excoef,
-                                   self.bycoef,
+                                   excoef,
+                                   bycoef,
                                    self.pml_method)
     self.fields = self.block.core.yf
     if self.l_2drz:    
@@ -1946,7 +1960,7 @@ class EM3D(SubcycledPoissonSolver):
     if top.efetch[0] != 4:self.yee2node3d()
     if self.l_smooth_particle_fields and any(self.npass_smooth>0):
        self.smoothfields()
-    if self.excoef is not None:self.smoothfields_poly()
+    if self.l_correct_num_Cherenkov:self.smoothfields_poly()
     # --- for fields that are overcycled, they need to be pushed backward every ncyclesperstep
     self.push_e(dir=-1)
     self.exchange_e(dir=-1)
@@ -3853,6 +3867,7 @@ class EM3D(SubcycledPoissonSolver):
        zl+zlguard:zu-zrguard]=self.blocknumber
 
   def initstaticfields(self):
+  
       # --- This is needed because of the order in which things are imported in warp.py.
       # --- There, MagnetostaticMG is imported after em3dsolver.
       from magnetostaticMG import MagnetostaticMG
@@ -3991,7 +4006,336 @@ class EM3D(SubcycledPoissonSolver):
       if top.efetch[0] != 4:self.yee2node3d()
       if self.l_smooth_particle_fields and any(self.npass_smooth>0):
           self.smoothfields()
-    
+
+
+  def set_num_Cherenkov_cor_coefs(self):
+      if top.efetch[0]==1:self.gather_method="Momentum"
+      if top.efetch[0]>1 and self.l_lower_order_in_v:self.gather_method="Galerkin"
+      if top.efetch[0]>1 and not self.l_lower_order_in_v:self.gather_method="Uniform"
+      
+      self.num_Cherenkov_cor_coefs = {}
+      # *************************** Galerkin gather ***************************
+      self.num_Cherenkov_cor_coefs["Galerkin"]=AppendableArray(unitshape=[2,4])
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47536,2.04288,-0.598163,0.0314711],[-2.80862,2.80104,-1.14615,0.154077]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47536,2.04288,-0.598163,0.0314711],[-2.80862,2.80104,-1.14615,0.154077]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47545,2.04309,-0.598307,0.0315029],[-2.80851,2.80078,-1.14595,0.154027]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.4756,2.04342,-0.598549,0.0315558],[-2.80832,2.80034,-1.14561,0.153945]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47581,2.0439,-0.598886,0.0316298],[-2.80807,2.79973,-1.14514,0.153829]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47608,2.0445,-0.59932,0.031725],[-2.80774,2.79894,-1.14454,0.15368]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47641,2.04525,-0.59985,0.0318412],[-2.80733,2.79798,-1.1438,0.153498]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.4768,2.04612,-0.600477,0.0319785],[-2.80685,2.79685,-1.14292,0.153284]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47725,2.04714,-0.6012,0.0321367],[-2.8063,2.79554,-1.14192,0.153036]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47776,2.04829,-0.602019,0.0323158],[-2.80568,2.79405,-1.14077,0.152756]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47833,2.04957,-0.602934,0.0325158],[-2.80498,2.79239,-1.1395,0.152443]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47896,2.05099,-0.603944,0.0327364],[-2.80421,2.79056,-1.13809,0.152098]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.47965,2.05254,-0.605051,0.0329777],[-2.80337,2.78856,-1.13656,0.151721]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.4804,2.05423,-0.606253,0.0332396],[-2.80246,2.78638,-1.13488,0.151312]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48121,2.05606,-0.60755,0.0335218],[-2.80147,2.78404,-1.13308,0.150871]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48208,2.05802,-0.608942,0.0338243],[-2.80041,2.78152,-1.13115,0.150397]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48301,2.06012,-0.610429,0.0341469],[-2.79927,2.77882,-1.12908,0.149893]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48401,2.06235,-0.61201,0.0344895],[-2.79807,2.77596,-1.12689,0.149356]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48506,2.06471,-0.613685,0.0348519],[-2.79679,2.77292,-1.12456,0.148789]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48618,2.06721,-0.615453,0.0352339],[-2.79543,2.76972,-1.12211,0.14819]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48735,2.06984,-0.617314,0.0356353],[-2.79401,2.76634,-1.11953,0.14756]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48859,2.07261,-0.619268,0.0360559],[-2.79251,2.76279,-1.11681,0.1469]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.48988,2.0755,-0.621312,0.0364954],[-2.79094,2.75907,-1.11397,0.146208]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49123,2.07853,-0.623447,0.0369536],[-2.78929,2.75517,-1.111,0.145486]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49265,2.08169,-0.625672,0.0374302],[-2.78757,2.7511,-1.10789,0.144733]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49412,2.08498,-0.627986,0.0379248],[-2.78578,2.74686,-1.10466,0.14395]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49565,2.0884,-0.630386,0.0384372],[-2.78391,2.74245,-1.1013,0.143137]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49724,2.09194,-0.632873,0.0389669],[-2.78196,2.73786,-1.09781,0.142293]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.49888,2.09561,-0.635443,0.0395135],[-2.77994,2.73309,-1.09419,0.141419]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50058,2.09939,-0.638096,0.0400766],[-2.77784,2.72814,-1.09043,0.140514]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50234,2.1033,-0.640829,0.0406557],[-2.77566,2.72301,-1.08654,0.139578]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50415,2.10732,-0.64364,0.0412502],[-2.7734,2.7177,-1.08252,0.138612]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50601,2.11145,-0.646526,0.0418594],[-2.77106,2.7122,-1.07836,0.137614]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50791,2.1157,-0.649485,0.0424828],[-2.76864,2.70651,-1.07406,0.136586]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50987,2.12004,-0.652512,0.0431196],[-2.76613,2.70062,-1.06962,0.135525]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.51187,2.12448,-0.655604,0.0437688],[-2.76353,2.69453,-1.06503,0.134432]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.51392,2.12901,-0.658756,0.0444297],[-2.76084,2.68824,-1.0603,0.133307]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.516,2.13363,-0.661964,0.0451011],[-2.75806,2.68173,-1.05541,0.132148]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.51812,2.13832,-0.665221,0.0457818],[-2.75518,2.675,-1.05037,0.130954]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52027,2.14308,-0.668521,0.0464705],[-2.75219,2.66804,-1.04516,0.129725]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52244,2.14789,-0.671856,0.0471658],[-2.7491,2.66084,-1.03978,0.12846]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52464,2.15274,-0.675218,0.0478658],[-2.7459,2.65339,-1.03423,0.127156]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52684,2.15762,-0.678596,0.0485687],[-2.74257,2.64566,-1.02848,0.125813]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52906,2.16251,-0.68198,0.0492723],[-2.73912,2.63765,-1.02254,0.124428]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53126,2.16738,-0.685355,0.049974],[-2.73552,2.62934,-1.01638,0.122999]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53345,2.17222,-0.688706,0.0506708],[-2.73178,2.62069,-1.01,0.121523]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53561,2.177,-0.692015,0.0513594],[-2.72787,2.61169,-1.00337,0.119996]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53773,2.18168,-0.69526,0.0520359],[-2.72379,2.6023,-0.996479,0.118417]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53978,2.18623,-0.698416,0.0526955],[-2.71951,2.59248,-0.989294,0.116778]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54175,2.19059,-0.701452,0.053333],[-2.71501,2.58218,-0.981786,0.115076]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.5436,2.19471,-0.704331,0.0539417],[-2.71026,2.57135,-0.97392,0.113303]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54531,2.19852,-0.70701,0.0545141],[-2.70524,2.55991,-0.965651,0.111453]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54683,2.20193,-0.709433,0.0550409],[-2.69989,2.54778,-0.956922,0.109514]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.5481,2.20483,-0.711533,0.0555106],[-2.69416,2.53484,-0.947666,0.107476]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54906,2.20709,-0.713224,0.0559094],[-2.68799,2.52096,-0.937795,0.105324]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54963,2.20852,-0.714397,0.0562198],[-2.68129,2.50596,-0.927197,0.103039]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54968,2.20888,-0.714907,0.0564196],[-2.67394,2.48959,-0.915724,0.100597]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54905,2.20785,-0.714562,0.0564797],[-2.66578,2.47153,-0.903179,0.097968]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54751,2.20496,-0.713094,0.0563618],[-2.65657,2.4513,-0.889283,0.0951084]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54472,2.19955,-0.710118,0.0560124],[-2.64598,2.42824,-0.873638,0.0919592]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.54014,2.19058,-0.705048,0.0553544],[-2.63347,2.40127,-0.855632,0.0884325]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.53286,2.1763,-0.69693,0.0542684],[-2.61813,2.36864,-0.834261,0.0843898]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.52115,2.15344,-0.684027,0.05255],[-2.59821,2.32701,-0.807691,0.0795876]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.50098,2.11466,-0.66255,0.0497817],[-2.56971,2.26887,-0.77188,0.0735132]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.45797,2.03459,-0.620099,0.0446889],[-2.51823,2.16823,-0.713448,0.0645399]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.28371,1.72254,-0.465905,0.0283268],[-2.33537,1.8294,-0.533852,0.0409941]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.4885,2.04899,-0.599292,0.0390466],[-2.53143,2.14818,-0.670502,0.053982]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.1433,1.36735,-0.220924,-0.00215633],[-2.17737,1.43641,-0.259095,0.00101255]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.4943,2.07019,-0.610552,0.035166],[-2.51929,2.12931,-0.654743,0.0452381]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.84529,2.77303,-1.00018,0.0724884],[-2.86122,2.82221,-1.05039,0.0894636]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.72242,2.51888,-0.847226,0.0509964],[-2.72908,2.54506,-0.87834,0.0626188]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.65633,2.3744,-0.750392,0.0326366],[-2.6536,2.37954,-0.7665,0.0409117]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.59601,2.23412,-0.646421,0.00868027],[-2.58374,2.21923,-0.649738,0.0146791]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.51477,2.0369,-0.491066,-0.0306397],[-2.49284,2.00346,-0.48457,-0.0255348]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.35935,1.65155,-0.178971,-0.112713],[-2.32762,1.60337,-0.1698,-0.105287]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-1.84315,0.361693,0.876104,-0.393844],[-1.80149,0.316787,0.855414,-0.369652]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.65422,2.39262,-0.789663,0.0516265],[-2.60242,2.28418,-0.721378,0.040091]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-3.46529,4.42354,-2.45543,0.497097],[-3.40335,4.25157,-2.29817,0.449834]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-3.15747,3.65311,-1.824,0.328432],[-3.0852,3.47341,-1.67791,0.28982]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-3.04694,3.37613,-1.59668,0.267631],[-2.9642,3.17856,-1.44399,0.229852]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.99205,3.23814,-1.48302,0.237103],[-2.89872,3.01966,-1.31861,0.197945]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.96075,3.15894,-1.41733,0.219317],[-2.85668,2.91811,-1.23894,0.17783]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.94172,3.11028,-1.37649,0.20811],[-2.82679,2.84621,-1.18287,0.163785]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.92994,3.07962,-1.35025,0.200755],[-2.80401,2.79167,-1.14058,0.153278]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.92283,3.06054,-1.33338,0.195859],[-2.78577,2.74819,-1.10706,0.145015]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.91894,3.04938,-1.3229,0.192637],[-2.77061,2.7122,-1.07946,0.138267]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.91736,3.04394,-1.31702,0.190612],[-2.75764,2.68152,-1.05606,0.132589]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.91753,3.04278,-1.31456,0.189477],[-2.74627,2.65475,-1.03575,0.127695]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.91905,3.04494,-1.31475,0.189026],[-2.73612,2.63093,-1.01777,0.123395]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.92165,3.04973,-1.31705,0.189117],[-2.72692,2.6094,-1.00159,0.119553]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.92512,3.05667,-1.32105,0.189646],[-2.71846,2.58968,-0.986841,0.116074]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.92933,3.06539,-1.32646,0.190538],[-2.71061,2.57142,-0.973239,0.112887]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.93416,3.07562,-1.33308,0.191735],[-2.70323,2.55434,-0.960573,0.109937]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.93952,3.08715,-1.34072,0.193194],[-2.69626,2.53824,-0.948678,0.107185]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.94535,3.09982,-1.34925,0.194881],[-2.68962,2.52294,-0.937429,0.104598]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.95159,3.11349,-1.35858,0.196769],[-2.68327,2.50833,-0.926722,0.102151]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.9582,3.12805,-1.36861,0.198838],[-2.67714,2.4943,-0.916477,0.0998223]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.96514,3.14342,-1.37929,0.201068],[-2.67122,2.48076,-0.906627,0.0975966]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.97239,3.15953,-1.39055,0.203448],[-2.66546,2.46764,-0.897118,0.0954599]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.97991,3.17632,-1.40234,0.205964],[-2.65985,2.45489,-0.887903,0.0934011]]))
+      self.num_Cherenkov_cor_coefs["Galerkin"].append(array([[-2.98769,3.19374,-1.41463,0.208607],[-2.65437,2.44244,-0.878945,0.0914107]]))
+      # *************************** Momentum gather ***************************
+      self.num_Cherenkov_cor_coefs["Momentum"]=AppendableArray(unitshape=[2,4])
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98767,3.19368,-1.41458,0.208594],[-2.65428,2.44224,-0.878796,0.0913764]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98767,3.19368,-1.41458,0.208594],[-2.65428,2.44224,-0.878796,0.0913764]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.9876,3.19351,-1.41444,0.208555],[-2.65401,2.44163,-0.878347,0.0912737]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98749,3.19323,-1.41421,0.208491],[-2.65357,2.44061,-0.877602,0.0911031]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98734,3.19285,-1.41388,0.208402],[-2.65296,2.43919,-0.876563,0.0908654]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98716,3.19237,-1.41348,0.20829],[-2.65217,2.43738,-0.875236,0.0905616]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98693,3.19179,-1.41299,0.208157],[-2.65121,2.43518,-0.873624,0.0901933]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98668,3.19114,-1.41244,0.208006],[-2.65009,2.43261,-0.871736,0.089762]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98639,3.19041,-1.41183,0.207837],[-2.6488,2.42966,-0.869579,0.0892697]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98608,3.18962,-1.41116,0.207655],[-2.64736,2.42635,-0.86716,0.0887186]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98576,3.18878,-1.41046,0.207463],[-2.64577,2.4227,-0.86449,0.088111]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98542,3.18791,-1.40972,0.207262],[-2.64403,2.41871,-0.861579,0.0874494]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98507,3.18701,-1.40898,0.207058],[-2.64215,2.4144,-0.858436,0.0867364]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98472,3.18612,-1.40822,0.206852],[-2.64013,2.40979,-0.855074,0.0859749]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98437,3.18523,-1.40748,0.20665],[-2.63798,2.40488,-0.851503,0.0851676]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98403,3.18437,-1.40676,0.206454],[-2.63571,2.39969,-0.847734,0.0843175]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98371,3.18355,-1.40608,0.206269],[-2.63333,2.39425,-0.84378,0.0834274]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98341,3.18279,-1.40544,0.206097],[-2.63083,2.38855,-0.839652,0.0825004]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98314,3.1821,-1.40487,0.205943],[-2.62822,2.38262,-0.835361,0.0815392]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98291,3.1815,-1.40437,0.20581],[-2.62552,2.37647,-0.830918,0.0805468]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98271,3.181,-1.40397,0.205702],[-2.62272,2.37011,-0.826336,0.0795259]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98256,3.18062,-1.40366,0.205622],[-2.61984,2.36357,-0.821624,0.0784793]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98246,3.18037,-1.40346,0.205572],[-2.61687,2.35684,-0.816793,0.0774095]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98241,3.18027,-1.40339,0.205557],[-2.61383,2.34995,-0.811854,0.076319]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98243,3.18033,-1.40345,0.20558],[-2.61071,2.34291,-0.806815,0.0752104]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98251,3.18056,-1.40366,0.205642],[-2.60753,2.33573,-0.801685,0.0740857]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98267,3.18097,-1.40402,0.205747],[-2.60428,2.32842,-0.796474,0.0729473]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.9829,3.18157,-1.40455,0.205896],[-2.60098,2.32098,-0.791189,0.0717971]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98321,3.18238,-1.40524,0.206093],[-2.59762,2.31344,-0.785838,0.070637]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.9836,3.1834,-1.40612,0.206339],[-2.59421,2.3058,-0.780428,0.0694688]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98407,3.18465,-1.40718,0.206637],[-2.59076,2.29806,-0.774966,0.0682941]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98464,3.18612,-1.40844,0.206987],[-2.58726,2.29024,-0.769458,0.0671146]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.9853,3.18783,-1.40989,0.207392],[-2.58372,2.28234,-0.76391,0.0659314]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98606,3.18979,-1.41156,0.207853],[-2.58014,2.27437,-0.758326,0.064746]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98691,3.19199,-1.41343,0.208372],[-2.57653,2.26633,-0.752711,0.0635596]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98787,3.19446,-1.41551,0.208948],[-2.57288,2.25824,-0.74707,0.0623731]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.98892,3.19718,-1.41782,0.209585],[-2.5692,2.25009,-0.741407,0.0611876]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99008,3.20017,-1.42034,0.210281],[-2.5655,2.24189,-0.735726,0.060004]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99135,3.20343,-1.42309,0.211039],[-2.56177,2.23365,-0.730029,0.058823]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99273,3.20697,-1.42608,0.211859],[-2.55801,2.22537,-0.724319,0.0576454]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99421,3.21078,-1.42929,0.212741],[-2.55422,2.21704,-0.7186,0.0564718]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.9958,3.21487,-1.43273,0.213686],[-2.55042,2.20869,-0.712873,0.0553027]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99751,3.21925,-1.43641,0.214695],[-2.54659,2.2003,-0.707141,0.0541387]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-2.99933,3.22391,-1.44033,0.215767],[-2.54274,2.19188,-0.701405,0.0529802]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.00126,3.22886,-1.44449,0.216904],[-2.53887,2.18343,-0.695668,0.0518276]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.0033,3.2341,-1.44888,0.218105],[-2.53498,2.17496,-0.68993,0.0506813]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.00546,3.23964,-1.45352,0.219371],[-2.53108,2.16647,-0.684193,0.0495415]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.00774,3.24546,-1.4584,0.220701],[-2.52715,2.15795,-0.678458,0.0484085]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.01013,3.25158,-1.46352,0.222096],[-2.52321,2.14941,-0.672726,0.0472826]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.01264,3.25799,-1.46888,0.223557],[-2.51925,2.14085,-0.666998,0.0461638]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.01526,3.26469,-1.47449,0.225082],[-2.51528,2.13227,-0.661275,0.0450525]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.018,3.2717,-1.48034,0.226672],[-2.51129,2.12367,-0.655557,0.0439488]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.02086,3.279,-1.48644,0.228327],[-2.50728,2.11506,-0.649845,0.0428526]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.02384,3.28659,-1.49278,0.230048],[-2.50326,2.10642,-0.644139,0.0417643]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.02694,3.29449,-1.49936,0.231833],[-2.49922,2.09778,-0.63844,0.0406838]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.03015,3.30268,-1.50619,0.233684],[-2.49516,2.08911,-0.632749,0.0396112]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.03348,3.31117,-1.51327,0.2356],[-2.4911,2.08043,-0.627065,0.0385466]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.03693,3.31996,-1.52059,0.237581],[-2.48701,2.07174,-0.621388,0.03749]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.0405,3.32904,-1.52815,0.239627],[-2.48291,2.06303,-0.61572,0.0364415]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.04418,3.33843,-1.53596,0.241738],[-2.4788,2.05431,-0.610059,0.0354011]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.04799,3.34812,-1.54402,0.243915],[-2.47467,2.04557,-0.604408,0.0343687]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.05191,3.3581,-1.55232,0.246156],[-2.47053,2.03682,-0.598764,0.0333446]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.05596,3.36838,-1.56087,0.248463],[-2.46637,2.02805,-0.593129,0.0323286]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.06012,3.37896,-1.56966,0.250835],[-2.4622,2.01927,-0.587503,0.0313207]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.0644,3.38984,-1.5787,0.253272],[-2.45802,2.01047,-0.581886,0.0303211]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.0688,3.40102,-1.58798,0.255774],[-2.45381,2.00167,-0.576277,0.0293296]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.07332,3.4125,-1.59751,0.258342],[-2.4496,1.99285,-0.570678,0.0283464]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.07795,3.42428,-1.60729,0.260976],[-2.44537,1.98401,-0.565088,0.0273714]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.08271,3.43636,-1.61731,0.263675],[-2.44112,1.97516,-0.559506,0.0264046]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.08758,3.44874,-1.62758,0.26644],[-2.43686,1.9663,-0.553934,0.0254461]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.09257,3.46142,-1.6381,0.269271],[-2.43259,1.95742,-0.548372,0.0244959]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.09769,3.47439,-1.64886,0.272168],[-2.4283,1.94853,-0.542818,0.0235539]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.10292,3.48767,-1.65987,0.275131],[-2.424,1.93963,-0.537274,0.0226202]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.10826,3.50125,-1.67113,0.278161],[-2.41968,1.93072,-0.53174,0.0216949]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.11373,3.51513,-1.68264,0.281258],[-2.41534,1.92179,-0.526216,0.0207778]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.11932,3.52931,-1.6944,0.284421],[-2.411,1.91284,-0.520701,0.0198692]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.12502,3.54379,-1.7064,0.287652],[-2.40663,1.90389,-0.515196,0.0189689]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.13084,3.55857,-1.71866,0.29095],[-2.40225,1.89492,-0.5097,0.0180771]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.13678,3.57365,-1.73117,0.294316],[-2.39786,1.88594,-0.504215,0.0171938]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.14284,3.58903,-1.74393,0.297751],[-2.39345,1.87694,-0.49874,0.0163189]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.14902,3.60472,-1.75694,0.301254],[-2.38903,1.86793,-0.493276,0.0154526]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.15531,3.6207,-1.7702,0.304825],[-2.38459,1.85891,-0.487822,0.0145948]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.16173,3.63699,-1.78372,0.308466],[-2.38014,1.84988,-0.482378,0.0137456]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.16826,3.65359,-1.79749,0.312177],[-2.37567,1.84083,-0.476946,0.0129052]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.17491,3.67048,-1.81152,0.315958],[-2.37119,1.83177,-0.471524,0.0120734]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.18168,3.68768,-1.82581,0.31981],[-2.36669,1.8227,-0.466113,0.0112504]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.18856,3.70519,-1.84035,0.323732],[-2.36217,1.81361,-0.460713,0.0104362]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.19557,3.72299,-1.85515,0.327726],[-2.35764,1.80451,-0.455325,0.00963088]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.20269,3.74111,-1.8702,0.331792],[-2.3531,1.7954,-0.449949,0.0088345]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.20993,3.75953,-1.88552,0.33593],[-2.34854,1.78628,-0.444584,0.00804712]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.21729,3.77825,-1.9011,0.340142],[-2.34396,1.77714,-0.439231,0.00726881]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.22476,3.79729,-1.91694,0.344427],[-2.33937,1.768,-0.43389,0.00649963]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.23236,3.81662,-1.93305,0.348786],[-2.33476,1.75884,-0.428562,0.00573964]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.24007,3.83627,-1.94942,0.353221],[-2.33014,1.74966,-0.423246,0.00498893]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.2479,3.85623,-1.96606,0.35773],[-2.3255,1.74048,-0.417943,0.00424756]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.25584,3.87649,-1.98296,0.362316],[-2.32085,1.73128,-0.412654,0.00351561]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.26391,3.89706,-2.00013,0.366978],[-2.31618,1.72208,-0.407377,0.00279317]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.27209,3.91795,-2.01758,0.371718],[-2.31149,1.71286,-0.402114,0.0020803]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.28039,3.93914,-2.03529,0.376536],[-2.30679,1.70363,-0.396865,0.00137709]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.2888,3.96065,-2.05328,0.381432],[-2.30207,1.69438,-0.391629,0.000683629]]))
+      self.num_Cherenkov_cor_coefs["Momentum"].append(array([[-3.2888,3.96065,-2.05328,0.381432],[-2.30207,1.69438,-0.391629,0.000683629]]))
+      # *************************** Uniform gather ***************************
+      self.num_Cherenkov_cor_coefs["Uniform"]=AppendableArray(unitshape=[2,4])
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54365,2.19481,-0.704398,0.0539562],[-2.71024,2.57129,-0.973879,0.113294]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54365,2.19481,-0.704398,0.0539562],[-2.71024,2.57129,-0.973879,0.113294]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54377,2.19509,-0.704601,0.0539996],[-2.71017,2.57112,-0.973754,0.113264]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54399,2.19557,-0.704937,0.054072],[-2.71005,2.57084,-0.973545,0.113215]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54429,2.19624,-0.705409,0.0541734],[-2.70988,2.57045,-0.973254,0.113147]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54467,2.1971,-0.706015,0.0543038],[-2.70966,2.56995,-0.972879,0.113059]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54514,2.19815,-0.706757,0.0544631],[-2.7094,2.56934,-0.972422,0.112952]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54569,2.19939,-0.707634,0.0546515],[-2.70909,2.56861,-0.971882,0.112825]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54634,2.20083,-0.708646,0.054869],[-2.70873,2.56778,-0.97126,0.112679]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54706,2.20245,-0.709793,0.0551155],[-2.70832,2.56683,-0.970556,0.112514]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54788,2.20427,-0.711076,0.0553912],[-2.70787,2.56578,-0.96977,0.112329]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54878,2.20628,-0.712495,0.055696],[-2.70737,2.56462,-0.968902,0.112126]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.54976,2.20849,-0.714051,0.05603],[-2.70682,2.56334,-0.967954,0.111904]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.55083,2.21089,-0.715742,0.0563933],[-2.70623,2.56196,-0.966926,0.111663]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.55199,2.21348,-0.717571,0.0567859],[-2.70559,2.56047,-0.965817,0.111403]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.55324,2.21627,-0.719536,0.0572079],[-2.7049,2.55888,-0.964629,0.111125]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.55457,2.21925,-0.721639,0.0576593],[-2.70417,2.55717,-0.963362,0.110828]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.55599,2.22243,-0.72388,0.0581403],[-2.70339,2.55536,-0.962017,0.110514]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.5575,2.2258,-0.726259,0.0586508],[-2.70256,2.55345,-0.960594,0.110181]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.5591,2.22938,-0.728777,0.0591909],[-2.70169,2.55143,-0.959095,0.109831]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.56078,2.23315,-0.731433,0.0597608],[-2.70078,2.54931,-0.957519,0.109463]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.56256,2.23711,-0.73423,0.0603606],[-2.69982,2.54709,-0.955867,0.109077]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.56442,2.24128,-0.737166,0.0609903],[-2.69882,2.54476,-0.954141,0.108675]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.56638,2.24565,-0.740243,0.0616501],[-2.69777,2.54234,-0.95234,0.108255]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.56842,2.25022,-0.743461,0.06234],[-2.69668,2.53981,-0.950466,0.107819]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.57055,2.25499,-0.74682,0.0630602],[-2.69555,2.53718,-0.94852,0.107366]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.57278,2.25996,-0.750322,0.0638108],[-2.69437,2.53446,-0.946501,0.106897]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.57509,2.26513,-0.753967,0.0645919],[-2.69315,2.53164,-0.944412,0.106411]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.5775,2.27051,-0.757755,0.0654037],[-2.69189,2.52872,-0.942253,0.10591]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.57999,2.27609,-0.761687,0.0662464],[-2.69059,2.52571,-0.940025,0.105393]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.58258,2.28188,-0.765764,0.06712],[-2.68925,2.52261,-0.937729,0.104861]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.58527,2.28788,-0.769987,0.0680247],[-2.68786,2.51941,-0.935366,0.104314]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.58804,2.29408,-0.774356,0.0689608],[-2.68644,2.51612,-0.932936,0.103752]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.59091,2.30049,-0.778872,0.0699283],[-2.68497,2.51274,-0.930441,0.103175]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.59387,2.30712,-0.783535,0.0709276],[-2.68347,2.50926,-0.927881,0.102584]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.59693,2.31395,-0.788347,0.0719586],[-2.68193,2.5057,-0.925257,0.101979]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.60008,2.32099,-0.793308,0.0730218],[-2.68034,2.50206,-0.922572,0.101361]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.60333,2.32825,-0.79842,0.0741173],[-2.67872,2.49832,-0.919824,0.100729]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.60667,2.33572,-0.803682,0.0752453],[-2.67707,2.49451,-0.917016,0.100083]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.61011,2.3434,-0.809096,0.076406],[-2.67537,2.4906,-0.914148,0.0994249]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.61364,2.35131,-0.814663,0.0775997],[-2.67364,2.48662,-0.911222,0.098754]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.61727,2.35942,-0.820384,0.0788266],[-2.67187,2.48255,-0.908238,0.0980708]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.621,2.36776,-0.826259,0.080087],[-2.67006,2.4784,-0.905197,0.0973754]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.62482,2.37632,-0.83229,0.0813812],[-2.66822,2.47417,-0.9021,0.0966682]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.62875,2.38509,-0.838477,0.0827094],[-2.66635,2.46987,-0.898949,0.0959495]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.63277,2.39409,-0.844822,0.084072],[-2.66443,2.46548,-0.895744,0.0952195]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.63689,2.40331,-0.851325,0.0854692],[-2.66249,2.46102,-0.892486,0.0944786]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.64111,2.41275,-0.857988,0.0869014],[-2.66051,2.45649,-0.889176,0.093727]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.64543,2.42242,-0.864812,0.0883688],[-2.65849,2.45188,-0.885815,0.0929649]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.64985,2.43232,-0.871797,0.0898718],[-2.65645,2.44719,-0.882405,0.0921928]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.65442,2.44255,-0.879027,0.0914289],[-2.65435,2.4424,-0.878921,0.0914059]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.65899,2.45279,-0.886257,0.0929859],[-2.65226,2.43761,-0.875437,0.0906191]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.66371,2.46337,-0.893734,0.0945978],[-2.65011,2.43272,-0.871883,0.0898181]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.66853,2.47418,-0.901378,0.0962468],[-2.64794,2.42776,-0.868282,0.089008]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.67346,2.48522,-0.909189,0.0979331],[-2.64573,2.42272,-0.864635,0.0881892]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.67849,2.4965,-0.917168,0.0996572],[-2.64349,2.41763,-0.860945,0.0873619]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.68362,2.50801,-0.925317,0.10142],[-2.64122,2.41246,-0.85721,0.0865262]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.68885,2.51975,-0.933638,0.103221],[-2.63892,2.40723,-0.853434,0.0856826]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.69419,2.53173,-0.942131,0.105061],[-2.63659,2.40194,-0.849615,0.0848312]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.69963,2.54395,-0.950797,0.10694],[-2.63423,2.39658,-0.845756,0.0839724]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.70518,2.55641,-0.959639,0.10886],[-2.63185,2.39116,-0.841856,0.0831062]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.71083,2.56911,-0.968657,0.11082],[-2.62943,2.38569,-0.837917,0.0822331]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.71658,2.58205,-0.977852,0.112821],[-2.62698,2.38015,-0.83394,0.0813533]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.72244,2.59523,-0.987227,0.114863],[-2.62451,2.37455,-0.829926,0.0804669]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.7284,2.60866,-0.996782,0.116947],[-2.62201,2.36889,-0.825874,0.0795743]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.73447,2.62233,-1.00652,0.119074],[-2.61948,2.36318,-0.821787,0.0786756]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.74065,2.63625,-1.01644,0.121244],[-2.61692,2.35741,-0.817664,0.0777711]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.74693,2.65041,-1.02654,0.123457],[-2.61434,2.35158,-0.813507,0.0768611]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.75332,2.66482,-1.03684,0.125714],[-2.61173,2.3457,-0.809317,0.0759458]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.75982,2.67949,-1.04731,0.128015],[-2.60909,2.33976,-0.805093,0.0750253]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.76642,2.6944,-1.05798,0.130362],[-2.60643,2.33377,-0.800837,0.0740999]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.77313,2.70957,-1.06884,0.132755],[-2.60374,2.32773,-0.79655,0.0731699]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.77995,2.72499,-1.07989,0.135194],[-2.60102,2.32163,-0.792231,0.0722354]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.78687,2.74066,-1.09114,0.137679],[-2.59828,2.31549,-0.787883,0.0712967]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.79391,2.75659,-1.10258,0.140213],[-2.59551,2.30929,-0.783505,0.0703539]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.80105,2.77278,-1.11422,0.142794],[-2.59272,2.30304,-0.779099,0.0694073]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.8083,2.78923,-1.12605,0.145425],[-2.5899,2.29675,-0.774664,0.0684571]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.81565,2.80593,-1.13809,0.148105],[-2.58706,2.2904,-0.770201,0.0675035]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.82312,2.8229,-1.15033,0.150835],[-2.5842,2.28401,-0.765712,0.0665466]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.8307,2.84013,-1.16278,0.153615],[-2.58131,2.27757,-0.761196,0.0655867]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.83838,2.85762,-1.17543,0.156448],[-2.57839,2.27108,-0.756655,0.064624]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.84618,2.87537,-1.18828,0.159332],[-2.57546,2.26454,-0.752089,0.0636587]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.85408,2.8934,-1.20135,0.16227],[-2.57249,2.25796,-0.747498,0.0626909]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.8621,2.91168,-1.21463,0.165261],[-2.56951,2.25134,-0.742883,0.0617208]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.87022,2.93024,-1.22812,0.168306],[-2.5665,2.24467,-0.738245,0.0607487]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.87846,2.94907,-1.24182,0.171407],[-2.56347,2.23796,-0.733584,0.0597746]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.8868,2.96817,-1.25574,0.174564],[-2.56041,2.2312,-0.728901,0.0587988]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.89526,2.98754,-1.26988,0.177777],[-2.55733,2.2244,-0.724196,0.0578215]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.90382,3.00718,-1.28424,0.181048],[-2.55423,2.21755,-0.719469,0.0568428]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.9125,3.0271,-1.29882,0.184377],[-2.55111,2.21067,-0.714722,0.0558629]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.92128,3.04729,-1.31363,0.187765],[-2.54796,2.20374,-0.709955,0.054882]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.93018,3.06776,-1.32866,0.191213],[-2.54479,2.19677,-0.705168,0.0539002]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.93919,3.08851,-1.34393,0.194722],[-2.5416,2.18976,-0.700362,0.0529177]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.94831,3.10954,-1.35942,0.198292],[-2.53839,2.18271,-0.695537,0.0519347]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.95754,3.13085,-1.37514,0.201925],[-2.53515,2.17562,-0.690693,0.0509514]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.96688,3.15245,-1.3911,0.205621],[-2.5319,2.1685,-0.685832,0.0499678]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.97633,3.17432,-1.4073,0.209381],[-2.52862,2.16133,-0.680954,0.0489842]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.9859,3.19648,-1.42373,0.213206],[-2.52531,2.15412,-0.676058,0.0480007]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-2.99557,3.21893,-1.44041,0.217097],[-2.52199,2.14687,-0.671146,0.0470175]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-3.00536,3.24167,-1.45733,0.221056],[-2.51864,2.13959,-0.666218,0.0460347]]))
+      self.num_Cherenkov_cor_coefs["Uniform"].append(array([[-3.01526,3.26469,-1.47449,0.225082],[-2.51528,2.13227,-0.661275,0.0450525]]))
+   
+  def get_num_Cherenkov_cor_coefs(self):
+      dtodz=clight*top.dt/self.dz
+      allcoefs=self.num_Cherenkov_cor_coefs[self.gather_method]
+      ndt=shape(allcoefs[...])[0]
+      dtodz_unit=1./(ndt-1)
+      dtodz_norm=dtodz/dtodz_unit
+      i=max(0,min(ndt-2,int(dtodz_norm)))
+      w=dtodz_norm-i
+      excoef=(1.-w)*allcoefs[i,0,:]+w*allcoefs[i+1,0,:]
+      bycoef=(1.-w)*allcoefs[i,1,:]+w*allcoefs[i+1,1,:]
+      return excoef,bycoef
+
 def allocatesf(f,stencil):
     f.syf = EM3D_SPLITYEEFIELDtype()
     f.fieldtype = f.syf.fieldtype
