@@ -500,7 +500,13 @@ if (f%theta_damp/=0.) then
   f%ezbar = (1.-0.5*f%theta_damp)*f%ez+0.5*f%theta_damp*f%ezbar
 end if
 
-if (f%stencil==0 .or. f%stencil==1) then
+select case(f%stencil)
+   ! Choose the kind of stencil that is used for the E push
+
+case(0,1,3) ! Yee stencil on the E push
+   ! (Note : Yee stencil on the B push in case 0
+   ! Cole-Karkkainen stencil on the B push in case 1
+   ! Lehe stencil on the B push in case 3)
  if (f%sigmae==0.) then
   if(f%nconds>0) then 
    if (f%l_macroscopic) then
@@ -541,12 +547,14 @@ if (f%stencil==0 .or. f%stencil==1) then
     end if
   end if
  endif
-else
+
+case(2)  ! Cole-Karkkainen stencil on the E push (Note : Yee stencil on the B push )
   call push_em3d_kyeevec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                          mudt,dtsdx,dtsdy,dtsdz, &
                          f%nx,f%ny,f%nz, &
                          f%nxguard,f%nyguard,f%nzguard,f%E_inz_pos,f%Ex_inz,f%Ey_inz,f%l_2dxz,f%zmin,f%dz)
-end if
+
+end select
 
 return
 end subroutine push_em3d_e
@@ -1501,9 +1509,13 @@ if (f%theta_damp/=0.) then
 !  f%ez = alpha*f%ez + beta*f%ezold + gamma*f%ezbar
 end if
 
-if (f%stencil==0 .or. f%stencil==2) then
- if (f%sigmab==0.) then
-  if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
+select case (f%stencil)
+   ! Choose the kind of stencil that is used for the B push
+   
+case( 0, 2 ) ! Standard Yee stencil on B push
+  ! (Note: Cole-Karkkainen stencil on E push in case 2)
+  if (f%sigmab==0.) then
+   if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
     call push_em3d_bvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                         dtsdx,dtsdy,dtsdz, &
                         f%dx,f%dy,f%dz, &
@@ -1523,13 +1535,21 @@ if (f%stencil==0 .or. f%stencil==2) then
                         f%nxbs,f%nybs,f%nzbs, &
                         f%l_1dz,f%l_2dxz,f%l_2drz,f%l_nodalgrid)
   end if
- endif
-else
+endif
+
+case( 1 ) ! Cole-Karkkainen stencil on B push (Note: Yee stencil on E push)
   call push_em3d_kyeebvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
-end if
+
+case( 3 ) ! Lehe stencil on B push (Note: Yee stencil on E push)
+   call push_em3d_lehebvec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
+        dtsdx,dtsdy,dtsdz, &
+        f%nx,f%ny,f%nz, &
+        f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+   
+end select
 
 if (f%theta_damp/=0.) then
   f%ex = f%excp
@@ -1933,6 +1953,117 @@ end if
 return
 end subroutine push_em3d_kyeebvec
 
+subroutine push_em3d_lehebvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
+  use EM3D_kyee
+  implicit none
+  integer :: nx,ny,nz,nxguard,nyguard,nzguard
+  real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+  real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz
+  integer(ISZ) :: j,k,l
+  logical(ISZ) :: l_2dxz
+
+  if (.not.l_2dxz) then
+
+     ! advance Bx
+     do l = 0, nz-1
+        do k = 0, ny-1
+           do j = 0, nx
+              Bx(j,k,l) = Bx(j,k,l) &
+                   - alphay*dtsdy * (Ez(j  ,k+1,l  ) - Ez(j  ,k  ,l  )) &
+                   - betayx*dtsdy * (Ez(j+1,k+1,l  ) - Ez(j+1,k  ,l  ) &
+                   +  Ez(j-1,k+1,l  ) - Ez(j-1,k  ,l  )) &
+                   - betayz*dtsdy * (Ez(j  ,k+1,l+1) - Ez(j  ,k  ,l+1) &
+                   +  Ez(j  ,k+1,l-1) - Ez(j  ,k  ,l-1)) &
+                   + alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
+                   + betazx*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                   +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) &
+                   + betazy*dtsdz * (Ey(j  ,k+1,l+1) - Ey(j  ,k+1,l  ) &
+                   +  Ey(j  ,k-1,l+1) - Ey(j  ,k-1,l  )) &
+                   + deltaz*dtsdz * (Ey(j  ,k  ,l+2) - Ey(j  ,k  ,l-1))
+           end do
+        end do
+     end do
+
+     ! advance By
+     do l = 0, nz-1
+        do k = 0, ny
+           do j = 0, nx-1
+              By(j,k,l) = By(j,k,l) &
+                   + alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
+                   + betaxy*dtsdx * (Ez(j+1,k+1,l  ) - Ez(j  ,k+1,l  ) &
+                   +  Ez(j+1,k-1,l  ) - Ez(j  ,k-1,l  )) &
+                   + betaxz*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                   +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
+                   - alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
+                   - betazx*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                   +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) &
+                   - betazy*dtsdz * (Ex(j  ,k+1,l+1) - Ex(j  ,k+1,l  ) &
+                   +  Ex(j  ,k-1,l+1) - Ex(j  ,k-1,l  )) &
+                   - deltaz*dtsdz * (Ex(j  ,k  ,l+2) - Ex(j  ,k  ,l-1)) 
+           end do
+        end do
+     end do
+
+     ! advance Bz 
+     do l = 0, nz
+        do k = 0, ny-1
+           do j = 0, nx-1
+              Bz(j,k,l) = Bz(j,k,l) &
+                   - alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
+                   - betaxy*dtsdx * (Ey(j+1,k+1,l  ) - Ey(j  ,k+1,l  ) &
+                   +  Ey(j+1,k-1,l  ) - Ey(j  ,k-1,l  )) &
+                   - betaxz*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                   +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) &
+                   + alphay*dtsdy * (Ex(j  ,k+1,l  ) - Ex(j  ,k  ,l  )) &
+                   + betayx*dtsdy * (Ex(j+1,k+1,l  ) - Ex(j+1,k  ,l  ) &
+                   +  Ex(j-1,k+1,l  ) - Ex(j-1,k  ,l  )) &
+                   + betayz*dtsdy * (Ex(j  ,k+1,l+1) - Ex(j  ,k  ,l+1) &
+                   +  Ex(j  ,k+1,l-1) - Ex(j  ,k  ,l-1)) 
+           end do
+        end do
+     end do
+
+  else
+
+     k=0
+     ! advance Bx
+     do l = 0, nz-1
+        do j = 0, nx
+           Bx(j,k,l) = Bx(j,k,l) &
+                +    alphaz*dtsdz * (Ey(j  ,k  ,l+1) - Ey(j  ,k  ,l  )) &
+                +    betazx*dtsdz * (Ey(j+1,k  ,l+1) - Ey(j+1,k  ,l  ) &
+                +  Ey(j-1,k  ,l+1) - Ey(j-1,k  ,l  )) &
+                +    deltaz*dtsdz * (Ey(j  ,k  ,l+2) - Ey(j  ,k  ,l-1))
+        end do
+     end do
+
+     ! advance By
+     do l = 0, nz-1
+        do j = 0, nx-1
+           By(j,k,l) = By(j,k,l) +    alphax*dtsdx * (Ez(j+1,k  ,l  ) - Ez(j  ,k  ,l  )) &  
+                +    betaxz*dtsdx * (Ez(j+1,k  ,l+1) - Ez(j  ,k  ,l+1) &
+                +  Ez(j+1,k  ,l-1) - Ez(j  ,k  ,l-1)) &
+                -    alphaz*dtsdz * (Ex(j  ,k  ,l+1) - Ex(j  ,k  ,l  )) &
+                -    betazx*dtsdz * (Ex(j+1,k  ,l+1) - Ex(j+1,k  ,l  ) &
+                +  Ex(j-1,k  ,l+1) - Ex(j-1,k  ,l  )) &
+                -    deltaz*dtsdz * (Ex(j  ,k  ,l+2) - Ex(j  ,k  ,l-1)) 
+        end do
+     end do
+
+     ! advance Bz 
+     do l = 0, nz
+        do j = 0, nx-1
+           Bz(j,k,l) = Bz(j,k,l) -    alphax*dtsdx * (Ey(j+1,k  ,l  ) - Ey(j  ,k  ,l  )) &
+                -    betaxz*dtsdx * (Ey(j+1,k  ,l+1) - Ey(j  ,k  ,l+1) &
+                +  Ey(j+1,k  ,l-1) - Ey(j  ,k  ,l-1)) 
+        end do
+     end do
+
+  end if
+
+  return
+end subroutine push_em3d_lehebvec
+
 subroutine push_em3d_f(f,dt)
 use mod_emfield3d
 implicit none
@@ -1950,7 +2081,11 @@ dtsdy = f%clight*dt/f%dy
 dtsdz = f%clight*dt/f%dz
 dtsepsi = f%mu0*f%clight**3*dt
 
-if (f%stencil==0 .or. f%stencil==1) then
+select case (f%stencil)
+     ! Choose the kind of stencil that is used for the E correction
+     ! (Second step of the propagative Poisson correction)
+
+case( 0,2 ) ! Yee stencil
  if(f%nconds>0) then 
   call push_em3d_fvec_cond(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
@@ -1966,12 +2101,22 @@ if (f%stencil==0 .or. f%stencil==1) then
                       f%xmin,f%ymin,f%zmin, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz)
  end if
-else
+
+case( 1 ) ! Cole-Karkkainen stencil (since the B push uses the Cole-Karkkainen stencil,
+   ! and since this Poisson correction should not modify curl(E) in the B push)
   call push_em3d_kyeefvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
-endif
+
+case( 3 ) ! Lehe stencil (since the B push uses Lehe stencil,
+     ! and since this Poisson correction should not modify curl(E) in the B push)
+     call push_em3d_leheefvec(f%ex,f%ey,f%ez,f%f, &
+          dtsdx,dtsdy,dtsdz, &
+          f%nx,f%ny,f%nz, &
+          f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+  
+end select
 
 end subroutine push_em3d_f
 
@@ -2493,6 +2638,88 @@ end if
 
 return
 end subroutine push_em3d_kyeeefvec
+
+subroutine push_em3d_leheefvec(ex,ey,ez,f,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
+  use EM3D_kyee
+  integer :: nx,ny,nz,nxguard,nyguard,nzguard
+  real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,f
+  real(kind=8), intent(IN) :: dtsdx,dtsdy,dtsdz
+  integer(ISZ) :: j,k,l
+  logical(ISZ) :: l_2dxz
+
+  if (.not.l_2dxz) then
+
+     ! advance Ex
+     do l = 0, nz
+        do k = 0, ny
+           do j = 0, nx-1
+              Ex(j,k,l) = Ex(j,k,l) &
+                   + alphax*dtsdx * (F(j+1,k  ,l  ) - F(j  ,k  ,l  )) &
+                   + betaxy*dtsdx * (F(j+1,k+1,l  ) - F(j  ,k+1,l  ) &
+                   +  F(j+1,k-1,l  ) - F(j  ,k-1,l  )) &
+                   + betaxz*dtsdx * (F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
+                   +  F(j+1,k  ,l-1) - F(j  ,k  ,l-1)) 
+           end do
+        end do
+     end do
+
+     ! advance Ey
+     do l = 0, nz
+        do k = 0, ny-1
+           do j = 0, nx
+              Ey(j,k,l) = Ey(j,k,l) &
+                   + alphay*dtsdy * (F(j  ,k+1,l  ) - F(j  ,k  ,l  )) &
+                   + betayx*dtsdy * (F(j+1,k+1,l  ) - F(j+1,k  ,l  ) &
+                   +  F(j-1,k+1,l  ) - F(j-1,k  ,l  )) &
+                   + betayz*dtsdy * (F(j  ,k+1,l+1) - F(j  ,k  ,l+1) &
+                   +  F(j  ,k+1,l-1) - F(j  ,k  ,l-1)) 
+           end do
+        end do
+     end do
+
+     ! advance Ez 
+     do l = 0, nz-1
+        do k = 0, ny
+           do j = 0, nx
+              Ez(j,k,l) = Ez(j,k,l) &
+                   + alphaz*dtsdz * (F(j  ,k  ,l+1) - F(j  ,k  ,l  )) &
+                   + betazx*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
+                   +  F(j-1,k  ,l+1) - F(j-1,k  ,l  )) &
+                   + betazy*dtsdz * (F(j  ,k+1,l+1) - F(j  ,k+1,l  ) &
+                   +  F(j  ,k-1,l+1) - F(j  ,k-1,l  )) &
+                   + deltaz*dtsdz * (F(j  ,k  ,l+2) - F(j  ,k  ,l-1)) 
+           end do
+        end do
+     end do
+
+  else
+
+     k=0
+     ! advance Ex
+     do l = 0, nz
+        do j = 0, nx-1
+           Ex(j,k,l) = Ex(j,k,l) &
+                + alphax*dtsdx * (F(j+1,k  ,l  ) - F(j  ,k  ,l  )) &
+                + betaxz*dtsdx * (F(j+1,k  ,l+1) - F(j  ,k  ,l+1) &
+                +  F(j+1,k  ,l-1) - F(j  ,k  ,l-1))  
+        end do
+     end do
+
+     ! advance Ez 
+     do l = 0, nz-1
+        do j = 0, nx
+           Ez(j,k,l) = Ez(j,k,l) &
+                + alphaz*dtsdz * (F(j  ,k  ,l+1) - F(j  ,k  ,l  )) &
+                + betazx*dtsdz * (F(j+1,k  ,l+1) - F(j+1,k  ,l  ) &
+                +  F(j-1,k  ,l+1) - F(j-1,k  ,l  )) &
+                + deltaz*dtsdz * (F(j  ,k  ,l+2) - F(j  ,k  ,l-1)) 
+        end do
+     end do
+
+  end if
+
+  return
+end subroutine push_em3d_leheefvec
 
 subroutine push_em3d_phi(f,dt)
 use mod_emfield3d

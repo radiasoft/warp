@@ -183,7 +183,20 @@ class EM3D(SubcycledPoissonSolver):
     self.setupmeshextent()
 
     # --- sets coefficients of Cole solver
-    if self.l_setcowancoefs:
+    if self.stencil == 3 : # Lehe stencil (see Lehe et al., PRSTAB 16 021301 (2013))
+    # Warning : the coefficients alphaz and deltaz are calculated later in the file,
+    # i.e. only once the dt has been calculated.
+      em3d.betaxz = 1./8
+      em3d.betazx = self.dz**2/self.dx**2*1./8
+      em3d.betayx = 0.
+      em3d.betaxy = 0.
+      if self.l_2dxz:
+        em3d.betayz = 0.
+        em3d.betazy = 0.
+      else :
+        em3d.betayz = 1./8
+        em3d.betazy = self.dz**2/self.dy**2*1./8
+    elif self.l_setcowancoefs:
       if self.l_2dxz:
         delta = min(self.dx,self.dz)
         rx = (delta/self.dx)**2
@@ -251,22 +264,26 @@ class EM3D(SubcycledPoissonSolver):
           if self.l_1dz:
             self.dtcourant=self.dz/clight
           elif self.l_2dxz:
-            if self.stencil==0:
+            if self.stencil==0:  # Yee scheme
               self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
-            else:
+            elif self.stencil in [1,2] : # Cole-Karkkainen scheme
               self.dtcourant=min(self.dx,self.dz)/clight 
               Cx = em3d.alphax -2.*em3d.betaxz
               Cz = em3d.alphaz -2.*em3d.betazx
               self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
+            elif self.stencil == 3 : # Lehe scheme
+              self.dtcourant = 1./clight  * min( self.dz, self.dx )
           else:
             if self.stencil==0:
               self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
-            else:
+            elif self.stencil in [1,2] : # Cole-Karakkainen scheme
               self.dtcourant=min(self.dx,self.dy,self.dz)/clight 
               Cx = em3d.alphax -2.*(em3d.betaxy+em3d.betaxz)+4.*em3d.gammax
               Cy = em3d.alphay -2.*(em3d.betayx+em3d.betayz)+4.*em3d.gammay
               Cz = em3d.alphaz -2.*(em3d.betazx+em3d.betazy)+4.*em3d.gammaz
               self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cy/self.dy**2+Cz/self.dz**2))
+            elif self.stencil == 3 : # Lehe scheme
+              self.dtcourant = 1./clight * min( self.dz, 1./sqrt( 1./self.dx**2 + 1./self.dy**2 ) )
           if self.theta_damp>0.:
             self.dtcourant*=sqrt((2.+self.theta_damp)/(2.+3.*self.theta_damp))
           if top.dt==0.:
@@ -287,6 +304,13 @@ class EM3D(SubcycledPoissonSolver):
        top.dt = 0.75*self.dz/clight 
 
     self.dtinit = top.dt
+
+    if self.stencil == 3 : # Lehe stencil, calculation of the remaining coefficients
+      em3d.deltaz = -0.25*( self.dz**2/(clight*top.dt)**2 * sin( pi*clight*top.dt/(2.*self.dz) )**2 - 1 )
+      em3d.alphaz = 1. - 2.*em3d.betazx - 2.* em3d.betazy - 3.*em3d.deltaz
+      em3d.alphax = 1. - 2.*em3d.betaxy - 2.* em3d.betaxz
+      em3d.alphay = 1. - 2.*em3d.betayx - 2.* em3d.betayz
+
     
     if  top.vbeamfrm != 0.:self.bounds[-2:]=-1
     

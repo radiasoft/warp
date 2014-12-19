@@ -38,6 +38,7 @@ alphaz real /0.58333333333333337/  # 7./12.
 betazx real /0.083333333333333329/ # 1./12.
 betazy real /0.083333333333333329/ # 1./12.
 gammaz real /0.020833333333333332/ # 1./48.
+deltaz real /0.000000000000000000/ # for the lehe solver
 
 *********** EM3D_FIELDobjects dump:
 l_onegrid                    logical /.true./
