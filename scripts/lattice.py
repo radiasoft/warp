@@ -3151,6 +3151,10 @@ def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
         top.bsqgradns = top.bsqgradns + 1
         top.bsqgradid[ie] = top.bsqgradns
 
+        if bsqgrad is not None:
+            # --- Get array size
+            nc,nx,ny,nz = array(shape(bsqgrad))-array([0,1,1,1])
+
         # --- Make sure that the arrays are big enough
         top.bsqgradnx = max(nx,top.bsqgradnx)
         top.bsqgradny = max(ny,top.bsqgradny)
@@ -3162,11 +3166,7 @@ def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
         top.bsqgraddy[-1] = dy
         top.bsqgraddz[-1] = (ze - zs)/nz
 
-        if bsqgrad is not None:
-            # --- Get array size
-            nc,nx,ny,nz=array(shape(bsqgrad))-array([0,1,1,1])
-
-        elif getbsqgrad:
+        if getbsqgrad:
             calculatebsqgrad()
 
         if bsqgrad is not None: top.bsqgrad[:,:nx+1,:ny+1,:nz+1,-1] = bsqgrad
