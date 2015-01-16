@@ -880,7 +880,7 @@ class Species(object):
                              thetamin=0.,thetamax=2.*pi,
                              lvariableweights=None,lallindomain=0,
                              solvergeom=None,
-                             ellipticity=1.,wscale=1.,
+                             ellipticity=1.,wscale=1.,rmin=None,
                              **kw):
         """Creates particles, uniformly filling a cylinder.
     If top.wpid is nonzero, then the particles are uniformly spaced in radius and
@@ -888,6 +888,7 @@ class Species(object):
     in radius squared.
      - np: total number of particles to load
      - rmax: radius of cylinder
+     - rmin: minimum radius, below which no particles are added
      - zmin,zmax: z extent of the cylinder. Note that if one has zmin==zmax,
                   then lallindomain must be set to true to get any particles.
      - vthx, vthy, vthz: thermal velocity, defaults to 0.
@@ -1068,7 +1069,12 @@ class Species(object):
         if not lvariableweights:
             # --- Scale the radius appriately to get a uniform distribution
             # --- in radius.
+            if rmin is not None:
+                r = r*(1. - (rmin/rmax)**2) + (rmin/rmax)**2
             r = sqrt(r)
+        else:
+            if rmin is not None:
+                r = r*(1. - (rmin/rmax)) + (rmin/rmax)
 
         x = rmax*r*cos(thetap)
         y = rmax*r*sin(thetap)*ellipticity
