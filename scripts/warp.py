@@ -227,6 +227,7 @@ nm = 1.e-9     # nm to meter
 um = 1.e-6     # um to meter
 mm = 1.e-3     # mm to meter
 cm = 0.01      # cm to meter
+km = 1.e3      # km to meter
 ps = 1.0e-12   # picosecond to second
 ns = 1.0e-9    # nanosecond to second
 us = 1.0e-6    # microsecond to second
