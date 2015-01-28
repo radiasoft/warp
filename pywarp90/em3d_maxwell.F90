@@ -1069,7 +1069,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmax(j,k,l)
+      a = 0.5*mu0dt0*sigmax(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1090,7 +1090,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1111,7 +1111,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmaz(j,k,l)<0.) then
        Ez(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1136,6 +1136,7 @@ else ! --- now 2D XZ or RZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
+      a = 0.5*mu0dt0*sigmax(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1152,7 +1153,7 @@ else ! --- now 2D XZ or RZ
       if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-     a = 0.5*mu0dt*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1168,7 +1169,7 @@ else ! --- now 2D XZ or RZ
   ! advance Ez 
   do l = 0, nz-1
     do j = 0, nx
-      a = 0.5*mu0dt*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1191,7 +1192,7 @@ else ! --- now 2D XZ or RZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmax(j,k,l)
+      a = 0.5*mu0dt0*sigmax(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1209,7 +1210,7 @@ else ! --- now 2D XZ or RZ
      if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1221,7 +1222,7 @@ else ! --- now 2D XZ or RZ
      end if
     end do
     j = 0
-    a = 0.5*mu0dt*sigmay(j,k,l)
+    a = 0.5*mu0dt0*sigmay(j,k,l)
     b = (1.+a)
     a = (1-a)/(1+a)
     mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1242,7 +1243,7 @@ else ! --- now 2D XZ or RZ
      if (sigmaz(j,k,l)<0.) then
        Ez(j,k,l)=0.
      else
-      a = 0.5*mu0dt*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1259,7 +1260,7 @@ else ! --- now 2D XZ or RZ
       Ez(j,k,l)=0.
     else
      if (xmin==0.) then
-      a = 0.5*mu0dt*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1268,7 +1269,7 @@ else ! --- now 2D XZ or RZ
       Ez(j,k,l) = a*Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
                               - mu0dt  * CJ(j,k,l,3)
      else
-      a = 0.5*mu0dt*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
