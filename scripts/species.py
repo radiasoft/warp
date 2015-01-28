@@ -182,6 +182,8 @@ Carbon_Monoxide = Molecule(composition=[Carbon,Oxygen], Symbol='CO',name='Carbon
 Carbon_Dioxide  = Molecule(composition=[Carbon,Oxygen,Oxygen], Symbol='CO2',name='Carbon_Dioxide')
 Water           = Molecule(composition=[Hydrogen,Hydrogen,Oxygen], Symbol='H2O',name='Water')
 
+Photon = Particle(charge=0.,mass=0.,Symbol='gnu',name='Photon')
+
 for elemt in elements:
     elemt.ionization_levels=zeros(elemt.Z)
     Ionization_Levels=elemt.ionization_levels
