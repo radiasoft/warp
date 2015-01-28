@@ -1560,14 +1560,14 @@ def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
         # --- Note that ssn is set in addpart
 
         # --- Set xyz old
-        if top.xoldpid > 0: pid[:,top.xoldpid-1] = x.copy()
-        if top.yoldpid > 0: pid[:,top.yoldpid-1] = y.copy()
-        if top.zoldpid > 0: pid[:,top.zoldpid-1] = z.copy()
+        if top.xoldpid > 0: pid[:,top.xoldpid-1] = x
+        if top.yoldpid > 0: pid[:,top.yoldpid-1] = y
+        if top.zoldpid > 0: pid[:,top.zoldpid-1] = z
 
     # --- Load in any pid data passed in
     if pidpairs is not None:
         for id,pp in pidpairs:
-            pid[:,id-1] = pp.copy()
+            pid[:,id-1] = pp
 
     # --- Set extent of domain
     if xmmin is None: xmmin = top.xpminlocal
