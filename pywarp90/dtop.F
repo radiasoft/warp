@@ -2491,6 +2491,7 @@ c          is not reset. If itask is zero, then grid is divided by
 c          gridcount, the number of particles, to give the average.
 c          Setting itask=1 allows data to be accumulated over multiple
 c          calls to deposgrid3d to obtain better statistics.
+c          When itask=2, the gridcount argument is not calculated.
 c   np: number of particles
 c   x,y,z: arrays of particle positions
 c   q: array of data to be accumulated
@@ -2545,52 +2546,100 @@ c     --- set grid cell inverse sizes
       wy = 0.
       wz = 0.
 
-c     --- loop over particles
-      do ip=1,np
+      if (itask .ne. 2) then
 
-c       --- find location on grid
-        if (nx > 0) gx = (x(ip) - xmin)*dxi
-        if (ny > 0) gy = (y(ip) - ymin)*dyi
-        if (nz > 0) gz = (z(ip) - zmin)*dzi
+c       --- loop over particles
+        do ip=1,np
 
-c       --- if within grid, accumulate
-        if (0. <= gx .and. gx < nxtemp .and.
-     &      0. <= gy .and. gy < nytemp .and.
-     &      0. <= gz .and. gz < nztemp) then
-          if (nx > 0) then
-            ix = int(gx)
-            ixp1 = ix + 1
-            wx = gx - ix
-          endif
-          if (ny > 0) then
-            iy = int(gy)
-            iyp1 = iy + 1
-            wy = gy - iy
-          endif
-          if (nz > 0) then
-            iz = int(gz)
-            izp1 = iz + 1
-            wz = gz - iz
-          endif
-          grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ixp1,iy  ,iz)   = grid(ixp1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iyp1,iz)   = grid(ix  ,iyp1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ixp1,iyp1,iz)   = grid(ixp1,iyp1,iz)   + q(ip)*      wx *      wy *(1. - wz)
-          grid(ix  ,iy  ,izp1) = grid(ix  ,iy  ,izp1) + q(ip)*(1. - wx)*(1. - wy)*      wz
-          grid(ixp1,iy  ,izp1) = grid(ixp1,iy  ,izp1) + q(ip)*      wx *(1. - wy)*      wz
-          grid(ix  ,iyp1,izp1) = grid(ix  ,iyp1,izp1) + q(ip)*(1. - wx)*      wy *      wz
-          grid(ixp1,iyp1,izp1) = grid(ixp1,iyp1,izp1) + q(ip)*      wx *      wy *      wz 
-          gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
-          gridcount(ixp1,iy  ,iz)   = gridcount(ixp1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
-          gridcount(ix  ,iyp1,iz)   = gridcount(ix  ,iyp1,iz)   + (1. - wx)*      wy *(1. - wz)
-          gridcount(ixp1,iyp1,iz)   = gridcount(ixp1,iyp1,iz)   +       wx *      wy *(1. - wz)
-          gridcount(ix  ,iy  ,izp1) = gridcount(ix  ,iy  ,izp1) + (1. - wx)*(1. - wy)*      wz
-          gridcount(ixp1,iy  ,izp1) = gridcount(ixp1,iy  ,izp1) +       wx *(1. - wy)*      wz
-          gridcount(ix  ,iyp1,izp1) = gridcount(ix  ,iyp1,izp1) + (1. - wx)*      wy *      wz
-          gridcount(ixp1,iyp1,izp1) = gridcount(ixp1,iyp1,izp1) +       wx *      wy *      wz
-        endif
+c         --- find location on grid
+          if (nx > 0) gx = (x(ip) - xmin)*dxi
+          if (ny > 0) gy = (y(ip) - ymin)*dyi
+          if (nz > 0) gz = (z(ip) - zmin)*dzi
 
-      enddo
+c         --- if within grid, accumulate
+          if (0. <= gx .and. gx < nxtemp .and.
+     &        0. <= gy .and. gy < nytemp .and.
+     &        0. <= gz .and. gz < nztemp) then
+            if (nx > 0) then
+              ix = int(gx)
+              ixp1 = ix + 1
+              wx = gx - ix
+            endif
+            if (ny > 0) then
+              iy = int(gy)
+              iyp1 = iy + 1
+              wy = gy - iy
+            endif
+            if (nz > 0) then
+              iz = int(gz)
+              izp1 = iz + 1
+              wz = gz - iz
+            endif
+            grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+            grid(ixp1,iy  ,iz)   = grid(ixp1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
+            grid(ix  ,iyp1,iz)   = grid(ix  ,iyp1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
+            grid(ixp1,iyp1,iz)   = grid(ixp1,iyp1,iz)   + q(ip)*      wx *      wy *(1. - wz)
+            grid(ix  ,iy  ,izp1) = grid(ix  ,iy  ,izp1) + q(ip)*(1. - wx)*(1. - wy)*      wz
+            grid(ixp1,iy  ,izp1) = grid(ixp1,iy  ,izp1) + q(ip)*      wx *(1. - wy)*      wz
+            grid(ix  ,iyp1,izp1) = grid(ix  ,iyp1,izp1) + q(ip)*(1. - wx)*      wy *      wz
+            grid(ixp1,iyp1,izp1) = grid(ixp1,iyp1,izp1) + q(ip)*      wx *      wy *      wz 
+            gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
+            gridcount(ixp1,iy  ,iz)   = gridcount(ixp1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
+            gridcount(ix  ,iyp1,iz)   = gridcount(ix  ,iyp1,iz)   + (1. - wx)*      wy *(1. - wz)
+            gridcount(ixp1,iyp1,iz)   = gridcount(ixp1,iyp1,iz)   +       wx *      wy *(1. - wz)
+            gridcount(ix  ,iy  ,izp1) = gridcount(ix  ,iy  ,izp1) + (1. - wx)*(1. - wy)*      wz
+            gridcount(ixp1,iy  ,izp1) = gridcount(ixp1,iy  ,izp1) +       wx *(1. - wy)*      wz
+            gridcount(ix  ,iyp1,izp1) = gridcount(ix  ,iyp1,izp1) + (1. - wx)*      wy *      wz
+            gridcount(ixp1,iyp1,izp1) = gridcount(ixp1,iyp1,izp1) +       wx *      wy *      wz
+          endif
+
+        enddo
+
+      else
+
+c       --- Same as above, but gridcount is not accumulated.
+c       --- This would be faster when gridcount is not needed.
+
+c       --- loop over particles
+        do ip=1,np
+
+c         --- find location on grid
+          if (nx > 0) gx = (x(ip) - xmin)*dxi
+          if (ny > 0) gy = (y(ip) - ymin)*dyi
+          if (nz > 0) gz = (z(ip) - zmin)*dzi
+
+c         --- if within grid, accumulate
+          if (0. <= gx .and. gx < nxtemp .and.
+     &        0. <= gy .and. gy < nytemp .and.
+     &        0. <= gz .and. gz < nztemp) then
+            if (nx > 0) then
+              ix = int(gx)
+              ixp1 = ix + 1
+              wx = gx - ix
+            endif
+            if (ny > 0) then
+              iy = int(gy)
+              iyp1 = iy + 1
+              wy = gy - iy
+            endif
+            if (nz > 0) then
+              iz = int(gz)
+              izp1 = iz + 1
+              wz = gz - iz
+            endif
+            grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+            grid(ixp1,iy  ,iz)   = grid(ixp1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
+            grid(ix  ,iyp1,iz)   = grid(ix  ,iyp1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
+            grid(ixp1,iyp1,iz)   = grid(ixp1,iyp1,iz)   + q(ip)*      wx *      wy *(1. - wz)
+            grid(ix  ,iy  ,izp1) = grid(ix  ,iy  ,izp1) + q(ip)*(1. - wx)*(1. - wy)*      wz
+            grid(ixp1,iy  ,izp1) = grid(ixp1,iy  ,izp1) + q(ip)*      wx *(1. - wy)*      wz
+            grid(ix  ,iyp1,izp1) = grid(ix  ,iyp1,izp1) + q(ip)*(1. - wx)*      wy *      wz
+            grid(ixp1,iyp1,izp1) = grid(ixp1,iyp1,izp1) + q(ip)*      wx *      wy *      wz 
+          endif
+
+        enddo
+
+      endif
 
 c     --- Divide out the number of particles at each grid point, only if
 c     --- itask == 0.
