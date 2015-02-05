@@ -393,8 +393,10 @@ c  Load the particles, calculate the charge density
       call injctint(pgroup)
       call particleboundaries3d(pgroup,-1,.true.)
       call remark(" ---  Setting charge density")
-      call loadrho3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
-      call loadj3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
+      if (fstype>-1) then
+        call loadrho3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
+        call loadj3d(pgroup,-1,-1,-1,.true.,lfinalize_rho)
+      end if
       if (chdtspid>0) then
         lsaveoldpos = .true.
         allspecl    = .true.
