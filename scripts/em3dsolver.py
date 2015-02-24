@@ -3966,8 +3966,8 @@ class EM3D(SubcycledPoissonSolver):
           Az = bsolver.potential[2,...]
           Bx = 0.5*(-((Ay[ix1:ix2,iy1  :iy2  ,iz1+1:iz2+1] - Ay[ix1:ix2,iy1  :iy2  ,iz1:iz2]) +
                       (Ay[ix1:ix2,iy1+1:iy2+1,iz1+1:iz2+1] - Ay[ix1:ix2,iy1+1:iy2+1,iz1:iz2]))/bsolver.dz
-                    +((Az[ix1:ix2,iy1+1:iy2+1,iz1  :iz2  ] - Ay[ix1:ix2,iy1:iy2,iz1  :iz2  ]) +
-                      (Az[ix1:ix2,iy1+1:iy2+1,iz1+1:iz2+1] - Ay[ix1:ix2,iy1:iy2,iz1+1:iz2+1]))/bsolver.dy)
+                    +((Az[ix1:ix2,iy1+1:iy2+1,iz1  :iz2  ] - Az[ix1:ix2,iy1:iy2,iz1  :iz2  ]) +
+                      (Az[ix1:ix2,iy1+1:iy2+1,iz1+1:iz2+1] - Az[ix1:ix2,iy1:iy2,iz1+1:iz2+1]))/bsolver.dy)
           By = 0.5*(-((Az[ix1+1:ix2+1,iy1:iy2,iz1  :iz2  ] - Az[ix1:ix2,iy1:iy2,iz1  :iz2  ]) +
                       (Az[ix1+1:ix2+1,iy1:iy2,iz1+1:iz2+1] - Az[ix1:ix2,iy1:iy2,iz1+1:iz2+1]))/bsolver.dx
                     +((Ax[ix1  :ix2  ,iy1:iy2,iz1+1:iz2+1] - Ax[ix1  :ix2  ,iy1:iy2,iz1:iz2]) +
