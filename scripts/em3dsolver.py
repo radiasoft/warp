@@ -830,6 +830,10 @@ class EM3D(SubcycledPoissonSolver):
       self.depose_j_laser(f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight)
 
   def depose_j_laser(self,f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight):
+      if top.ndts[0]<>1:
+        print "Error in depose_j_laser: top.ndts[0] must be 1 if injecting a laser"
+        raise
+      f.J = self.fields.Jarray[:,:,:,:,0]
       for q in [1.,-1.]:
        if self.l_2dxz:
          if self.l_1dz:
@@ -4030,7 +4034,6 @@ class EM3D(SubcycledPoissonSolver):
       if top.efetch[0] != 4:self.yee2node3d()
       if self.l_smooth_particle_fields and any(self.npass_smooth>0):
           self.smoothfields()
-
 
   def set_num_Cherenkov_cor_coefs(self):
       if top.efetch[0]==1:self.gather_method="Momentum"
