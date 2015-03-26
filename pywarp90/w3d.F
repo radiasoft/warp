@@ -567,8 +567,8 @@ c         --- will be advanced.
       enddo
 c     --- zgrid is integer number of dz's
       if (lgridqnt) then
-        zgrid = int(zgrid/dz + .5)*dz
-        zgridndts = int(zgridndts/dz + .5)*dz
+        zgrid = nint(zgrid/dz)*dz
+        zgridndts = nint(zgridndts/dz)*dz
       endif
 
       call stepid (it, time+dt, zgrid)
@@ -798,7 +798,7 @@ c             --- lbeamcom does not work with subcycling.
               zgridnew = getbeamcom(pgroup) - zbeamcomoffset
               if (lgridqnt) then
 c               --- zgrid is integer number of dz's
-                zgridnew = int(zgridnew/dz + .5)*dz
+                zgridnew = nint(zgridnew/dz)*dz
               endif
               if (lbeamcomforwardonly) then
                 if (zgridnew < zgrid) zgridnew = zgrid
