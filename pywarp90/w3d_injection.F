@@ -21,7 +21,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Particles,Only: spid,wpid,tpid,rpid,ssn,lmappid,npid,
-     &                    xbirthpid,ybirthpid,zbirthpid,zbirthlabpid,
+     &                    tbirthpid,xbirthpid,ybirthpid,zbirthpid,zbirthlabpid,
      &                    uxbirthpid,uybirthpid,uzbirthpid
       use Picglb
       use InjectVars
@@ -679,6 +679,7 @@ c           --- Set fractional time to advance particles
               dtp(1:nn) = dtp(nn:1:-1)
             end if
             pgroup%pid(i1:i2,injpid) = pgroup%pid(i1:i2,injpid) + dtp(1:nn)
+            if (tbirthpid > 0) pgroup%pid(i1:i2,tbirthpid) = time - dtp(1:nn)
 
 c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
@@ -1493,24 +1494,25 @@ c                   --- massless momentums properly.
                       pgroup%gaminv(ii) = 1.
                     endif
 
-c                   --- Save the ID of the injection source. Note that pid
-c                   --- is doing double duty, saving the injection source
-c                   --- number and the fraction of the timestep the
-c                   --- particle is advanced.
-                    pgroup%pid(ii,injpid) = pgroup%pid(ii,injpid) + ij
-
 c                   --- Save SSN
                     if (spid>0) then
                       pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
                     end if
 
+                    if (tbirthpid > 0) pgroup%pid(ii,tbirthpid) = time - pgroup%pid(ii,injpid)*fulldt_s
                     if (xbirthpid > 0) pgroup%pid(ii,xbirthpid) = pgroup%xp(ii)
                     if (ybirthpid > 0) pgroup%pid(ii,ybirthpid) = pgroup%yp(ii)
                     if (zbirthpid > 0) pgroup%pid(ii,zbirthpid) = pgroup%zp(ii)
                     if (uxbirthpid > 0) pgroup%pid(ii,uxbirthpid)=pgroup%uxp(ii)
                     if (uybirthpid > 0) pgroup%pid(ii,uybirthpid)=pgroup%uyp(ii)
                     if (uzbirthpid > 0) pgroup%pid(ii,uzbirthpid)=pgroup%uzp(ii)
+
+c                   --- Save the ID of the injection source. Note that pid
+c                   --- is doing double duty, saving the injection source
+c                   --- number and the fraction of the timestep the
+c                   --- particle is advanced.
+                    pgroup%pid(ii,injpid) = pgroup%pid(ii,injpid) + ij
 
 c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
@@ -2295,7 +2297,8 @@ c                     --- velocity has been rotated to be along B.
 c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
                     pgroup%pid(ii,:) = 0.
-                    pgroup%pid(ii,injpid) = ninject + ij + rnrev(injctcnt,dig5)
+c                   --- The fraction of the step to advance the particle
+                    pgroup%pid(ii,injpid) = rnrev(injctcnt,dig5)
 c                   --- Save SSN
                     if (spid>0) then
                       pgroup%pid(ii,spid) = ssn
@@ -2309,12 +2312,19 @@ c                   --- by the radius.
                       pgroup%pid(ii,wpid) = wtinject(ij,is)
                     endif
 
+                    if (tbirthpid > 0) pgroup%pid(ii,tbirthpid) = time - pgroup%pid(ii,injpid)*fulldt_s
                     if (xbirthpid > 0) pgroup%pid(ii,xbirthpid) = pgroup%xp(ii)
                     if (ybirthpid > 0) pgroup%pid(ii,ybirthpid) = pgroup%yp(ii)
                     if (zbirthpid > 0) pgroup%pid(ii,zbirthpid) = pgroup%zp(ii)
                     if (uxbirthpid > 0) pgroup%pid(ii,uxbirthpid)=pgroup%uxp(ii)
                     if (uybirthpid > 0) pgroup%pid(ii,uybirthpid)=pgroup%uyp(ii)
                     if (uzbirthpid > 0) pgroup%pid(ii,uzbirthpid)=pgroup%uzp(ii)
+
+c                   --- Save the ID of the injection source. Note that pid
+c                   --- is doing double duty, saving the injection source
+c                   --- number and the fraction of the timestep the
+c                   --- particle is advanced.
+                    pgroup%pid(ii,injpid) = pgroup%pid(ii,injpid) + ninject + ij
 
 c                   --- increment particle counter
                     nti = nti + 1

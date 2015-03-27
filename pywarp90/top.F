@@ -4483,7 +4483,8 @@ c=============================================================================
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
-      use Particles,Only: spid,xbirthpid,ybirthpid,zbirthpid,uxbirthpid,uybirthpid,uzbirthpid,ssn
+      use Picglb,Only: time
+      use Particles,Only: spid,tbirthpid,xbirthpid,ybirthpid,zbirthpid,uxbirthpid,uybirthpid,uzbirthpid,ssn
       use Beam_acc
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,nn,nnpid
@@ -4704,6 +4705,7 @@ c           --- Only set the ssn if it is not already set.
           end if
 
 c         --- Save birth position or velocity at birth.
+          if (tbirthpid > 0) pgroup%pid(i1:i2,tbirthpid) = time
           if (xbirthpid > 0) pgroup%pid(i1:i2,xbirthpid) = x(j1:j2)
           if (ybirthpid > 0) pgroup%pid(i1:i2,ybirthpid) = y(j1:j2)
           if (zbirthpid > 0) pgroup%pid(i1:i2,zbirthpid) = z(j1:j2)
