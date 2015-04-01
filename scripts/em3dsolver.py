@@ -2197,15 +2197,18 @@ class EM3D(SubcycledPoissonSolver):
             top.xpminlocal = self.incrementposition(top.xpminlocal,self.dx,n)
             top.xpmaxlocal = self.incrementposition(top.xpmaxlocal,self.dx,n)
         # --- move window in z
-#      while (abs(top.zgrid-self.zgrid)>=0.5*self.dz):
-        while ((top.zgrid-self.zgrid)>=0.5*self.dz):
-            self.shift_cells_z(1)
+        if top.vbeamfrm > 0.:
+            while ((top.zgrid-self.zgrid)>=0.5*self.dz):
+                self.shift_cells_z(1)
+        elif top.vbeamfrm < 0.:
+            while ((top.zgrid-self.zgrid)<=-0.5*self.dz):
+                self.shift_cells_z(-1)
 
     def incrementposition(self,z,dz,n):
-            # --- z is incremented using an integer to avoid round off problems.
-            # --- In the old way, repeatedly doing z += dz, z will drift
-            # --- because of roundoff so that z != nz*dz. Incrementing using
-            # --- integers fixes this problem.
+        # --- z is incremented using an integer to avoid round off problems.
+        # --- In the old way, repeatedly doing z += dz, z will drift
+        # --- because of roundoff so that z != nz*dz. Incrementing using
+        # --- integers fixes this problem.
         nz = int(z/dz)
         wz = z - nz*dz
         return (nz + n)*dz + wz

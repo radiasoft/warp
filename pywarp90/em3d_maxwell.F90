@@ -5468,15 +5468,16 @@ integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
 integer(ISZ), parameter:: otherproc=10, ibuf = 950
 real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
-f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
-if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = 0.
+if (n > 0) then
+  f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
+  if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = 0.
 
 #ifdef MPIPARALLEL
   if (zl==otherproc) then
      call mpi_packbuffer_init(size(f(:,:,nzguard-n+1:nzguard)),ibuf)
      call mympi_pack(f(:,:,nzguard-n+1:nzguard),ibuf)
      call mpi_send_pack(procneighbors(0,2),0,ibuf)
-  end if    
+  end if
   if (zr==otherproc) then
     call mpi_packbuffer_init(size(f(:,:,nz+nzguard-n+1:)),ibuf)
     call mpi_recv_pack(procneighbors(1,2),0,ibuf)
@@ -5484,6 +5485,26 @@ if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = 0.
                                                            shape(f(:,:,nz+nzguard-n+1:)))
   end if
 #endif
+
+else if (n < 0) then
+  f(:,:,-nzguard-n:nz+nzguard) = f(:,:,-nzguard:nz+nzguard+n)
+  if (zr/=otherproc) f(:,:,:-nzguard-n-1) = 0.
+
+#ifdef MPIPARALLEL
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,:,nz-nzguard:nz-nzguard-n-1)),ibuf)
+     call mympi_pack(f(:,:,nz-nzguard:nz-nzguard-n-1),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,:,-nzguard:-nzguard-n-1)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,:,-nzguard:-nzguard-n-1) = reshape(mpi_unpack_real_array( size(f(:,:,-nzguard:-nzguard-n-1)),ibuf), &
+                                                                 shape(f(:,:,-nzguard:-nzguard-n-1)))
+  end if
+#endif
+
+endif
 
   return
 end subroutine shift_3darray_ncells_z
@@ -5497,22 +5518,43 @@ integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
 integer(ISZ), parameter:: otherproc=10, ibuf = 950
 logical(ISZ) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
 
-f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
-if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = .false.
+if (n > 0) then
+  f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
+  if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = .false.
 
 #ifdef MPIPARALLEL
   if (zl==otherproc) then
      call mpi_packbuffer_init(size(f(:,:,nzguard-n+1:nzguard)),ibuf)
      call mympi_pack(f(:,:,nzguard-n+1:nzguard),ibuf)
      call mpi_send_pack(procneighbors(0,2),0,ibuf)
-  end if    
+  end if
   if (zr==otherproc) then
     call mpi_packbuffer_init(size(f(:,:,nz+nzguard-n+1:)),ibuf)
     call mpi_recv_pack(procneighbors(1,2),0,ibuf)
     f(:,:,nz+nzguard-n+1:) = reshape(mpi_unpack_logical_array( size(f(:,:,nz+nzguard-n+1:)),ibuf), &
-                                                           shape(f(:,:,nz+nzguard-n+1:)))
+                                                              shape(f(:,:,nz+nzguard-n+1:)))
   end if
 #endif
+
+else if (n < 0) then
+  f(:,:,-nzguard-n:nz+nzguard) = f(:,:,-nzguard:nz+nzguard+n)
+  if (zr/=otherproc) f(:,:,:-nzguard-n-1) = .false.
+
+#ifdef MPIPARALLEL
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,:,nz-nzguard:nz-nzguard-n-1)),ibuf)
+     call mympi_pack(f(:,:,nz-nzguard:nz-nzguard-n-1),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,:,-nzguard:-nzguard-n-1)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,:,-nzguard:-nzguard-n-1) = reshape(mpi_unpack_logical_array( size(f(:,:,-nzguard:-nzguard-n-1)),ibuf), &
+                                                                    shape(f(:,:,-nzguard:-nzguard-n-1)))
+  end if
+#endif
+
+endif
 
   return
 end subroutine shift_3dlarray_ncells_z

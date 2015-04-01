@@ -2431,6 +2431,8 @@ tpid   integer    /0/  # position of particle creation time in array pid
                        # (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid
                        # (FORTRAN indexed: based 1)
+tbirthpid integer /0/  # time of particle birth in array pid
+                       # (FORTRAN indexed: based 1)
 xbirthpid integer /0/  # position of particle birth x in array pid
                        # (FORTRAN indexed: based 1)
 ybirthpid integer /0/  # position of particle birth y in array pid
