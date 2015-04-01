@@ -1466,6 +1466,62 @@ c     --- with a stride.
         return
       end subroutine smooth3d_121_stride
 c===========================================================================
+      subroutine smoothcirc_121_stride(q,nx,nz,nm,npass,alpha,stride)
+c     --- performs a smoothing sequence of n passes of a three points stencil 
+c     --- on a complex array that represents the circ higher modes (m>0),
+c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
+c     --- with a stride.
+       implicit none
+
+       integer(ISZ) :: nx,nz,nm,i,j,k,l,m,npass(3),stride(3)
+
+       complex(kind=8), dimension(0:nx,0:nz,0:nm) :: q
+       complex(kind=8) :: tempx(0:nx), tempz(0:nz)
+       real(kind=8) :: alpha(3), a, b
+
+!           x smoothing
+        a = alpha(1)
+        b = (1.-a)/2.
+        do i=1,npass(1)
+           do  l=0,nz
+              do m=0,nm
+                 tempx = q(:,l,m)
+                 do j=0,stride(1)-1
+                    q(j,l,m) = (1.-b)*q(j,l,m)+b*q(j+stride(1),l,m)
+                 end do
+                 do j=nx-stride(1)+1,nx
+                    q(j,l,m) = (1.-b)*q(j,l,m)+b*q(j-stride(1),l,m)
+                 end do
+                 do j=stride(1),nx-stride(1)
+                    q(j,l,m) = a*q(j,l,m)+b*(tempx(j-stride(1))+tempx(j+stride(1)))
+                 end do
+              end do
+           end do
+        end do
+        
+!           z smoothing
+        a = alpha(3)
+        b = (1.-a)/2.
+        do i=1,npass(3)
+           do  j=0,nx
+              do m=0,nm
+                 tempz = q(j,:,m)
+                 do l=0,stride(3)-1
+                    q(j,l,m) = (1.-b)*q(j,l,m)+b*q(j,l+stride(3),m)
+                 end do
+                 do l=nz-stride(3)+1,nz
+                    q(j,l,m) = (1.-b)*q(j,l,m)+b*q(j,l-stride(3),m)
+                 end do
+                 do  l=stride(3),nz-stride(3)
+                    q(j,l,m) = a*q(j,l,m)+b*(tempz(l-stride(3))+tempz(l+stride(3)))
+                 end do
+              end do
+           end do
+        end do
+           
+        return
+      end subroutine smoothcirc_121_stride
+c===========================================================================
       subroutine smooth3d_121_stride_mask(q,mask,nx,ny,nz,npass,alpha,stride)
 c     --- performs a smoothing sequence of n passes of a three points stencil
 c     --- with coefficients [(1-alpha)/2, alpha, (1-alpha)/2] along x, y and/or z,
