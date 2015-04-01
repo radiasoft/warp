@@ -150,7 +150,19 @@ depose_rho_n_2dxz(rho:real,
                            nxguard:integer,nzguard:integer,
                            nox:integer,noz:integer,
                            l_particles_weight:logical,
-                           l4symtry:logical,l_2drz:logical)
+                           l4symtry:logical,l_2drz:logical,
+		           type_rz_depose:integer)
+                           subroutine
+depose_rho_n_2d_circ(rho:real,rho_circ:complex,circ_n:integer,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           w:real,q:real,
+                           xmin:real,zmin:real,
+                           dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+		           type_rz_depose:integer)
                            subroutine
 depose_j_n_1dz(cj:real,
                            n:integer,z(n):real,
@@ -254,6 +266,16 @@ getf2drz_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
          nxguard:integer,nyguard:integer,nzguard:integer,
          nox:integer,noz:integer,
          exg:real,eyg:real,ezg:real,l4symtry:logical,l_2drz:logical)
+                           subroutine
+getf2drz_circ_n(n:integer,xp(n):real,yp(n):real,zp(n):real,
+         ex(n):real,ey(n):real,ez(n):real,
+         xmin:real,zmin:real,
+         dx:real,dz:real,
+         nx:integer,ny:integer,nz:integer,
+         nxguard:integer,nyguard:integer,nzguard:integer,
+         nox:integer,noz:integer,
+	 exg:real,eyg:real,ezg:real,
+         exg_circ:complex,eyg_circ:complex,ezg_circ:complex,circ_m:integer)
                            subroutine
 gete3d_linear_energy_conserving(n:integer,xp(n):real,yp(n):real,zp(n):real,
                ex(n):real,ey(n):real,ez(n):real,
@@ -360,10 +382,12 @@ set_macroscopic_coefs_on_yee(f:EM3D_YEEFIELDtype,n:integer,indx(3,n):integer,
                              sigma:real,epsi:real,mu:real) subroutine
 em3d_applybc_rho(f:EM3D_YEEFIELDtype,xlbnd:integer,xrbnd:integer,
                                      ylbnd:integer,yrbnd:integer,
-                                     zlbnd:integer,zrbnd:integer) subroutine
+                                     zlbnd:integer,zrbnd:integer,
+		                     type_rz_depose:integer) subroutine
 em3d_applybc_j(f:EM3D_YEEFIELDtype,xlbnd:integer,xrbnd:integer,
                                    ylbnd:integer,yrbnd:integer,
-                                   zlbnd:integer,zrbnd:integer) subroutine
+                                   zlbnd:integer,zrbnd:integer,
+		                   type_rz_depose:integer) subroutine
 project_jxjyjz(jfine:real,jcoarse:real,jcoarse_mother:real,
                nxf:integer,nyf:integer,nzf:integer,
                nxc:integer,nyc,nzc:integer,
@@ -403,7 +427,19 @@ depose_jxjyjz_esirkepov_n_2d(j:real,
                            nxguard:integer,nzguard:integer,
                            nox:integer,noz:integer,
                            l_particles_weight:logical,
-                           l4symtry:logical,l_2drz:logical)
+                           l4symtry:logical,l_2drz:logical,
+		           type_rz_depose:integer)
+                           subroutine
+depose_jxjyjz_esirkepov_n_2d_circ(j:real,j_circ:complex,circ_m:integer,
+                           n:integer,x(n):real,y(n):real,z(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w:real,q:real,
+                           xmin:real,zmin:real,dt:real,dx:real,dz:real,
+                           nx:integer,nz:integer,
+                           nxguard:integer,nzguard:integer,
+                           nox:integer,noz:integer,
+                           l_particles_weight:logical,
+		           type_rz_depose:integer)
                            subroutine
 depose_jxjyjz_villasenor_n_2d(j:real,
                            n:integer,x(n):real,y(n):real,
@@ -563,6 +599,7 @@ zcoefs(norderz/2) _real # coefficients of finite-difference stencil in x
 fieldtype integer /-1/
 stencil integer /0/ # 0 = Yee; 1 = Yee-enlarged (Karkkainen) on EF,B; 2 = Yee-enlarged (Karkkainen) on E,F
 spectral logical /.false./
+circ_m integer /0/ # max number of azimuthal modes
 l_nodalgrid logical /.false./    # specifies whether FDTD calculation is on nodal (true) or staggerd (false) grid
 l_nodecentered logical /.false./ # specifies whether field data have been gathered at nodes (when computing with staggered "Yee" grid)
 l_macroscopic logical /.false./
@@ -620,6 +657,9 @@ nzdamp integer /0/
 nxpnext integer /0/
 nypnext integer /0/
 nzpnext integer /0/
+nxr integer /0/
+nyr integer /0/
+nzr integer /0/
 nxf integer /0/
 nyf integer /0/
 nzf integer /0/
@@ -689,13 +729,30 @@ Bypnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzgua
 Bzpnext(-nxguard:nxpnext+nxguard,-nyguard:nypnext+nyguard,-nzguard:nzpnext+nzguard) _real
 F(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
 G(-nxguard:nxg+nxguard,-nyguard:nyg+nyguard,-nzguard:nzg+nzguard) _real
-Rho(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
-Rhoold(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard) _real
-Rhoarray(-nxguard:nxf+nxguard,-nyguard:nyf+nyguard,-nzguard:nzf+nzguard,ntimes) _real
+Rho(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard) _real
+Rhoold(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard) _real
+Rhoarray(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard,ntimes) _real
 DRhoodt(-nxguard:nxdrho+nxguard,-nyguard:nydrho+nyguard,-nzguard:nzdrho+nzguard) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
 incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
+Ex_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Ey_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Ez_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Bx_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+By_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Bz_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Exp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Eyp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Ezp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Bxp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Byp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Bzp_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+F_circ(-nxguard:nxf+nxguard,-nzguard:nzf+nzguard,1:circ_m) _complex
+Rho_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) _complex
+Rhoarray_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,ntimes,1:circ_m) _complex
+J_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3,1:circ_m) _complex
+Jarray_circ(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3,ntimes,1:circ_m) _complex
 Ax(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Ay(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
 Az(-nxguard:nxpo+nxguard,-nyguard:nypo+nyguard,-nzguard:nzpo+nzguard) _real
