@@ -475,10 +475,10 @@ end subroutine depose_jxjy_esirkepov_linear_serial_2d
 
 subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
                                                  dt,dx,dz,nx,nz,nxguard,nzguard, &
-                                                 nox,noz,l_particles_weight,l4symtry,l_2drz)
+                                                 nox,noz,l_particles_weight,l4symtry,l_2drz,type_rz_depose)
    use Constant, only: clight
    implicit none
-   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
+   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard,type_rz_depose
    real(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
    real(kind=8), dimension(np) :: xp,yp,zp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dz,xmin,zmin
@@ -510,6 +510,11 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
     sx0=0.;sz0=0.
     sdx=0.;sdz=0.
       
+    ! Davoine method : limited to order 1 in r
+    if (type_rz_depose==2) then
+       nox = 1
+    endif
+
       dxi = 1./dx
       dzi = 1./dz
       invvol = 1./(dx*dz)
@@ -585,15 +590,15 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
 
         xold = x
         zold = z
-        
+
         x = x+dtsdx*vx
         z = z+dtsdz*vz
-        
+
         ! --- computes particles "weights"
         if (l_particles_weight) then
-          wq=q*w(ip)
+           wq=q*w(ip)
         else
-          wq=q*w(1)
+           wq=q*w(1)
         end if
         wqx = wq*invdtdx
         wqz = wq*invdtdz
@@ -616,59 +621,64 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         zint=z-ikxp0
 
         ! --- computes coefficients for node centered quantities
-        select case(nox)
-         case(0)
-          sx0( 0) = 1.
-         case(1)
-          sx0( 0) = 1.-xint
-          sx0( 1) = xint
-         case(2)
-          xintsq = xint*xint
-          sx0(-1) = 0.5*(0.5-xint)**2
-          sx0( 0) = 0.75-xintsq
-          sx0( 1) = 0.5*(0.5+xint)**2
-         case(3)
-          oxint = 1.-xint
-          xintsq = xint*xint
-          oxintsq = oxint*oxint
-          sx0(-1) = onesixth*oxintsq*oxint
-          sx0( 0) = twothird-xintsq*(1.-xint/2)
-          sx0( 1) = twothird-oxintsq*(1.-oxint/2)
-          sx0( 2) = onesixth*xintsq*xint
-        end select        
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx0(0) = 1. - xint  + 1./(4*iixp0+2)*( -xint + xint**2 )
+           sx0(1) = 1. - sx0(0)
+        else! Standard method, canonical shapes in r 
+           select case(nox)
+           case(0)
+              sx0( 0) = 1.
+           case(1)
+              sx0( 0) = 1.-xint
+              sx0( 1) = xint
+           case(2)
+              xintsq = xint*xint
+              sx0(-1) = 0.5*(0.5-xint)**2
+              sx0( 0) = 0.75-xintsq
+              sx0( 1) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx0(-1) = onesixth*oxintsq*oxint
+              sx0( 0) = twothird-xintsq*(1.-xint/2)
+              sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+              sx0( 2) = onesixth*xintsq*xint
+           end select
+        endif
 
         select case(noz)
-         case(0)
-          sz0( 0) = 1.
-         case(1)
-          sz0( 0) = 1.-zint
-          sz0( 1) = zint
-         case(2)
-          zintsq = zint*zint
-          sz0(-1) = 0.5*(0.5-zint)**2
-          sz0( 0) = 0.75-zintsq
-          sz0( 1) = 0.5*(0.5+zint)**2
-         case(3)
-          ozint = 1.-zint
-          zintsq = zint*zint
-          ozintsq = ozint*ozint
-          sz0(-1) = onesixth*ozintsq*ozint
-          sz0( 0) = twothird-zintsq*(1.-zint/2)
-          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
-          sz0( 2) = onesixth*zintsq*zint
-        end select        
+        case(0)
+           sz0( 0) = 1.
+        case(1)
+           sz0( 0) = 1.-zint
+           sz0( 1) = zint
+        case(2)
+           zintsq = zint*zint
+           sz0(-1) = 0.5*(0.5-zint)**2
+           sz0( 0) = 0.75-zintsq
+           sz0( 1) = 0.5*(0.5+zint)**2
+        case(3)
+           ozint = 1.-zint
+           zintsq = zint*zint
+           ozintsq = ozint*ozint
+           sz0(-1) = onesixth*ozintsq*ozint
+           sz0( 0) = twothird-zintsq*(1.-zint/2)
+           sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+           sz0( 2) = onesixth*zintsq*zint
+        end select
 
         ! --- finds node of cell containing particles for old positions 
         ! --- (different for odd/even spline orders)
         if (nox==2*(nox/2)) then
-          iixp=nint(xold)
+           iixp=nint(xold)
         else
-          iixp=floor(xold)
+           iixp=floor(xold)
         end if
         if (noz==2*(noz/2)) then
-          ikxp=nint(zold)
+           ikxp=nint(zold)
         else
-          ikxp=floor(zold)
+           ikxp=floor(zold)
         end if
 
         ! --- computes distance between particle and node for old positions
@@ -683,78 +693,92 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
         sx=0.;sz=0.
 
         ! --- computes coefficients for quantities centered between nodes
-        select case(nox)
-         case(0)
-          sx( 0+dix) = 1.
-         case(1)
-          sx( 0+dix) = 1.-xint
-          sx( 1+dix) = xint
-         case(2)
-          xintsq = xint*xint
-          sx(-1+dix) = 0.5*(0.5-xint)**2
-          sx( 0+dix) = 0.75-xintsq
-          sx( 1+dix) = 0.5*(0.5+xint)**2
-         case(3)
-          oxint = 1.-xint
-          xintsq = xint*xint
-          oxintsq = oxint*oxint
-          sx(-1+dix) = onesixth*oxintsq*oxint
-          sx( 0+dix) = twothird-xintsq*(1.-xint/2)
-          sx( 1+dix) = twothird-oxintsq*(1.-oxint/2)
-          sx( 2+dix) = onesixth*xintsq*xint
-        end select        
-
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx(0) = 1. - xint  + 1./(4*iixp+2)*( -xint + xint**2 )
+           sx(1) = 1. - sx(0)
+        else! Standard method, canonical shapes in r 
+           select case(nox)
+           case(0)
+              sx( 0+dix) = 1.
+           case(1)
+              sx( 0+dix) = 1.-xint
+              sx( 1+dix) = xint
+           case(2)
+              xintsq = xint*xint
+              sx(-1+dix) = 0.5*(0.5-xint)**2
+              sx( 0+dix) = 0.75-xintsq
+              sx( 1+dix) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx(-1+dix) = onesixth*oxintsq*oxint
+              sx( 0+dix) = twothird-xintsq*(1.-xint/2)
+              sx( 1+dix) = twothird-oxintsq*(1.-oxint/2)
+              sx( 2+dix) = onesixth*xintsq*xint
+           end select
+        endif
+        
         select case(noz)
-         case(0)
-          sz( 0+diz) = 1.
-         case(1)
-          sz( 0+diz) = 1.-zint
-          sz( 1+diz) = zint
-         case(2)
-          zintsq = zint*zint
-          sz(-1+diz) = 0.5*(0.5-zint)**2
-          sz( 0+diz) = 0.75-zintsq
-          sz( 1+diz) = 0.5*(0.5+zint)**2
-         case(3)
-          ozint = 1.-zint
-          zintsq = zint*zint
-          ozintsq = ozint*ozint
-          sz(-1+diz) = onesixth*ozintsq*ozint
-          sz( 0+diz) = twothird-zintsq*(1.-zint/2)
-          sz( 1+diz) = twothird-ozintsq*(1.-ozint/2)
-          sz( 2+diz) = onesixth*zintsq*zint
-        end select        
+        case(0)
+           sz( 0+diz) = 1.
+        case(1)
+           sz( 0+diz) = 1.-zint
+           sz( 1+diz) = zint
+        case(2)
+           zintsq = zint*zint
+           sz(-1+diz) = 0.5*(0.5-zint)**2
+           sz( 0+diz) = 0.75-zintsq
+           sz( 1+diz) = 0.5*(0.5+zint)**2
+        case(3)
+           ozint = 1.-zint
+           zintsq = zint*zint
+           ozintsq = ozint*ozint
+           sz(-1+diz) = onesixth*ozintsq*ozint
+           sz( 0+diz) = twothird-zintsq*(1.-zint/2)
+           sz( 1+diz) = twothird-ozintsq*(1.-ozint/2)
+           sz( 2+diz) = onesixth*zintsq*zint
+        end select
 
         ! --- computes coefficients difference
         dsx = sx - sx0
         dsz = sz - sz0
-        
+
         ! --- computes min/max positions of current contributions
         ixmin = min(0,dix)-int(nox/2)
         ixmax = max(0,dix)+int((nox+1)/2)
         izmin = min(0,diz)-int(noz/2)
         izmax = max(0,diz)+int((noz+1)/2)
-
+        
         ! --- add current contributions
+        ! --- NB : the current is later divided by the cylindrical cell volume in applybc_j
         do k=izmin, izmax
-            do i=ixmin, ixmax
+           do i=ixmin, ixmax
               ic = iixp0+i
               kc = ikxp0+k
-              if(i<ixmax) then
-                sdx(i,k)  = wqx*dsx(i)*( sz0(k) + 0.5*dsz(k))
-                if (i>ixmin) sdx(i,k)=sdx(i,k)+sdx(i-1,k)
-                cj(ic,kc,1) = cj(ic,kc,1) + sdx(i,k)
-              end if
-              cj(ic,kc,2) = cj(ic,kc,2) + wq*vy*invvol*( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i))/ncells
-              if(k<izmax) then
-                sdz(i,k)  = wqz*dsz(k)*(sx0(i)+0.5*dsx(i)) 
-                if (k>izmin) sdz(i,k)=sdz(i,k)+sdz(i,k-1)
-                cj(ic,kc,3) = cj(ic,kc,3) + sdz(i,k)
-              end if
-          end do        
-        end do        
 
-      end do
+              ! -- Jx
+              if(i<ixmax) then
+                 sdx(i,k)  = wqx*dsx(i)*( sz0(k) + 0.5*dsz(k) )    ! Wx coefficient from esirkepov
+                 if (i>ixmin) sdx(i,k)=sdx(i,k)+sdx(i-1,k)         ! Integration of Wx along x
+                 cj(ic,kc,1) = cj(ic,kc,1) + sdx(i,k)              ! Deposition on the current
+              end if
+              
+              ! -- Jy (2D Esirkepov scheme)
+              cj(ic,kc,2) = cj(ic,kc,2) + wq*vy*invvol/ncells* &
+                   ( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i) )
+
+              ! -- Jz
+              if(k<izmax) then
+                 sdz(i,k)  = wqz*dsz(k)*(sx0(i)+0.5*dsx(i))        ! Wz coefficient from esirkepov
+                 if (k>izmin) sdz(i,k)=sdz(i,k)+sdz(i,k-1)         ! Integration of Wz along z
+                 cj(ic,kc,3) = cj(ic,kc,3) + sdz(i,k)              ! Deposition on the current
+                 
+              end if
+           end do
+        end do
+
+     end do
 
     end do
     
@@ -762,6 +786,362 @@ subroutine depose_jxjyjz_esirkepov_n_2d(cj,np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xm
 
   return
 end subroutine depose_jxjyjz_esirkepov_n_2d
+
+subroutine depose_jxjyjz_esirkepov_n_2d_circ(cj,cj_circ,circ_m,np,xp,yp,zp,uxp,uyp,uzp,gaminv, &
+     w,q,xmin,zmin,dt,dx,dz,nx,nz,nxguard,nzguard,nox,noz,l_particles_weight,type_rz_depose)
+   use Constant, only: clight
+  implicit none
+  integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard,circ_m,type_rz_depose
+  real(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3), intent(in out) :: cj
+  complex(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3,circ_m), intent(in out) :: cj_circ
+  real(kind=8), dimension(np) :: xp,yp,zp,uxp,uyp,uzp,gaminv,w
+  real(kind=8) :: q,dt,dx,dz,xmin,zmin
+  logical(ISZ) :: l_particles_weight
+
+  real(kind=8) :: dxi,dzi,dtsdx,dtsdz,xint,yint,zint, invr, dti
+   real(kind=8),dimension(:,:), allocatable :: sdx,sdz
+  real(kind=8), dimension(1:circ_m) :: wqt, invdtm
+  real(kind=8) :: xold,yold,zold,rold,xmid,ymid,zmid,x,y,z,r,c,s,wq,wqx,wqz, &
+       tmp,vx,vy,vz,dts2dx,dts2dz, &
+       s1x,s2x,s1z,s2z,invvol,invdtdx,invdtdz, &
+       oxint,ozint,xintsq,zintsq,oxintsq,ozintsq, &
+       dtsdx0,dtsdz0,dts2dx0,dts2dz0,rmid,cold,cmid,sold,smid
+  real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+   real(kind=8), dimension(:), allocatable :: sx, sx0, dsx, sz, sz0, dsz
+  integer(ISZ) :: iixp0,ikxp0,iixp,ikxp,ip,dix,diz,idx,idz,i,k,ic,kc, &
+       ixmin, ixmax, izmin, izmax, icell, ncells, m, ndtodx, ndtodz, &
+                   xl,xu,zl,zu
+  complex(kind=8) :: xymid,xymid0,xy,xy0,xyold,xyold0, im
+
+  im = complex(0.,1.)
+
+  ndtodx = int(clight*dt/dx)
+  ndtodz = int(clight*dt/dz)
+  xl = -int(nox/2)-1-ndtodx
+  xu = int((nox+1)/2)+1+ndtodx
+  zl = -int(noz/2)-1-ndtodz
+  zu = int((noz+1)/2)+1+ndtodz
+  allocate(sdx(xl:xu,zl:zu),sdz(xl:xu,zl:zu))
+  allocate(sx(xl:xu), sx0(xl:xu), dsx(xl:xu))
+  allocate(sz(zl:zu), sz0(zl:zu), dsz(zl:zu))
+
+  sx0=0.;sz0=0.
+  sdx=0.;sdz=0.
+
+  ! Davoine method : limited to order 1 in r
+  if (type_rz_depose==2) then
+     nox = 1
+  endif
+
+  dxi = 1./dx
+  dzi = 1./dz
+  dti = 1./dt
+  invvol = 1./(dx*dz)
+  dtsdx0 = dt*dxi
+  dtsdz0 = dt*dzi
+  dts2dx0 = 0.5*dtsdx0
+  dts2dz0 = 0.5*dtsdz0
+  invdtdx = 1./(dt*dz)
+  invdtdz = 1./(dt*dx)
+  do m = 1, circ_m
+     invdtm(m) = invdtdx/m
+  enddo
+
+  do ip=1,np
+
+     ! --- computes current position in grid units
+     x = xp(ip)
+     y = yp(ip)
+     xmid = 0.5*x
+     ymid = 0.5*y
+     r=sqrt(x*x+y*y)
+     if (r*dxi>1.e-10) then
+        invr = 1./r
+        c = x*invr 
+        s = y*invr
+     else
+        c = 1.
+        s = 0.
+     end if
+     xy0 = complex(c,s)
+     x = r
+     x = x*dxi
+     z = zp(ip)*dzi
+
+     ! --- computes velocity
+     vx = uxp(ip)*gaminv(ip)
+     vy = uyp(ip)*gaminv(ip)
+     vz = uzp(ip)*gaminv(ip)
+
+     ! --- computes old position in grid units
+     xold = xp(ip)-dt*vx
+     yold = yp(ip)-dt*vy
+     rold = sqrt(xold*xold+yold*yold)
+     if (rold*dxi>1.e-10) then
+        invr = 1./rold
+        cold = xold*invr 
+        sold = yold*invr
+     else
+        cold = 1.
+        sold = 0.
+     end if
+     xyold0 = complex(cold, sold)
+     xmid = xmid + 0.5*xold
+     ymid = ymid + 0.5*yold
+     rmid=sqrt(xmid*xmid+ymid*ymid)
+     if (rmid*dxi>1.e-10) then
+        invr = 1./rmid
+        cmid = xmid*invr 
+        smid = ymid*invr
+     else
+        cmid = 1.
+        smid = 0.
+     end if
+     xymid0 = complex(cmid,smid)
+     xold=rold*dxi
+     vy = -vx*smid+vy*cmid
+     vx = (x-xold)*dx*dti
+     zold=z-dtsdz0*vz
+
+     ! --- sets positions relative to grid start
+     x = x-xmin*dxi
+     z = z-zmin*dzi
+     xold = xold-xmin*dxi
+     zold = zold-zmin*dzi
+
+     ! computes maximum number of cells traversed by particle in a given dimension
+     ncells = 1!+max( int(abs(x-xold)), int(abs(z-zold)))
+     dtsdx = dtsdx0/ncells
+     dtsdz = dtsdz0/ncells
+     dts2dx = dts2dx0/ncells
+     dts2dz = dts2dz0/ncells
+
+     x=xold
+     z=zold
+
+     do icell = 1,ncells
+
+        xold = x
+        zold = z
+
+        x = x+dtsdx*vx
+        z = z+dtsdz*vz
+
+        ! --- computes particles "weights"
+        if (l_particles_weight) then
+           wq=q*w(ip)
+        else
+           wq=q*w(1)
+        end if
+        wqx = wq*invdtdx
+        wqz = wq*invdtdz
+        wqt(:) = wq*invdtm(:)
+
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+           iixp0=nint(x)
+        else
+           iixp0=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+           ikxp0=nint(z)
+        else
+           ikxp0=floor(z)
+        end if
+
+        ! --- computes distance between particle and node for current positions
+        xint=x-iixp0
+        zint=z-ikxp0
+
+        ! --- computes coefficients for node centered quantities
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx0(0) = 1. - xint + 1./(4*iixp0+2)*( -xint + xint**2 )
+           sx0(1) = 1. - sx0(0)
+        else                          ! Standard method, canonical shapes in r
+           select case(nox)
+           case(0)
+              sx0( 0) = 1.
+           case(1)
+              sx0( 0) = 1.-xint
+              sx0( 1) = xint
+           case(2)
+              xintsq = xint*xint
+              sx0(-1) = 0.5*(0.5-xint)**2
+              sx0( 0) = 0.75-xintsq
+              sx0( 1) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx0(-1) = onesixth*oxintsq*oxint
+              sx0( 0) = twothird-xintsq*(1.-xint/2)
+              sx0( 1) = twothird-oxintsq*(1.-oxint/2)
+              sx0( 2) = onesixth*xintsq*xint
+           end select
+        endif
+
+        select case(noz)
+        case(0)
+           sz0( 0) = 1.
+        case(1)
+           sz0( 0) = 1.-zint
+           sz0( 1) = zint
+        case(2)
+           zintsq = zint*zint
+           sz0(-1) = 0.5*(0.5-zint)**2
+           sz0( 0) = 0.75-zintsq
+           sz0( 1) = 0.5*(0.5+zint)**2
+        case(3)
+           ozint = 1.-zint
+           zintsq = zint*zint
+           ozintsq = ozint*ozint
+           sz0(-1) = onesixth*ozintsq*ozint
+           sz0( 0) = twothird-zintsq*(1.-zint/2)
+           sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+           sz0( 2) = onesixth*zintsq*zint
+        end select
+
+        ! --- finds node of cell containing particles for old positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+           iixp=nint(xold)
+        else
+           iixp=floor(xold)
+        end if
+        if (noz==2*(noz/2)) then
+           ikxp=nint(zold)
+        else
+           ikxp=floor(zold)
+        end if
+
+        ! --- computes distance between particle and node for old positions
+        xint = xold-iixp
+        zint = zold-ikxp
+
+        ! --- computes node separation between old and current positions
+        dix = iixp-iixp0
+        diz = ikxp-ikxp0
+
+        ! --- zero out coefficients (needed because of different dix and diz for each particle)
+        sx=0.;sz=0.
+
+        ! --- computes coefficients for quantities centered between nodes
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx(0+dix) = 1. - xint + 1./(4*iixp+2)*( -xint + xint**2 )
+           sx(1+dix) = 1. - sx(0+dix)
+        else! Standard method, canonical shapes in r 
+           select case(nox)
+           case(0)
+              sx( 0+dix) = 1.
+           case(1)
+              sx( 0+dix) = 1.-xint
+              sx( 1+dix) = xint
+           case(2)
+              xintsq = xint*xint
+              sx(-1+dix) = 0.5*(0.5-xint)**2
+              sx( 0+dix) = 0.75-xintsq
+              sx( 1+dix) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx(-1+dix) = onesixth*oxintsq*oxint
+              sx( 0+dix) = twothird-xintsq*(1.-xint/2)
+              sx( 1+dix) = twothird-oxintsq*(1.-oxint/2)
+              sx( 2+dix) = onesixth*xintsq*xint
+           end select
+        endif
+
+        select case(noz)
+        case(0)
+           sz( 0+diz) = 1.
+        case(1)
+           sz( 0+diz) = 1.-zint
+           sz( 1+diz) = zint
+        case(2)
+           zintsq = zint*zint
+           sz(-1+diz) = 0.5*(0.5-zint)**2
+           sz( 0+diz) = 0.75-zintsq
+           sz( 1+diz) = 0.5*(0.5+zint)**2
+        case(3)
+           ozint = 1.-zint
+           zintsq = zint*zint
+           ozintsq = ozint*ozint
+           sz(-1+diz) = onesixth*ozintsq*ozint
+           sz( 0+diz) = twothird-zintsq*(1.-zint/2)
+           sz( 1+diz) = twothird-ozintsq*(1.-ozint/2)
+           sz( 2+diz) = onesixth*zintsq*zint
+        end select
+
+        ! --- computes coefficients difference
+        dsx = sx - sx0
+        dsz = sz - sz0
+
+        ! --- computes min/max positions of current contributions
+        ixmin = min(0,dix)-int(nox/2)
+        ixmax = max(0,dix)+int((nox+1)/2)
+        izmin = min(0,diz)-int(noz/2)
+        izmax = max(0,diz)+int((noz+1)/2)
+
+        ! --- add current contributions
+        ! -- NB : the current is later divided by the cylindrical cell volume in applybc_j
+        do k=izmin, izmax
+           do i=ixmin, ixmax
+              ic = iixp0+i
+              kc = ikxp0+k
+
+              ! -- Jr
+              if(i<ixmax) then
+                 sdx(i,k)  = wqx*dsx(i)*( sz0(k) + 0.5*dsz(k) )    ! Wr coefficient from esirkepov
+                 if (i>ixmin) sdx(i,k)=sdx(i,k)+sdx(i-1,k)         ! Integration of Wr along r
+                 cj(ic,kc,1) = cj(ic,kc,1) + sdx(i,k)              ! Deposition on the mode m = 0
+                 xymid = xymid0 ! Throughout the following loop, xymid takes the value e^{i m theta}
+                 do m = 1, circ_m                                  ! Deposition on the modes m>0
+                    cj_circ(ic,kc,1,m) = cj_circ(ic,kc,1,m) + 2.*sdx(i,k)*xymid
+                    ! The factor 2 comes from the normalization of the modes
+                    xymid = xymid*xymid0
+                 enddo
+              end if
+
+              ! -- Jtheta
+              ! Mode m = 0 : similar to the 2D Esirkepov scheme
+              cj(ic,kc,2) = cj(ic,kc,2) + wq*vy*invvol/ncells* &
+                   ( (sz0(k)+0.5*dsz(k))*sx0(i) + (0.5*sz0(k)+1./3.*dsz(k))*dsx(i) )
+              ! Mode m > 0 : see Davidson et al. JCP 281 (2014)
+              xy = xy0 ; xymid = xymid0 ; xyold = xyold0
+              ! Throughout the following loop, xy_ takes the value e^{i m theta_}
+              do m = 1, circ_m
+                 cj_circ(ic,kc,2,m) = cj_circ(ic,kc,2,m) - 2*im*(ic+xmin*dxi)*wqt(m) * &
+                      ( sx0(i)*sz0(k)*(xy-xymid) + sx(i)*sz(k)*(xymid-xyold) )
+                 ! The factor 2 comes from the normalization of the modes
+                 ! The minus sign comes from the different convention with respect to Davidson et al.
+                 xy = xy*xy0 ; xymid = xymid*xymid0 ; xyold = xyold*xyold0
+              enddo
+
+              ! -- Jz
+              if(k<izmax) then
+                 sdz(i,k)  = wqz*dsz(k)*(sx0(i)+0.5*dsx(i))        ! Wz coefficient from esirkepov
+                 if (k>izmin) sdz(i,k)=sdz(i,k)+sdz(i,k-1)         ! Integration of Wz along z
+                 cj(ic,kc,3) = cj(ic,kc,3) + sdz(i,k)              ! Deposition on the mode m=0
+                 xymid = xymid0 ! Throughout the following loop, xymid takes the value e^{i m theta}
+                 do m = 1, circ_m                                  ! Deposition on the modes m>0
+                    cj_circ(ic,kc,3,m) = cj_circ(ic,kc,3,m) + 2.*sdz(i,k)*xymid
+                    ! The factor 2 comes from the normalization of the modes
+                    xymid = xymid*xymid0
+                 enddo
+              end if
+           end do
+        end do
+
+     end do
+
+  end do
+
+  deallocate(sdx,sdz,sx,sx0,dsx,sz,sz0,dsz)
+
+  return
+end subroutine depose_jxjyjz_esirkepov_n_2d_circ
 
 subroutine depose_jxjyjz_villasenor_n_2d(cj,np,xp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,zmin, &
                                                  dt,dx,dz,nx,nz,nxguard,nzguard, &
@@ -2535,9 +2915,9 @@ subroutine depose_rho_linear_serial(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,
 end subroutine depose_rho_linear_serial
 
 subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,nzguard,nox,noz, &
-                        l_particles_weight,l4symtry,l_2drz)
+                        l_particles_weight,l4symtry,l_2drz, type_rz_depose)
    implicit none
-   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard
+   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard,type_rz_depose
    real(kind=8), dimension(-nxguard:nx+nxguard,0:0,-nzguard:nz+nzguard), intent(in out) :: rho
    real(kind=8), dimension(np) :: xp,yp,zp,w
    real(kind=8) :: q,dt,dx,dz,xmin,zmin
@@ -2554,6 +2934,11 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
       dxi = 1./dx
       dzi = 1./dz
       invvol = dxi*dzi
+
+      ! Davoine method : limited to order 1 in r
+      if (type_rz_depose==2) then
+         nox = 1
+      endif
 
       ixmin = -int(nox/2)
       ixmax = int((nox+1)/2)
@@ -2602,26 +2987,31 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
         end if
       
         ! --- computes coefficients for node centered quantities
-        select case(nox)
-         case(0)
-          sx( 0) = 1.
-         case(1)
-          sx( 0) = 1.-xint
-          sx( 1) = xint
-         case(2)
-          xintsq = xint*xint
-          sx(-1) = 0.5*(0.5-xint)**2
-          sx( 0) = 0.75-xintsq
-          sx( 1) = 0.5*(0.5+xint)**2
-         case(3)
-          oxint = 1.-xint
-          xintsq = xint*xint
-          oxintsq = oxint*oxint
-          sx(-1) = onesixth*oxintsq*oxint
-          sx( 0) = twothird-xintsq*(1.-xint/2)
-          sx( 1) = twothird-oxintsq*(1.-oxint/2)
-          sx( 2) = onesixth*xintsq*xint
-        end select        
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx(0) = 1. - xint  + 1./(4*j+2)*( -xint + xint**2 )
+           sx(1) = 1. - sx(0)
+        else                          ! Standard method, canonical shapes in r
+           select case(nox)
+           case(0)
+              sx( 0) = 1.
+           case(1)
+              sx( 0) = 1.-xint
+              sx( 1) = xint
+           case(2)
+              xintsq = xint*xint
+              sx(-1) = 0.5*(0.5-xint)**2
+              sx( 0) = 0.75-xintsq
+              sx( 1) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx(-1) = onesixth*oxintsq*oxint
+              sx( 0) = twothird-xintsq*(1.-xint/2)
+              sx( 1) = twothird-oxintsq*(1.-oxint/2)
+              sx( 2) = onesixth*xintsq*xint
+           end select
+        endif
 
         select case(noz)
          case(0)
@@ -2655,6 +3045,151 @@ subroutine depose_rho_n_2dxz(rho,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz,nxguard,n
 
   return
 end subroutine depose_rho_n_2dxz
+
+subroutine depose_rho_n_2d_circ(rho,rho_circ,circ_m,np,xp,yp,zp,w,q,xmin,zmin,dx,dz,nx,nz, &
+     nxguard,nzguard,nox,noz,l_particles_weight,type_rz_depose)
+   implicit none
+   integer(ISZ) :: np,nx,nz,nox,noz,nxguard,nzguard,circ_m,type_rz_depose
+   real(kind=8), dimension(-nxguard:nx+nxguard,0:0,-nzguard:nz+nzguard), intent(in out) :: rho
+   complex(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,circ_m), intent(in out) :: rho_circ
+   real(kind=8), dimension(np) :: xp,yp,zp,w
+   real(kind=8) :: q,dt,dx,dz,xmin,zmin
+   logical(ISZ) :: l_particles_weight
+
+   real(kind=8) :: dxi,dzi,xint,zint, &
+                   oxint,ozint,xintsq,zintsq,oxintsq,ozintsq
+   real(kind=8) :: x,y,z,r,wq,invvol,c,s
+   real(kind=8) :: sx(-int(nox/2):int((nox+1)/2)), &
+                   sz(-int(noz/2):int((noz+1)/2))
+   real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+   integer(ISZ) :: j,l,m,ip,jj,ll,ixmin, ixmax, izmin, izmax
+   complex(kind=8) :: xy,xy0
+   
+      dxi = 1./dx
+      dzi = 1./dz
+      invvol = dxi*dzi
+
+      ! Davoine method : limited to order 1 in r
+      if (type_rz_depose == 2) then
+         nox = 1
+      endif
+      
+      ixmin = -int(nox/2)
+      ixmax = int((nox+1)/2)
+      izmin = -int(noz/2)
+      izmax = int((noz+1)/2)
+
+      do ip=1,np
+        
+        ! --- computes current position in grid units
+        x = xp(ip)
+        y = yp(ip)
+        r=sqrt(x*x+y*y)
+        if (r*dxi>1.e-10) then
+          c = x/r 
+          s = y/r
+        else
+          c = 1.
+          s = 0.
+        end if
+        xy0 = complex(c,s)
+        x = (r-xmin)*dxi
+        z = (zp(ip)-zmin)*dzi
+        
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(x)
+        else
+          j=floor(x)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
+
+        ! --- computes distance between particle and node for current positions
+        xint = x-j
+        zint = z-l
+
+        ! --- computes particles "weights"
+        if (l_particles_weight) then
+          wq=q*w(ip)*invvol
+        else
+          wq=q*invvol
+        end if
+        
+        ! --- computes coefficients for node centered quantities
+        if (type_rz_depose == 2) then ! Davoine method, modified particle shapes in r
+           sx(0) = 1. - xint  + 1./(4*j+2)*( -xint + xint**2 )
+           sx(1) = 1. - sx(0)
+        else                          ! Standard method, canonical shapes in r
+           select case(nox)
+           case(0)
+              sx( 0) = 1.
+           case(1)
+              sx( 0) = 1.-xint
+              sx( 1) = xint
+           case(2)
+              xintsq = xint*xint
+              sx(-1) = 0.5*(0.5-xint)**2
+              sx( 0) = 0.75-xintsq
+              sx( 1) = 0.5*(0.5+xint)**2
+           case(3)
+              oxint = 1.-xint
+              xintsq = xint*xint
+              oxintsq = oxint*oxint
+              sx(-1) = onesixth*oxintsq*oxint
+              sx( 0) = twothird-xintsq*(1.-xint/2)
+              sx( 1) = twothird-oxintsq*(1.-oxint/2)
+              sx( 2) = onesixth*xintsq*xint
+           end select
+        endif
+           
+        select case(noz)
+         case(0)
+          sz( 0) = 1.
+         case(1)
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end select        
+
+        ! --- add charge density contributions
+         do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              rho(j+jj,0,l+ll)=rho(j+jj,0,l+ll)+sx(jj)*sz(ll)*wq
+            end do
+        end do
+
+        xy = xy0
+        do m = 1, circ_m  
+          ! --- add charge density contributions to modes m=1...circ_m
+          do ll = izmin, izmax
+            do jj = ixmin, ixmax
+              rho_circ(j+jj,l+ll,m)=rho_circ(j+jj,l+ll,m)+2.*sx(jj)*sz(ll)*wq*xy
+            end do
+          end do
+          xy = xy*xy0
+        end do
+
+    end do
+
+  return
+end subroutine depose_rho_n_2d_circ
 
 subroutine depose_rho_n(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz,nxguard,nyguard,nzguard,nox,noy,noz, &
                         l_particles_weight,l4symtry)
@@ -3565,7 +4100,7 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       logical(ISZ) :: l4symtry,l_2drz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
                       ixmin0, ixmax0, izmin0, izmax0, jj, ll
-      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta, invr
       real(kind=8) :: xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
@@ -3588,8 +4123,9 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           y = yp(ip)
           r=sqrt(x*x+y*y)
           if (r*dxi>1.e-20) then
-            costheta=x/r
-            sintheta=y/r
+             invr = 1./r
+            costheta=x*invr
+            sintheta=y*invr
           else  
             costheta=1.
             sintheta=0.
@@ -3669,39 +4205,25 @@ subroutine getf2dxz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
         end select        
 
         if (l_2drz) then
-          do ll = izmin, izmax
-            do jj = ixmin, ixmax
-              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
-            end do
-          end do
-
-          do ll = izmin, izmax
-            do jj = ixmin, ixmax
-              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
-            end do
-          end do
-        
+           do ll = izmin, izmax
+              do jj = ixmin, ixmax
+                 ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
+                 ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
+                 ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
+              end do
+           end do
+           
         else
-
-          do ll = izmin, izmax
-            do jj = ixmin, ixmax
-              ex(ip) = ex(ip) + sx(jj)*sz(ll)*exg(j+jj,0,l+ll)*signx
-            end do
-          end do
-
-          do ll = izmin, izmax
-            do jj = ixmin, ixmax
-              ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,0,l+ll)
-            end do
-          end do
-
+           
+           do ll = izmin, izmax
+              do jj = ixmin, ixmax
+                 ex(ip) = ex(ip) + sx(jj)*sz(ll)*exg(j+jj,0,l+ll)*signx
+                 ey(ip) = ey(ip) + sx(jj)*sz(ll)*eyg(j+jj,0,l+ll)
+                 ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
+              end do
+           end do
+           
         end if
-
-        do ll = izmin, izmax
-          do jj = ixmin, ixmax
-            ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
-          end do
-        end do
 
      end do
 
@@ -3844,7 +4366,7 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
       logical(ISZ) :: l4symtry,l_2drz
       integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
                       ixmin0, ixmax0, izmin0, izmax0, jj, ll
-      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta, invr
       real(kind=8) :: xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx
       real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
       real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
@@ -3866,8 +4388,9 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           y = yp(ip)
           r=sqrt(x*x+y*y)
           if (r*dxi>1.e-20) then
-            costheta=x/r
-            sintheta=y/r
+             invr = 1./r    ! Saves one division
+             costheta=x*invr
+             sintheta=y*invr
           else  
             costheta=1.
             sintheta=0.
@@ -3937,26 +4460,152 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           do ll = izmin, izmax
             do jj = ixmin, ixmax
               ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
-            end do
-          end do
-
-          do ll = izmin, izmax
-            do jj = ixmin, ixmax
               ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
-            end do
+              ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
+           end do
           end do
- 
-        do ll = izmin, izmax
-          do jj = ixmin, ixmax
-            ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
-          end do
-        end do
 
      end do
 
    return
  end subroutine getf2drz_n
 
+subroutine getf2drz_circ_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
+                     nxguard,nyguard,nzguard,nox,noz,exg,eyg,ezg,exg_circ,eyg_circ,ezg_circ,circ_m)
+   
+ implicit none
+      integer(ISZ) :: np,nx,ny,nz,nxguard,nyguard,nzguard,nox,noz,circ_m
+      real(kind=8), dimension(np) :: xp,yp,zp,ex,ey,ez
+      real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: exg,eyg,ezg
+      complex(kind=8), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,circ_m) :: &
+           exg_circ,eyg_circ,ezg_circ
+      real(kind=8) :: xmin,zmin,dx,dz
+      integer(ISZ) :: ip, j, l, ixmin, ixmax, izmin, izmax, &
+                      ixmin0, ixmax0, izmin0, izmax0, jj, ll, m
+      real(kind=8) :: dxi, dzi, x, y, z, xint, zint, r, costheta, sintheta, invr, stot
+      real(kind=8) :: xintsq,oxint,zintsq,ozint,oxintsq,ozintsq,signx, exc, eyc, ezc
+      real(kind=8), DIMENSION(-int(nox/2):int((nox+1)/2)) :: sx
+      real(kind=8), DIMENSION(-int(noz/2):int((noz+1)/2)) :: sz
+      real(kind=8), parameter :: onesixth=1./6.,twothird=2./3.
+      complex(kind=8) :: xy,xy0
+
+      dxi = 1./dx
+      dzi = 1./dz
+
+      ixmin = -int(nox/2)
+      ixmax =  int((nox+1)/2)
+      izmin = -int(noz/2)
+      izmax =  int((noz+1)/2)
+
+      signx = 1.
+      
+      do ip=1,np
+
+          x = xp(ip)
+          y = yp(ip)
+          r=sqrt(x*x+y*y)
+          if (r*dxi>1.e-20) then
+             invr = 1./r
+             costheta=x*invr
+             sintheta=y*invr
+          else  
+             costheta=1.
+             sintheta=0.
+          end if
+          r = (r-xmin)*dxi
+          xy0 = complex(costheta,-sintheta)
+
+        z = (zp(ip)-zmin)*dzi
+
+        ! --- finds node of cell containing particles for current positions 
+        ! --- (different for odd/even spline orders)
+        if (nox==2*(nox/2)) then
+          j=nint(r)
+        else
+          j=floor(r)
+        end if
+        if (noz==2*(noz/2)) then
+          l=nint(z)
+        else
+          l=floor(z)
+        end if
+
+        xint=r-j
+        zint=z-l
+
+        select case(nox)
+         case(0)
+          sx( 0) = 1.
+         case(1)
+          sx( 0) = 1.-xint
+          sx( 1) = xint
+         case(2)
+          xintsq = xint*xint
+          sx(-1) = 0.5*(0.5-xint)**2
+          sx( 0) = 0.75-xintsq
+          sx( 1) = 0.5*(0.5+xint)**2
+         case(3)
+          oxint = 1.-xint
+          xintsq = xint*xint
+          oxintsq = oxint*oxint
+          sx(-1) = onesixth*oxintsq*oxint
+          sx( 0) = twothird-xintsq*(1.-xint/2)
+          sx( 1) = twothird-oxintsq*(1.-oxint/2)
+          sx( 2) = onesixth*xintsq*xint
+        end select        
+
+        select case(noz)
+         case(0)
+          sz( 0) = 1.
+         case(1)
+          sz( 0) = 1.-zint
+          sz( 1) = zint
+         case(2)
+          zintsq = zint*zint
+          sz(-1) = 0.5*(0.5-zint)**2
+          sz( 0) = 0.75-zintsq
+          sz( 1) = 0.5*(0.5+zint)**2
+         case(3)
+          ozint = 1.-zint
+          zintsq = zint*zint
+          ozintsq = ozint*ozint
+          sz(-1) = onesixth*ozintsq*ozint
+          sz( 0) = twothird-zintsq*(1.-zint/2)
+          sz( 1) = twothird-ozintsq*(1.-ozint/2)
+          sz( 2) = onesixth*zintsq*zint
+        end select        
+
+        ! Mode m=0
+        do ll = izmin, izmax
+           do jj = ixmin, ixmax
+              ex(ip) = ex(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*costheta-eyg(j+jj,0,l+ll)*sintheta)
+              ey(ip) = ey(ip) + sx(jj)*sz(ll)*(exg(j+jj,0,l+ll)*sintheta+eyg(j+jj,0,l+ll)*costheta)
+              ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezg(j+jj,0,l+ll)
+          end do
+        end do
+        
+        ! Modes m>0
+        xy = 1.
+        do m = 1, circ_m  
+           xy = xy*xy0
+           do ll = izmin, izmax
+              do jj = ixmin, ixmax
+                 exc = real( exg_circ(j+jj,l+ll,m) * xy , 8)
+                 eyc = real( eyg_circ(j+jj,l+ll,m) * xy , 8) 
+                 ezc = real( ezg_circ(j+jj,l+ll,m) * xy , 8)
+                 ex(ip) = ex(ip) + sx(jj)*sz(ll)*( exc*costheta - eyc*sintheta )
+                 ey(ip) = ey(ip) + sx(jj)*sz(ll)*( exc*sintheta + eyc*costheta )
+                 ez(ip) = ez(ip) + sx(jj)*sz(ll)*ezc
+              end do
+           end do
+
+        end do
+
+     end do
+
+   return
+ end subroutine getf2drz_circ_n
+ 
  subroutine gete3d_linear_energy_conserving(np,xp,yp,zp,ex,ey,ez,xmin,ymin,zmin,dx,dy,dz,nx,ny,nz, &
                                             nxguard,nyguard,nzguard,exg,eyg,ezg)
    
@@ -4582,22 +5231,23 @@ subroutine getf2drz_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
           sy0( 2) = onesixth*yintsq*yint
          end if
 
+        
          if (noz==1) then
-          sz0( 0) = 1.-zint
-          sz0( 1) = zint
+            sz0( 0) = 1.-zint
+            sz0( 1) = zint
          elseif (noz==2) then
-          zintsq = zint*zint
-          sz0(-1) = 0.5*(0.5-zint)**2
-          sz0( 0) = 0.75-zintsq
-          sz0( 1) = 0.5*(0.5+zint)**2
+            zintsq = zint*zint
+            sz0(-1) = 0.5*(0.5-zint)**2
+            sz0( 0) = 0.75-zintsq
+            sz0( 1) = 0.5*(0.5+zint)**2
          elseif (noz==3) then
-          ozint = 1.-zint
-          zintsq = zint*zint
-          ozintsq = ozint*ozint
-          sz0(-1) = onesixth*ozintsq*ozint
-          sz0( 0) = twothird-zintsq*(1.-zint/2)
-          sz0( 1) = twothird-ozintsq*(1.-ozint/2)
-          sz0( 2) = onesixth*zintsq*zint
+            ozint = 1.-zint
+            zintsq = zint*zint
+            ozintsq = ozint*ozint
+            sz0(-1) = onesixth*ozintsq*ozint
+            sz0( 0) = twothird-zintsq*(1.-zint/2)
+            sz0( 1) = twothird-ozintsq*(1.-ozint/2)
+            sz0( 2) = onesixth*zintsq*zint
          end if
 
         end if
@@ -5486,11 +6136,11 @@ subroutine getb3d_n_energy_conserving(np,xp,yp,zp,bx,by,bz,xmin,ymin,zmin,dx,dy,
    return
  end subroutine project_rho
 
-subroutine apply_dmask(rho,jc,dmaskx,dmasky,dmaskz,bounds,nguarddepos,ntrans,nx,ny,nz,nxguard,nyguard,nzguard,l_pushf,l_2dxz)
+subroutine apply_dmask(rho,jc,dmaskx,dmasky,dmaskz,bounds,nguarddepos,ntrans,nx,ny,nz,nxguard,nyguard,nzguard,l_getrho,l_2dxz)
  ! Projection of J from one fine grid onto a coarse grid
  use EM3D_FIELDobjects, only : otherproc
  implicit none
- logical(ISZ) :: l_2dxz, l_pushf
+ logical(ISZ) :: l_2dxz, l_getrho
  integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,bounds(10),nguarddepos(3),ntrans(3)
  real(kind=8), DIMENSION(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: rho
  real(kind=8), DIMENSION(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: jc
@@ -5587,7 +6237,7 @@ dmaskz=1.
        end do
       end do
    end do
-   if (l_pushf) then
+   if (l_getrho) then
      do l = 0, nz
         do k = 0, ny
            do j = 0, nx
@@ -5615,7 +6265,7 @@ dmaskz=1.
            jc(j,k,l,3) = jc(j,k,l,3) * 0.5*(dmaskz(l)+dmaskz(l+1)) * dmaskx(j) 
        end do
    end do
-   if (l_pushf) then
+   if (l_getrho) then
      do l = 0, nz
            do j = 0, nx
              rho(j,k,l) = rho(j,k,l) * dmaskx(j) * dmaskz(l)
@@ -5643,6 +6293,14 @@ subroutine setebp(emfield,icycle,novercycle)
    emfield%bxp = emfield%bx
    emfield%byp = emfield%by
    emfield%bzp = emfield%bz 
+   if (emfield%circ_m>0) then
+     emfield%exp_circ = emfield%ex_circ
+     emfield%eyp_circ = emfield%ey_circ
+     emfield%ezp_circ = emfield%ez_circ
+     emfield%bxp_circ = emfield%bx_circ
+     emfield%byp_circ = emfield%by_circ
+     emfield%bzp_circ = emfield%bz_circ 
+   end if
  else
    if (icycle==0) then
      emfield%expnext = emfield%ex
