@@ -534,6 +534,11 @@ case(0,1,3) ! Yee stencil on the E push
                           f%nxes,f%nyes,f%nzes, &
                           f%l_1dz,f%l_2dxz,f%l_2drz,f%xmin,f%zmin, &
                           f%dx,f%dy,f%dz,f%clight)
+     if (f%circ_m>0) &
+       call push_em3d_evec_circ(f%ex_circ,f%ey_circ,f%ez_circ, &
+                                f%bx_circ,f%by_circ,f%bz_circ,f%J_circ, &
+                                mudt,dtsdx,dtsdz,f%nx,f%nz,f%nxguard,f%nzguard, &
+                                f%xmin,f%zmin,f%dx,f%dz,f%clight,f%circ_m)
     else
      call push_em3d_evec_norder(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                           mudt,dtsdx*f%xcoefs,dtsdy*f%ycoefs,dtsdz*f%zcoefs, &
@@ -908,6 +913,85 @@ end if
 
 return
 end subroutine push_em3d_evec_norder
+
+subroutine push_em3d_evec_circ(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdz,nx,nz, &
+                          nxguard,nzguard, &
+                          xmin,zmin,dx,dz,clight,circ_m)
+integer :: nx,nz,nxguard,nzguard,circ_m
+complex(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m) :: ex,ey,ez,bx,by,bz
+complex(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,3,1:circ_m) :: CJ
+real(kind=8), intent(IN) :: mudt,dtsdx,dtsdz,xmin,zmin,dx,dz,clight
+integer(ISZ) :: j,l,m
+real(kind=8) :: w,r,rd,ru,dt
+complex(kind=8) :: i=(0.,1.)
+
+  ! ===============================
+  !             2-D RZ multipole
+  ! ===============================
+
+  dt = dtsdx*dx
+  do m = 1, circ_m
+
+     ! advance Er
+     do l = 0, nz
+        do j = 0, nx-1
+           r = xmin+j*dx+0.5*dx
+           Ex(j,l,m) = Ex(j,l,m) - i*m*dt*Bz(j,l,m)/r &
+                - dtsdz * (By(j,l,m)   - By(j  ,l-1,m)) &
+                - mudt  * CJ(j,l,1,m)
+        end do
+     end do
+
+     ! advance Etheta
+     do l = 0, nz
+        do j = 0, nx
+           if ( j==0 .and. xmin==0 ) then
+              if( .not. m == 1 ) then
+                 ! Etheta should remain 0 on axis, for modes different than m=1
+                 Ey(j,l,m) = 0
+              else ! Mode m=1
+                 ! The bulk equation could in principle be used here since it does not diverge
+                 ! on axis. However, it typically gives poore results e.g. for the propagation
+                 ! of a laser pulse (The field is spuriously reduced on axis.) For this reason
+                 ! a modified on-axis condition is used here : we use the fact that
+                 ! Etheta(r=0,m=1) should equal -iEr(r=0,m=1), for the fields Ex and Ey to be
+                 ! independent of theta at r=0. Now with linear interpolation :
+                 ! Er(r=0,m=1) = 0.5*[Er(r=dr/2,m=1)+Er(r=-dr/2,m=1)]
+                 ! And using the rule applying for the guards cells (see em3d_applybc_e)
+                 ! Er(r=-dr/2,m=1) = Er(r=dr/2,m=1). Thus :
+                 Ey(j,l,m) = -i*Ex(j,l,m)
+              endif
+           else
+              ! Equation used in the bulk of the grid
+              Ey(j,l,m) = Ey(j,l,m) - dtsdx * (Bz(j,l,m) - Bz(j-1,l,m)) &
+                   + dtsdz * (Bx(j,l,m) - Bx(j,l-1,m)) &
+                   - mudt * CJ(j,l,2,m)
+           endif
+        end do
+     end do
+     
+     ! advance Ez 
+     do l = 0, nz-1
+        do j = 0, nx
+           if ( j==0 .and. xmin==0 ) then
+              ! Ez should remain 0 on axis, for modes with m>0,
+              ! but the bulk equation does not necessarily ensure this.
+              Ez(j,l,m) = 0.
+           else
+              ! Equation used in the bulk of the grid
+              ru = 1.+0.5/(xmin/dx+j)
+              rd = 1.-0.5/(xmin/dx+j)
+              r = xmin+j*dx
+              Ez(j,l,m) = Ez(j,l,m) + dtsdx * (ru*By(j,l,m) - rd*By(j-1  ,l,m)) &
+                   + i*m*dt*Bx(j,l,m)/r &
+                   - mudt  * CJ(j,l,3,m)
+           end if
+        end do
+     end do
+
+  end do
+return
+end subroutine push_em3d_evec_circ
 
 subroutine push_em3d_evec_cond(ex,ey,ez,bx,by,bz,CJ,mudt,dtsdx,dtsdy,dtsdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,l_2dxz,l_2drz,xmin,zmin,dx,dz,incond)
@@ -1525,6 +1609,11 @@ case( 0, 2 ) ! Standard Yee stencil on B push
                         f%nxguard,f%nyguard,f%nzguard, &
                         f%nxbs,f%nybs,f%nzbs, &
                         f%l_1dz,f%l_2dxz,f%l_2drz)
+    if (f%circ_m>0) &
+      call push_em3d_bvec_circ(f%ex_circ,f%ey_circ,f%ez_circ, &
+                               f%bx_circ,f%by_circ,f%bz_circ, &
+                               dtsdx,dtsdz,f%dx,f%dz,f%xmin,f%zmin, &
+                               f%nx,f%nz, f%nxguard,f%nzguard,f%circ_m)
   else
     call push_em3d_bvec_norder(f%ex,f%ey,f%ez,f%bx,f%by,f%bz, &
                         dtsdx*f%xcoefs,dtsdy*f%ycoefs,dtsdz*f%zcoefs, &
@@ -1827,6 +1916,67 @@ end if
 return
 end subroutine push_em3d_bvec_norder
 
+subroutine push_em3d_bvec_circ(ex,ey,ez,bx,by,bz,dtsdx,dtsdz,dx,dz, &
+                          xmin,zmin,nx,nz,nxguard,nzguard,circ_m)
+integer :: nx,nz,nxguard,nzguard,circ_m
+complex(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,circ_m) :: ex,ey,ez,bx,by,bz
+real(kind=8), intent(IN) :: dtsdx,dtsdz,xmin,zmin,dx,dz
+integer(ISZ) :: j,l,m
+real(kind=8) :: rd, ru, r, dt
+complex(kind=8) :: i=(0.,1.)
+
+  dt = dtsdx*dx
+  do m = 1, circ_m
+
+     ! advance Bx
+     do l = 0, nz-1
+        do j = 0,nx
+           if (j==0 .and. xmin==0) then
+              ! On axis
+              if (.not. m == 1) then
+                 ! Br should remain 0 on axis, for modes different than m=1,
+                 ! but the bulk equation does not necessarily ensure this.
+                 Bx(j,l,m) = 0.
+              else
+                 ! For the mode m = 1, the bulk equation diverges on axis
+                 ! (due to the 1/r terms). The following expressions regularize
+                 ! these divergences by assuming, on axis :
+                 ! Ez/r = 0/r + dEz/dr
+                 Bx(j,l,m) = Bx(j,l,m) + i*m*dt*Ez(j+1,l,m)/dx &
+                      + dtsdz * (Ey(j,  l+1,m) - Ey(j,l,m))
+              endif
+           else
+              ! Equations in the bulk of the grid
+              r = xmin+j*dx
+              Bx(j,l,m) = Bx(j,l,m) + i*m*dt*Ez(j,l,m)/r &
+                   + dtsdz * (Ey(j,  l+1,m) - Ey(j,l,m))
+           endif
+        end do
+     end do
+
+     ! advance Btheta
+     do l = 0, nz-1
+        do j = 0, nx-1
+           By(j,l,m) = By(j,l,m) + dtsdx * (Ez(j+1,l  ,m) - Ez(j,l,m)) &  
+                - dtsdz * (Ex(j,l+1,m) - Ex(j,l,m)) 
+        end do
+     end do
+
+     ! advance Bz 
+     do l = 0, nz
+        do j = 0, nx-1
+           r  = xmin+j*dx+0.5*dx
+           ru = 1.+0.5/(xmin/dx+j+0.5)
+           rd = 1.-0.5/(xmin/dx+j+0.5)
+           Bz(j,l,m) = Bz(j,l,m) - dtsdx * (ru*Ey(j+1,l,m) - rd*Ey(j,l,m)) &
+                - i*m*dt*Ex(j,l,m)/r
+        end do
+     end do
+     
+  end do
+return
+end subroutine push_em3d_bvec_circ
+
 subroutine push_em3d_kyeebvec(ex,ey,ez,bx,by,bz,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz)
 use EM3D_kyee
 implicit none
@@ -2095,12 +2245,19 @@ case( 0,2 ) ! Yee stencil
                       f%xmin,f%ymin,f%zmin, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz,f%incond)
  else
-  call push_em3d_fvec(f%ex,f%ey,f%ez,f%f, f%rho, &
+   call push_em3d_fvec(f%ex,f%ey,f%ez,f%f, f%rho, &
                       dtsepsi,dtsdx,dtsdy,dtsdz, &
                       f%dx,f%dy,f%dz, &
                       f%nx,f%ny,f%nz, &
                       f%xmin,f%ymin,f%zmin, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz,f%l_2drz)
+   if (f%circ_m>0) &
+     call push_em3d_fvec_circ(f%ex_circ,f%ey_circ,f%ez_circ,f%f_circ, f%rho_circ, &
+                      dtsepsi,dtsdx,dtsdz, &
+                      f%dx,f%dz, &
+                      f%nx,f%nz, &
+                      f%xmin,f%zmin, &
+                      f%nxguard,f%nzguard,f%circ_m)
  end if
 
 case( 1 ) ! Cole-Karkkainen stencil (since the B push uses the Cole-Karkkainen stencil,
@@ -2158,31 +2315,66 @@ else
   ! --- 2D RZ (axisymmetric)
   k=0
   do l = 0, nz
-    j = 0
-    if (xmin==0.) then
-      F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
-                          + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
-                          - dtsepsi * Rho(j,k,l)
-    else
-      ru = 1.+0.5/(xmin/dx)
-      rd = 1.-0.5/(xmin/dx)
-      F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
-                          + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
-                          - dtsepsi * Rho(j,k,l)
-    end if
-    do j = 1, nx
-      ru = 1.+0.5/(xmin/dx+j)
-      rd = 1.-0.5/(xmin/dx+j)
-      F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k  ,l  )) &
-                          + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
-                          - dtsepsi * Rho(j,k,l)
+    do j = 0,nx
+       if (j==0 .and. xmin==0.) then
+          ! the bulk equation diverges on axis
+          ! (due to the 1/r terms). The following expressions regularize
+          ! these divergences.
+          F(j,k,l) = F(j,k,l) + 4.*dtsdx * Ex(j,k,l) &
+               + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+               - dtsepsi * Rho(j,k,l)
+       else
+          ru = 1.+0.5/(xmin/dx+j)
+          rd = 1.-0.5/(xmin/dx+j)
+          F(j,k,l) = F(j,k,l) + dtsdx * (ru*Ex(j,k,l) - rd*Ex(j-1,k,l)) &
+               + dtsdz * (Ez(j,k,l) - Ez(j  ,k  ,l-1)) &
+               - dtsepsi * Rho(j,k,l)
+       end if
+       
     end do
-  end do
- end if
+ end do
+end if
 end if
 
 return
 end subroutine push_em3d_fvec
+
+subroutine push_em3d_fvec_circ(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdz,dx,dz,nx,nz, &
+                          xmin,zmin,nxguard,nzguard,circ_m)
+integer :: nx,ny,nz,nxguard,nyguard,nzguard,circ_m
+complex(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,circ_m) :: ex,ey,ez,f,rho
+real(kind=8), intent(IN) :: dtsdx,dtsdz,dtsepsi,xmin,zmin,dx,dz
+integer(ISZ) :: j,l,m
+real(kind=8) :: ru,rd,r,dt
+complex(kind=8) :: i=(0.,1.)
+
+  dt=dtsdx*dx
+  do m = 1, circ_m
+
+     ! --- 2D RZ (axisymmetric)
+     do l = 0, nz
+        do j = 0, nx
+           if (j==0 .and. xmin==0) then
+              ! F should remain 0 on axis, for modes different than m=0,
+              ! but the bulk equation does not necessarily ensure this.
+              F(j,l,m) = 0.
+           else
+              ! Equations for the bulk of the grid
+              ru = 1.+0.5/(xmin/dx+j)
+              rd = 1.-0.5/(xmin/dx+j)
+              r = xmin+j*dx
+              F(j,l,m) = F(j,l,m) + dtsdx * (ru*Ex(j,l,m) - rd*Ex(j-1,l  , m)) &
+                   - i*m*dt*Ey(j,l,m)/r &
+                   + dtsdz * (Ez(j,l,m) - Ez(j  ,l-1, m)) &
+                   - dtsepsi * Rho(j,l,m)
+           endif
+        end do
+
+     end do
+  end do
+
+return
+end subroutine push_em3d_fvec_circ
 
 subroutine push_em3d_fvec_cond(ex,ey,ez,f,rho,dtsepsi,dtsdx,dtsdy,dtsdz,dx,dy,dz,nx,ny,nz, &
                           xmin,ymin,zmin,nxguard,nyguard,nzguard,l_2dxz,l_2drz,incond)
@@ -2420,6 +2612,12 @@ if (f%stencil==0 .or. f%stencil==2) then
                       dtsdx,dtsdy,dtsdz, &
                       f%nx,f%ny,f%nz, &
                       f%nxguard,f%nyguard,f%nzguard,f%l_2dxz)
+    if (f%circ_m>0) &
+      call push_em3d_efvec_circ(f%ex_circ,f%ey_circ,f%ez_circ,f%f_circ, &
+                        dtsdx,dtsdz, &
+                        f%nx,f%nz, &
+                        f%nxguard,f%nzguard,f%xmin,f%dx,f%circ_m)
+
   end if
 else
   call push_em3d_kyeeefvec(f%ex,f%ey,f%ez,f%f, &
@@ -2488,6 +2686,57 @@ end if
 
 return
 end subroutine push_em3d_efvec
+
+subroutine push_em3d_efvec_circ(ex,ey,ez,f,dtsdx,dtsdz,nx,nz,nxguard,nzguard,xmin,dx,circ_m)
+integer :: nx,nz,nxguard,nzguard,circ_m
+complex(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nzguard:nz+nzguard,circ_m) :: ex,ey,ez,f
+real(kind=8), intent(IN) :: dtsdx,dtsdz,xmin,dx
+integer(ISZ) :: j,l,m,jmin
+complex(kind=8) :: i=(0.,1.)
+real(kind=8) :: dt,r
+
+  ! ===============================
+  !             2-D RZ multipole
+  ! ===============================
+
+  dt = dtsdx*dx
+  do m = 1, circ_m
+
+     ! advance Ex
+     do l = 0, nz
+        do j = 0, nx-1
+           Ex(j,l,m) = Ex(j,l,m) + dtsdx * (F(j+1,l,m) - F(j,l,m)) 
+        end do
+     end do
+
+     ! advance Ey
+     do l = 0, nz
+        do j = 0, nx
+           if (j==0 .and. xmin==0.) then
+              ! On axis, the bulk equations diverge (due to
+              ! the 1/r terms). The following expression
+              ! regularizes this divergence by assuming
+              ! F/r = 0/r + dF/dr on axis
+              Ey(j,l,m) = Ey(j,l,m) - i*m*dt*( F(j+1,l,m) - F(j,l,m) )/dx
+           else
+              ! Equation for the bulk of the grid
+              r = xmin+j*dx
+              Ey(j,l,m) = Ey(j,l,m) - i*m*dt*F(j,l,m)/r
+           end if
+        end do
+     end do
+
+     ! advance Ez 
+     do l = 0, nz-1
+        do j = 0, nx
+           Ez(j,l,m) = Ez(j,l,m) + dtsdz * (F(j,l+1,m) - F(j,l,m)) 
+        end do
+     end do
+
+  end do
+
+return
+end subroutine push_em3d_efvec_circ
 
 subroutine push_em3d_efvec_cond(ex,ey,ez,f,dtsdx,dtsdy,dtsdz,nx,ny,nz,nxguard,nyguard,nzguard,l_2dxz,incond)
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
@@ -5129,15 +5378,26 @@ integer(ISZ):: n,i,it,zl,zr
   call shift_3darray_ncells_z(f%Bx,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
   call shift_3darray_ncells_z(f%By,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
   call shift_3darray_ncells_z(f%Bz,f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+  if ( f%l_2drz .and. f%circ_m > 0 ) then
+       call shift_circarray_ncells_z(f%Ex_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+       call shift_circarray_ncells_z(f%Ey_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+       call shift_circarray_ncells_z(f%Ez_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+       call shift_circarray_ncells_z(f%Bx_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+       call shift_circarray_ncells_z(f%By_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+       call shift_circarray_ncells_z(f%Bz_circ,f%nx,f%nz,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+   endif
 !  do it=1,f%ntimes
 !    do i=1,3
 !      call shift_3darray_ncells_z(f%Jarray(-f%nxguard,-f%nyguard,-f%nzguard,i,it), &
 !                                    f%nx,f%ny,f%nz,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    end do
 !  end do
-  if (f%nxf>0) then
-    call shift_3darray_ncells_z(f%F,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
-    call shift_3darray_ncells_z(f%Rhoold,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+   if (f%nxf>0) then
+      call shift_3darray_ncells_z(f%F,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
+      if ( f%l_2drz .and. f%circ_m > 0 ) then 
+         call shift_circarray_ncells_z(f%F_circ,f%nxf,f%nzf,f%circ_m,f%nxguard,f%nzguard,zl,zr,n)
+      endif
+         !    call shift_3darray_ncells_z(f%Rhoold,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    call shift_3darray_ncells_z(f%Rho,f%nxf,f%nyf,f%nzf,f%nxguard,f%nyguard,f%nzguard,zl,zr,n)
 !    do it=1,f%ntimes
 !      call shift_3darray_ncells_z(f%Rhoarray(-f%nxguard,-f%nyguard,-f%nzguard,it), &
@@ -5256,6 +5516,49 @@ if (zr/=otherproc) f(:,:,nz+nzguard-n+1:) = .false.
 
   return
 end subroutine shift_3dlarray_ncells_z
+
+subroutine shift_circarray_ncells_z(f,nx,nz,circ_m,nxguard,nzguard,zl,zr,n)
+#ifdef MPIPARALLEL
+use mpirz
+#endif
+implicit none
+integer(ISZ) :: nx,nz,circ_m,nxguard,nzguard,n,zl,zr
+integer(ISZ), parameter:: otherproc=10, ibuf = 950
+complex(kind=8) :: f(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m)
+complex(kind=8) :: i=(0.,1.)
+
+f(:,-nzguard:nz+nzguard-n,:) = f(:,-nzguard+n:nz+nzguard,:)
+if (zr/=otherproc) f(:,nz+nzguard-n+1:,:) = 0.
+
+#ifdef MPIPARALLEL
+  ! Send and receive the real part of the array
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,nzguard-n+1:nzguard,:)),ibuf)
+     call mympi_pack(dble(realpart(f(:,nzguard-n+1:nzguard,:))),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if    
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,nz+nzguard-n+1:,:)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,nz+nzguard-n+1:,:) = reshape(mpi_unpack_real_array( size(f(:,nz+nzguard-n+1:,:)),ibuf), &
+                                                           shape(f(:,nz+nzguard-n+1:,:)))
+ end if
+ ! Send and receive the imaginary part of the array
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,nzguard-n+1:nzguard,:)),ibuf)
+     call mympi_pack(dble(imagpart(f(:,nzguard-n+1:nzguard,:))),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if    
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,nz+nzguard-n+1:,:)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,nz+nzguard-n+1:,:) = f(:,nz+nzguard-n+1:,:) + i*reshape(mpi_unpack_real_array( &
+         size(f(:,nz+nzguard-n+1:,:)),ibuf), shape(f(:,nz+nzguard-n+1:,:)))
+ end if
+#endif
+
+  return
+end subroutine shift_circarray_ncells_z
 
 subroutine shift_3darray_ncells_zold(f,nx,ny,nz,nxguard,nyguard,nzguard,zl,zr,n)
 #ifdef MPIPARALLEL
@@ -5477,12 +5780,34 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,ifact,m
 
   if (f%l_2drz .and. f%xmin==0.) then
      f%ex(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ex(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
      f%ey(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%ey(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
      f%ez(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%ez(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
+     if (f%circ_m>0) then
+        do m = 1 , f%circ_m
+           if (mod(m,2)==0) then
+              ifact=1   ! Modes with even index have even symmetry
+           else
+              ifact=-1  ! Modes with odd index have odd symmetry
+           end if
+           f%ez_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                ifact*f%ez_circ(f%ixmin+f%nxguard:f%ixmin+1:-1,:,m)
+           ! Although the Er and Etheta fields (represented by ex_circ and ey_circ) have
+           ! the same symmetry as ez_circ, one has to additionally take into account the
+           ! factors cos(theta) and sin(theta) which are added when calculating the fields
+           ! Ex and Ey on the macroparticles.
+           ! These factors have an odd symmetry, which has to be taken into account **here**,
+           ! since, when interpolating the fields onto the macroparticles, **theta is not
+           ! changed into theta + pi when the guard cells (with r<0) are used**.
+           f%ex_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                -ifact*f%ex_circ(f%ixmin+f%nxguard-1:f%ixmin:-1,:,m)
+           f%ey_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                -ifact*f%ey_circ(f%ixmin+f%nxguard:f%ixmin+1:-1,:,m)
+       end do 
+    end if
   end if
 
   if (xlbnd==dirichlet) then
@@ -5577,12 +5902,34 @@ use mod_emfield3d
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
+integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,ifact,m
 
   if (f%l_2drz .and. f%xmin==0.) then
      f%bx(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%bx(f%ixmin+f%nxguard:f%ixmin+1:-1,:,:)
      f%by(f%ixmin-f%nxguard:f%ixmin-1,:,:) = -f%by(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
      f%bz(f%ixmin-f%nxguard:f%ixmin-1,:,:) =  f%bz(f%ixmin+f%nxguard-1:f%ixmin:-1,:,:)
+     if (f%circ_m>0) then
+        do m = 1 , f%circ_m
+           if (mod(m,2)==0) then 
+              ifact=1
+           else
+              ifact=-1
+           end if
+           ! Although the Br and Btheta fields (represented by bx_circ and by_circ) have
+           ! the same symmetry as bz_circ, one has to additionally take into account the
+           ! factors cos(theta) and sin(theta) which are added when calculating the fields
+           ! Bx and By on the macroparticles.
+           ! These factors have an odd symmetry, which has to be taken into account **here**,
+           ! since, when interpolating the fields onto the macroparticles, **theta is not
+           ! changed into theta + pi when the guard cells (with r<0) are used**.
+           f%bx_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                -ifact*f%bx_circ(f%ixmin+f%nxguard:f%ixmin+1:-1,:,m)
+           f%by_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                -ifact*f%by_circ(f%ixmin+f%nxguard-1:f%ixmin:-1,:,m)
+           f%bz_circ(f%ixmin-f%nxguard:f%ixmin-1,:,m) = &
+                ifact*f%bz_circ(f%ixmin+f%nxguard-1:f%ixmin:-1,:,m)
+        end do
+     end if
   end if
 
   if (xlbnd==dirichlet) then
@@ -5666,15 +6013,29 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
   return
 end subroutine em3d_applybc_b
 
-subroutine em3d_applybc_j(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd)
-use mod_emfield3d
-use Constant
-implicit none
+subroutine em3d_applybc_j(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,type_rz_depose)
+  use mod_emfield3d
+  use Constant
+  implicit none
+  
+  TYPE(EM3D_YEEFIELDtype) :: f
+  integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j,ifact, m,type_rz_depose
+  real(8)::r,r1,r2
+  complex(kind=8) :: I=(0.,1.)
+  
+  ! MODE 0 : Fetch the current deposited in the guards cells and add it to the grid (fold back)
+  
+  ! In rz geometry, for the guards cells below the axis
+  if (f%l_2drz .and. f%xmin==0.) then
+     ! Fields that are located on the boundary
+     f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) &
+          + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,2:3)
+     ! Fields that are located off the boundary 
+     f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) &
+          - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
+  end if
 
-TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
-real(8)::r,r1,r2
-
+  ! For guards at the lower and upper bound in x, in the Dirichlet case
   if (xlbnd==dirichlet) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) - f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
@@ -5684,6 +6045,7 @@ real(8)::r,r1,r2
      f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) + f%j(f%ixmax+f%nxguard-1:f%ixmax:-1,:,:,1)
   end if
 
+  ! For guards at the lower and upper bound in y, in the Dirichlet case
   if (ylbnd==dirichlet) then
      f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) = f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) &
                                               - f%j(:,f%iymin:f%iymin-f%nyguard:-1,:,1:3:2)
@@ -5695,6 +6057,7 @@ real(8)::r,r1,r2
      f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) + f%j(:,f%iymax+f%nyguard-1:f%iymax:-1,:,2)
   end if
 
+  ! For guards at the lower and upper bound in z, in the Dirichlet case
   if (zlbnd==dirichlet) then
      f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) = f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) - f%j(:,:,f%izmin:f%izmin-f%nzguard:-1,1:2)
      f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) = f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) + f%j(:,:,f%izmin-1:f%izmin-f%nzguard:-1,3)
@@ -5704,13 +6067,9 @@ real(8)::r,r1,r2
      f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) + f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
   end if
 
+  ! For guards at the lower and upper bound in x, in the Neumann case
   if (xlbnd==neumann) then
      f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin:f%ixmin+f%nxguard,:,:,2:3) + f%j(f%ixmin:f%ixmin-f%nxguard:-1,:,:,2:3)
-     f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
-  end if
-  if (f%l_2drz .and. f%xmin==0.) then
-     f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) = f%j(f%ixmin+1:f%ixmin+f%nxguard,:,:,2:3) &
-                                              + f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,2:3)
      f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) = f%j(f%ixmin:f%ixmin+f%nxguard-1,:,:,1) - f%j(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:,1)
   end if
   if (xrbnd==neumann) then
@@ -5718,6 +6077,7 @@ real(8)::r,r1,r2
      f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) = f%j(f%ixmax-f%nxguard:f%ixmax-1,:,:,1) - f%j(f%ixmax+f%nxguard-1:f%ixmax:-1,:,:,1)
   end if
 
+  ! For guards at the lower and upper bound in y, in the Neumann case
   if (ylbnd==neumann) then
      f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) = f%j(:,f%iymin:f%iymin+f%nyguard,:,1:3:2) &
                                               + f%j(:,f%iymin:f%iymin-f%nyguard:-1,:,1:3:2)
@@ -5729,6 +6089,7 @@ real(8)::r,r1,r2
      f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) = f%j(:,f%iymax-f%nyguard:f%iymax-1,:,2) - f%j(:,f%iymax+f%nyguard-1:f%iymax:-1,:,2)
   end if
 
+  ! For guards at the lower and upper bound in z, in the Neumann case
   if (zlbnd==neumann) then
      f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) = f%j(:,:,f%izmin:f%izmin+f%nzguard,1:2) + f%j(:,:,f%izmin:f%izmin-f%nzguard:-1,1:2)
      f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) = f%j(:,:,f%izmin:f%izmin+f%nzguard-1,3) - f%j(:,:,f%izmin-1:f%izmin-f%nzguard:-1,3)
@@ -5738,40 +6099,147 @@ real(8)::r,r1,r2
      f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) = f%j(:,:,f%izmax-f%nzguard:f%izmax-1,3) - f%j(:,:,f%izmax+f%nzguard-1:f%izmax:-1,3)
   end if
 
-  if (f%l_2drz) then
-    do j=f%ixmin-f%nxguard,f%ixmin-1
-      r = abs(f%xmin+j*f%dx)
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
-    end do
-    j = f%ixmin
-    if (f%xmin==0.) then
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/4.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
-!      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
-    else
-      r = abs(f%xmin+j*f%dx)
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
+
+  ! MODES > 0 : Fetch the current deposited in the guards cells and add it to the grid (fold back)
+  if (f%circ_m>0) then
+
+     if (f%l_2drz .and. f%xmin==0.) then
+        do m = 1,f%circ_m
+           if (mod(m,2)==0) then
+              ifact=1
+           else
+              ifact=-1
+           end if 
+           f%j_circ(f%ixmin+1:f%ixmin+f%nxguard,:,2:3,m) = f%j_circ(f%ixmin+1:f%ixmin+f%nxguard,:,2:3,m) &
+                + ifact*f%j_circ(f%ixmin-1:f%ixmin-f%nxguard:-1,:,2:3,m)
+           f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,m) = f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,m) &
+                - ifact*f%j_circ(f%ixmin-1:f%ixmin-f%nxguard:-1,:,1,m)
+        end do
+     end if
+
+    if (xlbnd==dirichlet) then
+     f%j_circ(f%ixmin:f%ixmin+f%nxguard,:,2:3,:) = f%j_circ(f%ixmin:f%ixmin+f%nxguard,:,2:3,:) &
+                                                 - f%j_circ(f%ixmin:f%ixmin-f%nxguard:-1,:,2:3,:)
+     f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,:) = f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,:) &
+                                                 + f%j_circ(f%ixmin-1:f%ixmin-f%nxguard:-1,:,1,:)
     end if
-    do j=f%ixmin+1,f%ixmax+f%nxguard
-      r = abs(f%xmin+j*f%dx)
-      f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
-    end do
-    do j=f%ixmin-f%nxguard,f%ixmax+f%nxguard
-      r = abs(f%xmin+(float(j)+0.5)*f%dx)
-      f%j(j,:,:,1) = f%j(j,:,:,1)/(2.*pi*r)
-    end do
+    if (xrbnd==dirichlet) then
+     f%j_circ(f%ixmax-f%nxguard:f%ixmax,:,2:3,:) = f%j_circ(f%ixmax-f%nxguard:f%ixmax,:,2:3,:) &
+                                                 - f%j_circ(f%ixmax+f%nxguard:f%ixmax:-1,:,2:3,:)
+     f%j_circ(f%ixmax-f%nxguard:f%ixmax-1,:,1,:) = f%j_circ(f%ixmax-f%nxguard:f%ixmax-1,:,1,:) &
+                                                 + f%j_circ(f%ixmax+f%nxguard-1:f%ixmax:-1,:,1,:)
+    end if
+
+    if (zlbnd==dirichlet) then
+     f%j_circ(:,f%izmin:f%izmin+f%nzguard,1:2,:) = f%j_circ(:,f%izmin:f%izmin+f%nzguard,1:2,:) &
+                                                 - f%j_circ(:,f%izmin:f%izmin-f%nzguard:-1,1:2,:)
+     f%j_circ(:,f%izmin:f%izmin+f%nzguard-1,3,:) = f%j_circ(:,f%izmin:f%izmin+f%nzguard-1,3,:) &
+                                                 + f%j_circ(:,f%izmin-1:f%izmin-f%nzguard:-1,3,:)
+    end if
+    if (zrbnd==dirichlet) then
+     f%j_circ(:,f%izmax-f%nzguard:f%izmax,1:2,:) = f%j_circ(:,f%izmax-f%nzguard:f%izmax,1:2,:) &
+                                                 - f%j_circ(:,f%izmax+f%nzguard:f%izmax:-1,1:2,:)
+     f%j_circ(:,f%izmax-f%nzguard:f%izmax-1,3,:) = f%j_circ(:,f%izmax-f%nzguard:f%izmax-1,3,:) &
+                                                 + f%j_circ(:,f%izmax+f%nzguard-1:f%izmax:-1,3,:)
+    end if
+
+    if (xlbnd==neumann) then
+     f%j_circ(f%ixmin:f%ixmin+f%nxguard,:,2:3,:) = f%j_circ(f%ixmin:f%ixmin+f%nxguard,:,2:3,:) &
+                                                 + f%j_circ(f%ixmin:f%ixmin-f%nxguard:-1,:,2:3,:)
+     f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,:) = f%j_circ(f%ixmin:f%ixmin+f%nxguard-1,:,1,:) &
+                                                 - f%j_circ(f%ixmin-1:f%ixmin-f%nxguard:-1,:,1,:)
+    end if
+    if (xrbnd==neumann) then
+     f%j_circ(f%ixmax-f%nxguard:f%ixmax,:,2:3,:) = f%j_circ(f%ixmax-f%nxguard:f%ixmax,:,2:3,:) &
+                                                 + f%j_circ(f%ixmax+f%nxguard:f%ixmax:-1,:,2:3,:)
+     f%j_circ(f%ixmax-f%nxguard:f%ixmax-1,:,1,:) = f%j_circ(f%ixmax-f%nxguard:f%ixmax-1,:,1,:) &
+                                                 - f%j_circ(f%ixmax+f%nxguard-1:f%ixmax:-1,:,1,:)
+    end if
+
+    if (zlbnd==neumann) then
+     f%j_circ(:,f%izmin:f%izmin+f%nzguard,1:2,:) = f%j_circ(:,f%izmin:f%izmin+f%nzguard,1:2,:) &
+                                                 + f%j_circ(:,f%izmin:f%izmin-f%nzguard:-1,1:2,:)
+     f%j_circ(:,f%izmin:f%izmin+f%nzguard-1,3,:) = f%j_circ(:,f%izmin:f%izmin+f%nzguard-1,3,:) &
+                                                 - f%j_circ(:,f%izmin-1:f%izmin-f%nzguard:-1,3,:)
+    end if
+    if (zrbnd==neumann) then
+     f%j_circ(:,f%izmax-f%nzguard:f%izmax,1:2,:) = f%j_circ(:,f%izmax-f%nzguard:f%izmax,1:2,:) &
+                                                 + f%j_circ(:,f%izmax+f%nzguard:f%izmax:-1,1:2,:)
+     f%j_circ(:,f%izmax-f%nzguard:f%izmax-1,3,:) = f%j_circ(:,f%izmax-f%nzguard:f%izmax-1,3,:) &
+                                                 - f%j_circ(:,f%izmax+f%nzguard-1:f%izmax:-1,3,:)
+    end if
   end if
 
+  ! In rz geometry, divide the current by the cell volume
+  if (f%l_2drz) then
+
+       ! -- Jr
+      
+       ! Since Jr is not cell centered in r, no need for distinction
+       ! between on axis and off-axis factors
+       do j=f%ixmin-f%nxguard,f%ixmax+f%nxguard
+          r = abs(f%xmin+(float(j)+0.5)*f%dx)
+          f%j(j,:,:,1) = f%j(j,:,:,1)/(2.*pi*r)
+          if (f%circ_m>0) f%j_circ(j,:,1,:) = f%j_circ(j,:,1,:)/(2.*pi*r)
+       end do
+
+     ! -- Jtheta and Jz
+     
+     ! In the lower guard cells in x (exchanged with nearby processors)
+     do j=f%ixmin-f%nxguard,f%ixmin-1
+        r = abs(f%xmin+j*f%dx)
+        f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)    ! Mode 0
+        if (f%circ_m>0) f%j_circ(j,:,2:3,:) = f%j_circ(j,:,2:3,:)/(2.*pi*r)  ! Mode > 0
+     end do
+     
+     ! On the lower boundary
+     j = f%ixmin
+     if (f%xmin==0.) then
+        ! On axis
+        ! Jz, mode 0
+        if (type_rz_depose == 1) then ! Verboncoeur JCP 164, 421-427 (2001) : corrected volume
+           f%j(j,:,:,3) = f%j(j,:,:,3)/(pi*f%dx/3.)
+        else                          ! Standard volume
+           f%j(j,:,:,3) = f%j(j,:,:,3)/(pi*f%dx/4.)
+        endif
+        ! Jz, modes > 0
+        if (f%circ_m>0) f%j_circ(j,:,3,:) = 0. ! Mode > 0 : Jz is zero on axis.
+        ! Jt, mode 0 and modes > 1 
+        f%j(j,:,:,2)= 0. ! Mode 0 : Jt is zero on axis.
+        if (f%circ_m>1) f%j_circ(j,:,2,2:) = 0. ! Modes > 1 : Jt = 0.
+        ! Jt, mode 1
+        if (f%circ_m>0) f%j_circ(j,:,2,1) = -I*f%j_circ(j,:,1,1)
+        ! Because the previous line uses Jr, it is important that Jr be properly calculated first
+     else
+        ! Not the axis
+        r = abs(f%xmin+j*f%dx)
+        f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)    ! Mode 0
+        if (f%circ_m>0) f%j_circ(j,:,2:3,:) = f%j_circ(j,:,2:3,:)/(2.*pi*r)  ! Mode > 0
+     end if
+     
+     ! In the rest of the grid
+     do j=f%ixmin+1,f%ixmax+f%nxguard
+        r = abs(f%xmin+j*f%dx)
+        f%j(j,:,:,2:3) = f%j(j,:,:,2:3)/(2.*pi*r)
+        if (f%circ_m>0) f%j_circ(j,:,2:3,:) = f%j_circ(j,:,2:3,:)/(2.*pi*r)
+     end do
+  end if
+  
   return
 end subroutine em3d_applybc_j
 
-subroutine em3d_applybc_rho(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd)
+subroutine em3d_applybc_rho(f,xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,type_rz_depose)
 use mod_emfield3d
 use Constant
 implicit none
 
 TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j
+integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd,j,ifact,m,type_rz_depose
 real(8)::r
+
+  if (f%l_2drz .and. f%xmin==0.) then
+     f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:)
+  end if
 
   if (xlbnd==dirichlet) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) - f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
@@ -5797,9 +6265,6 @@ real(8)::r
   if (xlbnd==neumann) then
      f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
   end if
-  if (f%l_2drz .and. f%xmin==0.) then
-     f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) = f%rho(f%ixmin+1:f%ixmin+f%nxguard,:,:) + f%rho(f%ixmin-1:f%ixmin-f%nxguard:-1,:,:)
-  end if
   if (xrbnd==neumann) then
      f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho(f%ixmax-f%nxguard:f%ixmax,:,:) + f%rho(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
   end if
@@ -5818,25 +6283,91 @@ real(8)::r
      f%rho(:,:,f%izmax-f%nzguard:f%izmax) = f%rho(:,:,f%izmax-f%nzguard:f%izmax) + f%rho(:,:,f%izmax+f%nzguard:f%izmax:-1)
   end if
 
-  if (f%l_2drz) then
-    do j=f%ixmin-f%nxguard,f%ixmin-1
-      r = abs(f%xmin+j*f%dx)
-      f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
-    end do
-    j = f%ixmin
-    if (f%xmin==0.) then
-      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/4.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
-!      f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/3.) ! pi/3. from Verboncoeur JCP 164, 421-427 (2001)
-    else
-      r = abs(f%xmin+j*f%dx)
-      f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
+  if (f%circ_m>0) then
+    if (f%l_2drz .and. f%xmin==0.) then
+       do m= 1, f%circ_m
+          if (mod(m,2)==0) then
+             ifact=1
+          else
+             ifact=-1
+          end if
+          f%rho_circ(f%ixmin+1:f%ixmin+f%nxguard,:,m) = f%rho_circ(f%ixmin+1:f%ixmin+f%nxguard,:,m) &
+                                                 + ifact*f%rho_circ(f%ixmin-1:f%ixmin-f%nxguard:-1,:,m)
+       end do
     end if
-    do j=f%ixmin+1,f%ixmax+f%nxguard
-      r = abs(f%xmin+j*f%dx)
-      f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
-    end do
+    if (xlbnd==dirichlet) then
+     f%rho_circ(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho_circ(f%ixmin:f%ixmin+f%nxguard,:,:) &
+                                               - f%rho_circ(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
+    end if
+    if (xrbnd==dirichlet) then
+     f%rho_circ(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho_circ(f%ixmax-f%nxguard:f%ixmax,:,:) &
+                                               - f%rho_circ(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
+    end if
+
+    if (zlbnd==dirichlet) then
+     f%rho_circ(:,f%izmin:f%izmin+f%nzguard,:) = f%rho_circ(:,f%izmin:f%izmin+f%nzguard,:) &
+                                               - f%rho_circ(:,f%izmin:f%izmin-f%nzguard:-1,:)
+    end if
+    if (zrbnd==dirichlet) then
+     f%rho_circ(:,f%izmax-f%nzguard:f%izmax,:) = f%rho_circ(:,f%izmax-f%nzguard:f%izmax,:) &
+                                               - f%rho_circ(:,f%izmax+f%nzguard:f%izmax:-1,:)
+    end if
+
+    if (xlbnd==neumann) then
+     f%rho_circ(f%ixmin:f%ixmin+f%nxguard,:,:) = f%rho_circ(f%ixmin:f%ixmin+f%nxguard,:,:) &
+                                               + f%rho_circ(f%ixmin:f%ixmin-f%nxguard:-1,:,:)
+    end if
+    if (xrbnd==neumann) then
+     f%rho_circ(f%ixmax-f%nxguard:f%ixmax,:,:) = f%rho_circ(f%ixmax-f%nxguard:f%ixmax,:,:) &
+                                               + f%rho_circ(f%ixmax+f%nxguard:f%ixmax:-1,:,:)
+    end if
+
+    if (zlbnd==neumann) then
+     f%rho_circ(:,f%izmin:f%izmin+f%nzguard,:) = f%rho_circ(:,f%izmin:f%izmin+f%nzguard,:) &
+                                               + f%rho_circ(:,f%izmin:f%izmin-f%nzguard:-1,:)
+    end if
+    if (zrbnd==neumann) then
+     f%rho_circ(:,f%izmax-f%nzguard:f%izmax,:) = f%rho_circ(:,f%izmax-f%nzguard:f%izmax,:) &
+                                               + f%rho_circ(:,f%izmax+f%nzguard:f%izmax:-1,:)
+    end if
   end if
 
+  ! In rz geometry, divide the current by the cell volume
+  if (f%l_2drz) then
+
+     ! In the lower guard cells in x (exchanged with nearby processors)
+     do j=f%ixmin-f%nxguard,f%ixmin-1
+        r = abs(f%xmin+j*f%dx)
+        f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
+        if (f%circ_m>0) f%rho_circ(j,:,:) = f%rho_circ(j,:,:)/(2.*pi*r)
+     end do
+
+     ! On the lower boundary
+     j = f%ixmin
+     if (f%xmin==0.) then
+        ! On axis
+        if (type_rz_depose == 1) then ! Verboncoeur JCP 164, 421-427 (2001) : corrected volumes
+           f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/3.) 
+        else                          ! Standard volume
+           f%rho(j,:,:) = f%rho(j,:,:)/(pi*f%dx/4.)
+        endif
+        if (f%circ_m>0) f%rho_circ(j,:,:) = 0.   ! Modes with m>0 have 0 density on axis.
+     else
+        ! Not the axis
+        r = abs(f%xmin+j*f%dx)
+        f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
+        if (f%circ_m>0) f%rho_circ(j,:,:) = f%rho_circ(j,:,:)/(2.*pi*r)
+     end if
+     
+     ! In the rest of the grid
+     do j=f%ixmin+1,f%ixmax+f%nxguard
+        r = abs(f%xmin+j*f%dx)
+        f%rho(j,:,:) = f%rho(j,:,:)/(2.*pi*r)
+        if (f%circ_m>0) f%rho_circ(j,:,:) = f%rho_circ(j,:,:)/(2.*pi*r)
+     end do
+     
+  end if
+  
   return
 end subroutine em3d_applybc_rho
 
@@ -6053,70 +6584,134 @@ integer(ISZ) :: xlbnd,xrbnd,ylbnd,yrbnd,zlbnd,zrbnd
 end subroutine em3d_applybc_splitb
 
 subroutine em3d_exchange_bnde_x(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the electric field at the x boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::ix
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::ix, n_slices, bufsize
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nxguard-2)*size(yfu%ez(0,:,:)),ibuf)
-            do ix = yfu%ixmin,yfu%ixmin+yfu%nxguard-1
-              call mympi_pack(yfu%ex(ix,:,:),ibuf)
-            end do
-            if (yfu%nxguard>1) then
+        if(l_mpiverbose) write(STDOUT,*) '-- sending e along x'
+
+        if (fl%proc/=my_index) then   
+           ! --- send data down in x
+
+           ! Number of slices to communicate along x
+           ! (yfu%nxguard for ex, yfu%nxguard-1 for ey and ez)
+           n_slices = (3*yfu%nxguard-2)
+           bufsize = n_slices*size(yfu%ez(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%ez_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ex, ey and ez slices into that buffer
+           ! ex
+           do ix = yfu%ixmin,yfu%ixmin+yfu%nxguard-1
+              call mympi_pack(yfu%ex(ix,:,:), ibuf)
+              if (yfu%circ_m > 0) call mympi_pack(yfu%ex_circ(ix,:,:), ibuf)
+           end do
+           ! ey
+           if (yfu%nxguard>1) then
               do ix = yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
-                call mympi_pack(yfu%ey(ix,:,:),ibuf)
+                 call mympi_pack(yfu%ey(ix,:,:),ibuf)
+                 if (yfu%circ_m > 0) call mympi_pack(yfu%ey_circ(ix,:,:),ibuf)
               end do
+              ! ez
               do ix = yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
-                call mympi_pack(yfu%ez(ix,:,:),ibuf)
+                 call mympi_pack(yfu%ez(ix,:,:),ibuf)
+                 if (yfu%circ_m > 0) call mympi_pack(yfu%ez_circ(ix,:,:),ibuf)
               end do
-            end if
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nxguard-2)*size(yfl%ez(0,:,:)),ibuf)
-            do ix =yfl%ixmax-yfl%nxguard,yfl%ixmax-1
+           end if
+           call mpi_isend_pack(fl%proc,1,ibuf)
+
+        else if (fu%proc/=my_index) then
+           ! --- send data up in x
+
+           ! Number of slices to communicate along x
+           ! (yfl%nxguard for ex, yfl%nxguard-1 for ey and ez)
+           n_slices = (3*yfl%nxguard-2)
+           bufsize = n_slices*size( yfl%ez(0,:,:))
+           ! Check whether to also pack the circ arrays 
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%ez_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ex, ey and ez slices into that buffer
+           ! ex
+           do ix =yfl%ixmax-yfl%nxguard,yfl%ixmax-1
               call mympi_pack(yfl%ex(ix,:,:),ibuf)
-            end do
-            if (yfl%nxguard>1) then
+              if (yfl%circ_m > 0) call mympi_pack(yfl%ex_circ(ix,:,:), ibuf)
+           end do
+           ! ey
+           if (yfl%nxguard>1) then
               do ix = yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
-                call mympi_pack(yfl%ey(ix,:,:),ibuf)
+                 call mympi_pack(yfl%ey(ix,:,:),ibuf)
+                 if (yfl%circ_m > 0) call mympi_pack(yfl%ey_circ(ix,:,:), ibuf)
               end do
+              ! ez
               do ix = yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
-                call mympi_pack(yfl%ez(ix,:,:),ibuf)
+                 call mympi_pack(yfl%ez(ix,:,:),ibuf)
+                 if (yfl%circ_m > 0) call mympi_pack(yfl%ez_circ(ix,:,:), ibuf)
               end do
-            end if
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
+           end if
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
 #endif
-            yfl%ex(yfl%ixmax  :yfl%ixmaxg-1,:,:) = yfu%ex(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
-            yfl%ey(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%ey(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
-            yfl%ez(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%ez(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           yfl%ex(yfl%ixmax  :yfl%ixmaxg-1,:,:) = &
+                yfu%ex(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
+           yfl%ey(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = &
+                yfu%ey(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+           yfl%ez(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = &
+                yfu%ez(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
 
-            yfu%ex(yfu%ixming  :yfu%ixmin-1,:,:) = yfl%ex(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
-            yfu%ey(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%ey(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
-            yfu%ez(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%ez(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           yfu%ex(yfu%ixming  :yfu%ixmin-1,:,:) = &
+                yfl%ex(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
+           yfu%ey(yfu%ixming+1:yfu%ixmin-1,:,:) = &
+                yfl%ey(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           yfu%ez(yfu%ixming+1:yfu%ixmin-1,:,:) = &
+                yfl%ez(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+
+           if (yfu%circ_m > 0) then
+              yfl%ex_circ(yfl%ixmax  :yfl%ixmaxg-1,:,:) = &
+                   yfu%ex_circ(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
+              yfl%ey_circ(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = &
+                   yfu%ey_circ(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+              yfl%ez_circ(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = &
+                   yfu%ez_circ(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+
+              yfu%ex_circ(yfu%ixming  :yfu%ixmin-1,:,:) = &
+                   yfl%ex_circ(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
+              yfu%ey_circ(yfu%ixming+1:yfu%ixmin-1,:,:) = &
+                   yfl%ey_circ(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+              yfu%ez_circ(yfu%ixming+1:yfu%ixmin-1,:,:) = &
+                   yfl%ez_circ(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           endif
 
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           ! --- case lower yee, upper split yee
@@ -6176,37 +6771,37 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init( 6*int(size(syfu%ezx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:))) &
                                     + 3*int(size(syfu%exx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:))) ,ibuf)
 
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%exx(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%exy(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%exz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%eyx(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%eyy(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%eyz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%ezx(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%ezy(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%ezz(ix,:,:),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fl%proc,3,ibuf)
+           call mpi_isend_pack(fl%proc,3,ibuf)
 
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
@@ -6214,65 +6809,65 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init(6*int(size(syfl%ezx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:))) &
                                     +3*int(size(syfl%exx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:))),ibuf)
 
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%exx(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%exy(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%exz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%eyx(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%eyy(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%eyz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%ezx(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%ezy(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%ezz(ix,:,:),ibuf)
             end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
+           call mpi_isend_pack(fu%proc,4,ibuf)
 
-            mpireqpnt=mpireqpnt+1
-          else
+           mpireqpnt=mpireqpnt+1
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%exx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%exy(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exy(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%exz(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exz(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%eyx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%eyy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%eyz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%ezx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%ezy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%ezz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           if (fl%proc/=fu%proc) return
+           syfu%exx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%exy(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exy(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%exz(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%exz(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%eyx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%eyy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%eyz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%eyz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%ezx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%ezy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%ezz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%ezz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
 
-          syfl%exx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%exy(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exy(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%exz(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exz(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%eyx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%eyy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%eyz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%ezx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%ezy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%ezz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%exx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%exy(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exy(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%exz(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%exz(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%eyx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%eyy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%eyz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%eyz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%ezx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%ezy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%ezz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%ezz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -6280,50 +6875,101 @@ end subroutine em3d_exchange_bnde_x
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bnde_xrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! -------------------------------------------------
+  ! Receive the electric field at the x boundary
+  ! -------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix, ibuf, bufsize, n_slices
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nxguard-2)*size(yfu%Ez(0,:,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix = yfu%ixming,yfu%ixmin-1
-              yfu%ex(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%Ex(0,:,:)),ibuf),shape(yfu%Ex(0,:,:)))
-            end do
-            if (yfu%nxguard>1) then
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving e along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in x
+
+           ! Number of slices to communicate along x
+           ! (yfu%nxguard for ex, yfu%nxguard-1 for ey and ez)
+           n_slices = (3*yfu%nxguard-2)
+           bufsize = n_slices*size(yfu%ez(yfu%ixmin,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%ez_circ(yfu%ixmin,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ex, ey and ez slices into that buffer
+           ! ex
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do ix = yfu%ixming,yfu%ixmin-1
+              yfu%ex(ix,:,:) = reshape( mpi_unpack_real_array( size(yfu%Ex(0,:,:)), ibuf), shape(yfu%Ex(0,:,:)))
+              if (yfu%circ_m > 0) &
+                   yfu%ex_circ(ix,:,:) = &
+                   reshape( mpi_unpack_complex_array( size(yfu%Ex_circ(0,:,:)), ibuf), shape(yfu%Ex_circ(0,:,:)))
+           end do
+           if (yfu%nxguard>1) then
+              ! ey
               do ix = yfu%ixming+1,yfu%ixmin-1
-                yfu%ey(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(0,:,:)),ibuf),shape(yfu%Ez(0,:,:)))
+                 yfu%ey(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%Ey(0,:,:)),ibuf),shape(yfu%Ey(0,:,:)))
+                 if (yfu%circ_m > 0) &
+                      yfu%ey_circ(ix,:,:) = &
+                      reshape( mpi_unpack_complex_array( size(yfu%Ey_circ(0,:,:)), ibuf), shape(yfu%Ey_circ(0,:,:)))
               end do
+              ! ez
               do ix = yfu%ixming+1,yfu%ixmin-1
-                yfu%ez(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(0,:,:)),ibuf),shape(yfu%Ez(0,:,:)))
+                 yfu%ez(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(0,:,:)),ibuf),shape(yfu%Ez(0,:,:)))
+                 if (yfu%circ_m > 0) &
+                      yfu%ez_circ(ix,:,:) = &
+                      reshape( mpi_unpack_complex_array( size(yfu%Ez_circ(0,:,:)), ibuf), shape(yfu%Ez_circ(0,:,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nxguard-2)*size(yfl%ez(yfl%ixmin,:,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix = yfl%ixmax,yfl%ixmaxg-1
-              yfl%ex(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(0,:,:)),ibuf),shape(yfl%Ez(0,:,:)))
-            end do
-            if (yfl%nxguard>1) then
+           end if
+           
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in x
+
+           ! Number of slices to communicate along x
+           ! (yfl%nxguard for ex, yfl%nxguard-1 for ey and ez)
+           n_slices = (3*yfl%nxguard-2)
+           bufsize = n_slices*size(yfl%ez(yfl%ixmin,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%ez_circ(yfl%ixmin,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ex, ey and ez slices into that buffer
+           ! ex
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do ix = yfl%ixmax,yfl%ixmaxg-1
+              yfl%ex(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ex(0,:,:)),ibuf),shape(yfl%Ex(0,:,:)))
+              if (yfl%circ_m > 0) &
+                   yfl%ex_circ(ix,:,:) = &
+                   reshape( mpi_unpack_complex_array( size(yfl%Ex_circ(0,:,:)), ibuf), shape(yfl%Ex_circ(0,:,:)))
+           end do
+           if (yfl%nxguard>1) then
               do ix = yfl%ixmax+1,yfl%ixmaxg-1
-                yfl%ey(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(0,:,:)),ibuf),shape(yfl%Ez(0,:,:)))
+                 yfl%ey(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ey(0,:,:)),ibuf),shape(yfl%Ey(0,:,:)))
+                 if (yfl%circ_m > 0) &
+                      yfl%ey_circ(ix,:,:) = &
+                   reshape( mpi_unpack_complex_array( size(yfl%Ey_circ(0,:,:)), ibuf), shape(yfl%Ey_circ(0,:,:)))
               end do
               do ix = yfl%ixmax+1,yfl%ixmaxg-1
-                yfl%ez(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(0,:,:)),ibuf),shape(yfl%Ez(0,:,:)))
+                 yfl%ez(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(0,:,:)),ibuf),shape(yfl%Ez(0,:,:)))
+                 if (yfl%circ_m > 0) &
+                      yfl%ez_circ(ix,:,:) = &
+                   reshape( mpi_unpack_complex_array( size(yfl%Ez_circ(0,:,:)), ibuf), shape(yfl%Ez_circ(0,:,:)))
               end do
             end if
           end if
@@ -6339,35 +6985,35 @@ integer(ISZ) :: ix,ibuf
                                     +3*size(syfu%ezx(syfu%ixming  :syfu%ixmin-1,:,:)),ibuf)
             call mpi_recv_pack(fl%proc,4,ibuf)
 
-            do ix = syfu%ixming,syfu%ixmin-1
+           do ix = syfu%ixming,syfu%ixmin-1
               syfu%exx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%exx(ix,:,:)),ibuf),shape(syfu%exx(ix,:,:)))
-            end do
-            do ix = syfu%ixming,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming,syfu%ixmin-1
               syfu%exy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%exy(ix,:,:)),ibuf),shape(syfu%exy(ix,:,:)))
-            end do
-            do ix = syfu%ixming,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming,syfu%ixmin-1
               syfu%exz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%exz(ix,:,:)),ibuf),shape(syfu%exz(ix,:,:)))
-            end do
+           end do
 
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%eyx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%eyx(ix,:,:)),ibuf),shape(syfu%eyx(ix,:,:)))
-            end do
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%eyy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%eyy(ix,:,:)),ibuf),shape(syfu%eyy(ix,:,:)))
-            end do
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%eyz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%eyz(ix,:,:)),ibuf),shape(syfu%eyz(ix,:,:)))
-            end do
+           end do
 
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%ezx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%ezx(ix,:,:)),ibuf),shape(syfu%ezx(ix,:,:)))
-            end do
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%ezy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%ezy(ix,:,:)),ibuf),shape(syfu%ezy(ix,:,:)))
-            end do
-            do ix = syfu%ixming+1,syfu%ixmin-1
+           end do
+           do ix = syfu%ixming+1,syfu%ixmin-1
               syfu%ezz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%ezz(ix,:,:)),ibuf),shape(syfu%ezz(ix,:,:)))
-            end do
+           end do
 
           else if (fu%proc/=my_index) then
             ! --- recv data from up in z
@@ -6377,101 +7023,139 @@ integer(ISZ) :: ix,ibuf
             
             do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%exx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%exx(ix,:,:)),ibuf),shape(syfl%exx(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%exy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%exy(ix,:,:)),ibuf),shape(syfl%exy(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%exz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%exz(ix,:,:)),ibuf),shape(syfl%exz(ix,:,:)))
-            end do
-            
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%eyx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyx(ix,:,:)),ibuf),shape(syfl%eyx(ix,:,:)))
-            end do
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%eyy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyy(ix,:,:)),ibuf),shape(syfl%eyy(ix,:,:)))
-            end do
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%eyz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyz(ix,:,:)),ibuf),shape(syfl%eyz(ix,:,:)))
-            end do
-            
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%ezx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezx(ix,:,:)),ibuf),shape(syfl%ezx(ix,:,:)))
-            end do
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%ezy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezy(ix,:,:)),ibuf),shape(syfl%ezy(ix,:,:)))
-            end do
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
-              syfl%ezz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezz(ix,:,:)),ibuf),shape(syfl%ezz(ix,:,:)))
-            end do
+           end do
 
-          end if
-      end select
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%eyx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyx(ix,:,:)),ibuf),shape(syfl%eyx(ix,:,:)))
+           end do
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%eyy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyy(ix,:,:)),ibuf),shape(syfl%eyy(ix,:,:)))
+           end do
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%eyz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%eyz(ix,:,:)),ibuf),shape(syfl%eyz(ix,:,:)))
+           end do
+
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%ezx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezx(ix,:,:)),ibuf),shape(syfl%ezx(ix,:,:)))
+           end do
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%ezy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezy(ix,:,:)),ibuf),shape(syfl%ezy(ix,:,:)))
+           end do
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
+              syfl%ezz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%ezz(ix,:,:)),ibuf),shape(syfl%ezz(ix,:,:)))
+           end do
+
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bnde_xrecv
 #endif
 
 subroutine em3d_exchange_bndb_x(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the magnetic field at the x boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ibuf, n_slices, bufsize
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-integer(ISZ) :: ix
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  integer(ISZ) :: ix
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nxguard-1)*size(yfu%by(0,:,:)),ibuf)
-            do ix=yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
-              call mympi_pack(yfu%bx(ix,:,:),ibuf)
-            end do
-            do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
-              call mympi_pack(yfu%by(ix,:,:),ibuf)
-            end do
-            do ix=yfu%ixmin,yfu%ixmin+yfu%nxguard-1
-              call mympi_pack(yfu%bz(ix,:,:),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nxguard-1)*size(yfl%by(0,:,:)),ibuf)
-            do ix=yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
-              call mympi_pack(yfl%bx(ix,:,:),ibuf)
-            end do
-            do ix=yfl%ixmax-yfl%nxguard,yfl%ixmax-1
-              call mympi_pack(yfl%by(ix,:,:),ibuf)
-            end do
-            do ix=yfl%ixmax-yfl%nxguard,yfl%ixmax-1
-              call mympi_pack(yfl%bz(ix,:,:),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
-#endif
-          yfl%bx(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%bx(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
-          yfl%by(yfl%ixmax  :yfl%ixmaxg-1,:,:) = yfu%by(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
-          yfl%bz(yfl%ixmax  :yfl%ixmaxg-1,:,:) = yfu%bz(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
+        if(l_mpiverbose) write(STDOUT,*) '-- sending b along x'
 
-          yfu%bx(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%bx(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
-          yfu%by(yfu%ixming  :yfu%ixmin-1,:,:) = yfl%by(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
-          yfu%bz(yfu%ixming  :yfu%ixmin-1,:,:) = yfl%bz(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
-          
+        if (fl%proc/=my_index) then
+           ! --- send data down in x
+
+           ! Number of slices to communicate along x
+           ! (yfu%nxguard for by and bz, yfu%nxguard-1 for bx)
+           n_slices = (3*yfu%nxguard-1)
+           bufsize = n_slices*size(yfu%by(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%by_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the bx, by and bz slices into that buffer
+           ! bx
+           do ix=yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
+              call mympi_pack(yfu%bx(ix,:,:),ibuf)
+           end do
+           do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
+              call mympi_pack(yfu%by(ix,:,:),ibuf)
+              if (yfu%circ_m > 0) call mympi_pack(yfu%bx_circ(ix,:,:),ibuf)
+           end do
+           ! by
+           do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
+              call mympi_pack(yfu%bz(ix,:,:),ibuf)
+              if (yfu%circ_m > 0) call mympi_pack(yfu%bz_circ(ix,:,:),ibuf)
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
+           
+        else if (fu%proc/=my_index) then
+           ! --- send data up in x
+
+           ! Number of slices to communicate along z
+           ! (yfl%nxguard for by and bz, yfl%nxguard-1 for bx)
+           n_slices = (3*yfl%nxguard-1)
+           bufsize = n_slices*size(yfl%by(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%by_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the bx, by and bz slices into that buffer
+           ! bx
+           do ix=yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
+              call mympi_pack(yfl%bx(ix,:,:),ibuf)
+              if (yfl%circ_m > 0) call mympi_pack(yfl%bx_circ(ix,:,:),ibuf)
+           end do
+           ! by
+           do ix=yfl%ixmax-yfl%nxguard,yfl%ixmax-1
+              call mympi_pack(yfl%by(ix,:,:),ibuf)
+              if (yfl%circ_m > 0) call mympi_pack(yfl%by_circ(ix,:,:),ibuf)
+           end do
+           ! bz
+           do ix=yfl%ixmax-yfl%nxguard,yfl%ixmax-1
+              call mympi_pack(yfl%bz(ix,:,:),ibuf)
+              if (yfl%circ_m > 0) call mympi_pack(yfl%bz_circ(ix,:,:),ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
+#endif
+           yfl%bx(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%bx(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+           yfl%by(yfl%ixmax  :yfl%ixmaxg-1,:,:) = yfu%by(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
+           yfl%bz(yfl%ixmax  :yfl%ixmaxg-1,:,:) = yfu%bz(yfu%ixmin  :yfu%ixmin+yfu%nxguard-1,:,:)
+
+           yfu%bx(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%bx(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           yfu%by(yfu%ixming  :yfu%ixmin-1,:,:) = yfl%by(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
+           yfu%bz(yfu%ixming  :yfu%ixmin-1,:,:) = yfl%bz(yfl%ixmax-yfl%nxguard  :yfl%ixmax-1,:,:)
+
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           syfu=>fu%syf
@@ -6515,26 +7199,26 @@ integer(ISZ) :: ix
             call mpi_packbuffer_init(4*size(syfu%byx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)) &
                                     +2*size(syfu%byx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)),ibuf)
 
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%bxy(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%bxz(ix,:,:),ibuf)
-            end do
-            
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%byx(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%byz(ix,:,:),ibuf)
-            end do
-            
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%bzx(ix,:,:),ibuf)
-            end do
-            do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
+           end do
+           do ix=syfu%ixmin,syfu%ixmin+syfu%nxguard-1
               call mympi_pack(syfu%bzy(ix,:,:),ibuf)
-            end do
+           end do
 
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
@@ -6542,47 +7226,47 @@ integer(ISZ) :: ix
             call mpi_packbuffer_init(4*size(syfl%byx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)) &
                                     +2*size(syfl%byx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)),ibuf)
 
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%bxy(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
               call mympi_pack(syfl%bxz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%byx(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%byz(ix,:,:),ibuf)
-            end do
+           end do
 
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%bzx(ix,:,:),ibuf)
-            end do
-            do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
+           end do
+           do ix=syfl%ixmax-syfl%nxguard,syfl%ixmax-1
               call mympi_pack(syfl%bzy(ix,:,:),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
-          else
+           call mpi_isend_pack(fu%proc,4,ibuf)
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%bxy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%bxz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%bxz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%byx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%byx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%byz(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%byz(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%bzx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%bzx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfu%bzy(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%bzy(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
-          syfl%bxy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%bxy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%bxz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%bxz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%byx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%byx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%byz(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%byz(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%bzx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%bzx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%bzy(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%bzy(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           if (fl%proc/=fu%proc) return
+           syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%bxy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%bxz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%bxz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%byx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%byx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%byz(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%byz(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%bzx(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%bzx(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfu%bzy(syfu%ixming  :syfu%ixmin-1,:,:) = syfl%bzy(syfl%ixmax-syfl%nxguard  :syfl%ixmax-1,:,:)
+           syfl%bxy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%bxy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%bxz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%bxz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%byx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%byx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%byz(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%byz(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%bzx(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%bzx(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%bzy(syfl%ixmax  :syfl%ixmaxg-1,:,:) = syfu%bzy(syfu%ixmin  :syfu%ixmin+syfu%nxguard-1,:,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -6590,77 +7274,124 @@ end subroutine em3d_exchange_bndb_x
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndb_xrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Receive the magnetic field at the x boundary
+  ! ---------------------------------------------------  
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ibuf,ix
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ibuf,ix, n_slices, bufsize
 
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nxguard-1)*size(yfu%bx(0,:,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix=yfu%ixming+1,yfu%ixmin-1
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving b along x'
+
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in x
+
+           ! Number of slices to communicate along x
+           ! (yfu%nxguard for by and bz, yfu%nxguard-1 for bx)
+           n_slices = (3*yfu%nxguard-1)
+           bufsize = n_slices*size(yfu%bx(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%bx_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the bx, by and bz slices from that buffer
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do ix=yfu%ixming+1,yfu%ixmin-1
               yfu%bx(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%bx(ix,:,:)),ibuf),shape(yfu%bx(ix,:,:)))
-            end do
-            do ix=yfu%ixming,yfu%ixmin-1
+              if (yfu%circ_m > 0) &
+                   yfu%bx_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%bx_circ(ix,:,:)),ibuf),shape(yfu%bx_circ(ix,:,:)))
+           end do
+           do ix=yfu%ixming,yfu%ixmin-1
               yfu%by(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%by(ix,:,:)),ibuf),shape(yfu%by(ix,:,:)))
-            end do
-            do ix=yfu%ixming,yfu%ixmin-1
+              if (yfu%circ_m > 0) &
+                   yfu%by_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%by_circ(ix,:,:)),ibuf),shape(yfu%by_circ(ix,:,:)))
+           end do
+           do ix=yfu%ixming,yfu%ixmin-1
               yfu%bz(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%bz(ix,:,:)),ibuf),shape(yfu%bz(ix,:,:)))
-            end do
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nxguard-1)*size(yfl%bx(0,:,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix=yfl%ixmax+1,yfl%ixmaxg-1
+              if (yfu%circ_m > 0) &
+                   yfu%bz_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%bz_circ(ix,:,:)),ibuf),shape(yfu%bz_circ(ix,:,:)))
+           end do
+           
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+
+           ! Number of slices to communicate along x
+           ! (yfl%nxguard for by and bz, yfl%nxguard-1 for bx)
+           n_slices = (3*yfl%nxguard-1)
+           bufsize = n_slices*size(yfl%bx(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%bx_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the bx, by and bz slices from that buffer
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do ix=yfl%ixmax+1,yfl%ixmaxg-1
               yfl%bx(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%bx(ix,:,:)),ibuf),shape(yfl%bx(ix,:,:)))
-            end do
-            do ix=yfl%ixmax,yfl%ixmaxg-1
+              if (yfl%circ_m > 0) &
+                   yfl%bx_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%bx_circ(ix,:,:)),ibuf),shape(yfl%bx_circ(ix,:,:)))
+           end do
+           do ix=yfl%ixmax,yfl%ixmaxg-1
               yfl%by(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%by(ix,:,:)),ibuf),shape(yfl%by(ix,:,:)))
-            end do
-            do ix=yfl%ixmax,yfl%ixmaxg-1
+              if (yfl%circ_m > 0) &
+                   yfl%by_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%by_circ(ix,:,:)),ibuf),shape(yfl%by_circ(ix,:,:)))
+           end do
+           do ix=yfl%ixmax,yfl%ixmaxg-1
               yfl%bz(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%bz(ix,:,:)),ibuf),shape(yfl%bz(ix,:,:)))
-            end do
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(yeefield)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            call mpi_packbuffer_init(4*size(syfu%bxy(syfu%ixming  :syfu%ixmin-1,:,:)) &
-                                    +2*size(syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:)),ibuf)
-            call mpi_recv_pack(fl%proc,4,ibuf)
-            ! --- recv data from down in z
-            do ix=syfu%ixming+1,syfu%ixmin-1
+              if (yfl%circ_m > 0) &
+                   yfl%bz_circ(ix,:,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%bz_circ(ix,:,:)),ibuf),shape(yfl%bz_circ(ix,:,:)))
+           end do
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(yeefield)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           call mpi_packbuffer_init(4*size(syfu%bxy(syfu%ixming  :syfu%ixmin-1,:,:)) &
+                +2*size(syfu%bxy(syfu%ixming+1:syfu%ixmin-1,:,:)),ibuf)
+           call mpi_recv_pack(fl%proc,4,ibuf)
+           ! --- recv data from down in z
+           do ix=syfu%ixming+1,syfu%ixmin-1
               syfu%bxy(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%bxy(ix,:,:)),ibuf),shape(syfu%bxy(ix,:,:)))
-            end do
-            do ix=syfu%ixming+1,syfu%ixmin-1
+           end do
+           do ix=syfu%ixming+1,syfu%ixmin-1
               syfu%bxz(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%bxz(ix,:,:)),ibuf),shape(syfu%bxz(ix,:,:)))
-            end do
-            do ix=syfu%ixming,syfu%ixmin-1
+           end do
+           do ix=syfu%ixming,syfu%ixmin-1
               syfu%byx(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%byx(ix,:,:)),ibuf),shape(syfu%byx(ix,:,:)))
-            end do
-            do ix=syfu%ixming,syfu%ixmin-1
+           end do
+           do ix=syfu%ixming,syfu%ixmin-1
               syfu%byz(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%byz(ix,:,:)),ibuf),shape(syfu%byz(ix,:,:)))
-            end do
-            do ix=syfu%ixming,syfu%ixmin-1
+           end do
+           do ix=syfu%ixming,syfu%ixmin-1
               syfu%bzx(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%bzx(ix,:,:)),ibuf),shape(syfu%bzx(ix,:,:)))
-            end do
-            do ix=syfu%ixming,syfu%ixmin-1
+           end do
+           do ix=syfu%ixming,syfu%ixmin-1
               syfu%bzy(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfu%bzy(ix,:,:)),ibuf),shape(syfu%bzy(ix,:,:)))
             end do
           else if (fu%proc/=my_index) then
@@ -6670,24 +7401,24 @@ integer(ISZ) :: ibuf,ix
             call mpi_recv_pack(fu%proc,3,ibuf)
             do ix=syfl%ixmax+1,syfl%ixmaxg-1
               syfl%bxy(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%bxy(ix,:,:)),ibuf),shape(syfl%bxy(ix,:,:)))
-            end do
-            do ix=syfl%ixmax+1,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax+1,syfl%ixmaxg-1
               syfl%bxz(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%bxz(ix,:,:)),ibuf),shape(syfl%bxz(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%byx(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%byx(ix,:,:)),ibuf),shape(syfl%byx(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%byz(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%byz(ix,:,:)),ibuf),shape(syfl%byz(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%bzx(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%bzx(ix,:,:)),ibuf),shape(syfl%bzx(ix,:,:)))
-            end do
-            do ix=syfl%ixmax,syfl%ixmaxg-1
+           end do
+           do ix=syfl%ixmax,syfl%ixmaxg-1
               syfl%bzy(ix,:,:) =  reshape(mpi_unpack_real_array( size(syfl%bzy(ix,:,:)),ibuf),shape(syfl%bzy(ix,:,:)))
-            end do
-          end if
-      end select
+           end do
+        end if
+     end select
   end select
 
   return
@@ -6695,129 +7426,166 @@ end subroutine em3d_exchange_bndb_xrecv
 #endif
 
 subroutine em3d_exchange_bndf_x(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the fields f at the x boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf, n_slices, bufsize
 #ifdef MPIPARALLEL
-integer(ISZ)   ::ix
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::ix
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            if (yfu%nxguard>1) then
-              call mpi_packbuffer_init((yfu%nxguard-1)*size(yfu%f(0,:,:)),ibuf)
+        if(l_mpiverbose) write(STDOUT,*) '-- sending f along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in x
+
+           if (yfu%nxguard>1) then
+              ! Number of slices to communicate along x
+              n_slices = (yfu%nxguard-1)
+              bufsize = n_slices*size(yfu%f(0,:,:))
+              ! Check whether to also pack the circ arrays
+              if (yfu%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfu%f_circ(0,:,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Pack f
               do ix = yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
-                call mympi_pack(yfu%f(ix,:,:),ibuf)
+                 call mympi_pack(yfu%f(ix,:,:),ibuf)
+                 if (yfu%circ_m > 0) call mympi_pack(yfu%f_circ(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,1,ibuf)
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (yfl%nxguard>1) then
-              call mpi_packbuffer_init((yfl%nxguard-1)*size(yfl%f(0,:,:)),ibuf)
+           endif
+           
+        else if (fu%proc/=my_index) then
+           ! --- send data up in x
+           
+           if (yfl%nxguard>1) then
+              ! Number of slices to communicate along x
+              n_slices = (yfl%nxguard-1)
+              bufsize = n_slices*size(yfl%f(0,:,:))
+              ! Check whether to also pack the circ arrays
+              if (yfl%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfl%f_circ(0,:,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Pack f
               do ix = yfl%ixmax-yfl%nxguard+1,yfl%ixmax-1
-                call mympi_pack(yfl%f(ix,:,:),ibuf)
+                 call mympi_pack(yfl%f(ix,:,:),ibuf)
+                 if (yfl%circ_m > 0) call mympi_pack(yfl%f_circ(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,2,ibuf)
-            end if
-          else
+           end if
+        else
 #endif
-            yfl%f(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%f(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
-            yfu%f(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%f(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           yfl%f(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = yfu%f(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+           yfu%f(yfu%ixming+1:yfu%ixmin-1,:,:) = yfl%f(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+
+           if (yfu%circ_m > 0) then
+              yfl%f_circ(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = &
+                   yfu%f_circ(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+              yfu%f_circ(yfu%ixming+1:yfu%ixmin-1,:,:) = &
+                   yfl%f_circ(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+           endif
 
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-        case(splityeefield)
-          ! --- case lower yee, upper split yee
-          if (fl%proc/=fu%proc) return
-          syfu=>fu%syf
-          yfl%f(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:) &
-                                              + syfu%fy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:) &
-                                              + syfu%fz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfu%fx(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
-          syfu%fy(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
-          syfu%fz(syfu%ixming+1:syfu%ixmin-1,:,:) = yfl%f(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
+     case(splityeefield)
+        ! --- case lower yee, upper split yee
+        if (fl%proc/=fu%proc) return
+        syfu=>fu%syf
+        yfl%f(yfl%ixmax+1:yfl%ixmaxg-1,:,:) = syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:) &
+             + syfu%fy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:) &
+             + syfu%fz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+        syfu%fx(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
+        syfu%fy(syfu%ixming+1:syfu%ixmin-1,:,:) = 0.
+        syfu%fz(syfu%ixming+1:syfu%ixmin-1,:,:) = yfl%f(yfl%ixmax-yfl%nxguard+1:yfl%ixmax-1,:,:)
 
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-          ! --- case lower split yee, upper yee
-        case(yeefield)
-          if (fl%proc/=fu%proc) return
-          yfu=>fu%yf
-          yfu%f(yfu%ixming+1:yfu%ixmin-1,:,:)      = syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:) &
-                                                   + syfl%fy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:) &
-                                                   + syfl%fz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfl%fx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
-          syfl%fy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
-          syfl%fz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = yfu%f(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
-        case(splityeefield)
-          ! --- case lower split yee, upper split yee
-          syfu=>fu%syf
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+        ! --- case lower split yee, upper yee
+     case(yeefield)
+        if (fl%proc/=fu%proc) return
+        yfu=>fu%yf
+        yfu%f(yfu%ixming+1:yfu%ixmin-1,:,:)      = syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:) &
+             + syfl%fy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:) &
+             + syfl%fz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+        syfl%fx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
+        syfl%fy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = 0.
+        syfl%fz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = yfu%f(yfu%ixmin+1:yfu%ixmin+yfu%nxguard-1,:,:)
+     case(splityeefield)
+        ! --- case lower split yee, upper split yee
+        syfu=>fu%syf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            if (syfu%nxguard>1) then
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           if (syfu%nxguard>1) then
               call mpi_packbuffer_init( 3*int(size(syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:))) ,ibuf)
               do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
-                call mympi_pack(syfu%fx(ix,:,:),ibuf)
+                 call mympi_pack(syfu%fx(ix,:,:),ibuf)
               end do
               do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
-                call mympi_pack(syfu%fy(ix,:,:),ibuf)
+                 call mympi_pack(syfu%fy(ix,:,:),ibuf)
               end do
               do ix=syfu%ixmin+1,syfu%ixmin+syfu%nxguard-1
-                call mympi_pack(syfu%fz(ix,:,:),ibuf)
+                 call mympi_pack(syfu%fz(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (syfl%nxguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           if (syfl%nxguard>1) then
               call mpi_packbuffer_init(3*int(size(syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:))) ,ibuf)
               do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
-                call mympi_pack(syfl%fx(ix,:,:),ibuf)
+                 call mympi_pack(syfl%fx(ix,:,:),ibuf)
               end do
               do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
-                call mympi_pack(syfl%fy(ix,:,:),ibuf)
+                 call mympi_pack(syfl%fy(ix,:,:),ibuf)
               end do
               do ix=syfl%ixmax-syfl%nxguard+1,syfl%ixmax-1
-                call mympi_pack(syfl%fz(ix,:,:),ibuf)
+                 call mympi_pack(syfl%fz(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else
+           end if
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%fx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%fy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
-          syfu%fz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           if (fl%proc/=fu%proc) return
+           syfu%fx(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%fy(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fy(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
+           syfu%fz(syfu%ixming+1:syfu%ixmin-1,:,:) = syfl%fz(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:)
 
-          syfl%fx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%fy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
-          syfl%fz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%fx(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fx(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%fy(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fy(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
+           syfl%fz(syfl%ixmax+1:syfl%ixmaxg-1,:,:) = syfu%fz(syfu%ixmin+1:syfu%ixmin+syfu%nxguard-1,:,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -6825,207 +7593,332 @@ end subroutine em3d_exchange_bndf_x
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndf_xrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix,ibuf,n_slices,bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (yfu%nxguard>1) then
-              call mpi_packbuffer_init((yfu%nxguard-1)*size(yfu%Ez(0,:,:)),ibuf)
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving f along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in x
+           
+           if (yfu%nxguard>1) then
+              ! Number of slices to communicate along x
+              n_slices = (yfu%nxguard-1)
+              bufsize = n_slices*size(yfu%f(yfu%ixmin,:,:))
+              ! Check whether to also pack the circ arrays
+              if (yfu%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfu%f_circ(yfu%ixmin,:,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Receive f
               call mpi_recv_pack(fl%proc,2,ibuf)
               do ix = yfu%ixming+1,yfu%ixmin-1
-                yfu%f(ix,:,:) = reshape(mpi_unpack_real_array( size(yfu%F(0,:,:)),ibuf),shape(yfu%F(0,:,:)))
+                 yfu%f(ix,:,:) = reshape(mpi_unpack_real_array( &
+                      size(yfu%F(0,:,:)),ibuf), shape(yfu%F(0,:,:)))
+                 if (yfu%circ_m>0) &
+                      yfu%f_circ(ix,:,:) = reshape(mpi_unpack_complex_array( &
+                      size(yfu%F_circ(0,:,:)),ibuf), shape(yfu%F_circ(0,:,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (yfl%nxguard>1) then
-              call mpi_packbuffer_init((yfl%nxguard-1)*size(yfl%ez(yfl%ixmin,:,:)),ibuf)
+           end if
+           
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in x
+
+           if (yfl%nxguard>1) then
+
+              ! Number of slices to communicate along x
+              n_slices = (yfl%nxguard-1)
+              bufsize = n_slices*size(yfl%f(yfl%ixmin,:,:))
+              ! Check whether to also pack the circ arrays
+              if (yfl%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfl%f_circ(yfl%ixmin,:,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Receive f
               call mpi_recv_pack(fu%proc,1,ibuf)
               do ix = yfl%ixmax+1,yfl%ixmaxg-1
-                yfl%f(ix,:,:) = reshape(mpi_unpack_real_array( size(yfl%F(0,:,:)),ibuf),shape(yfl%F(0,:,:)))
+                 yfl%f(ix,:,:) = reshape(mpi_unpack_real_array( &
+                      size(yfl%F(0,:,:)),ibuf),shape(yfl%F(0,:,:)))
+                 if (yfl%circ_m>0) &
+                      yfl%f_circ(ix,:,:) = reshape(mpi_unpack_complex_array( &
+                      size(yfl%F_circ(0,:,:)),ibuf), shape(yfl%F_circ(0,:,:)))
               end do
-            end if
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (syfu%nxguard>1) then
+           end if
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           if (syfu%nxguard>1) then
               call mpi_packbuffer_init(3*size(syfu%ezx(syfu%ixming+1:syfu%ixmin-1,:,:)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
               do ix = syfu%ixming+1,syfu%ixmin-1
-                syfu%fx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fx(ix,:,:)),ibuf),shape(syfu%fx(ix,:,:)))
+                 syfu%fx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fx(ix,:,:)),ibuf),shape(syfu%fx(ix,:,:)))
               end do
               do ix = syfu%ixming+1,syfu%ixmin-1
-                syfu%fy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fy(ix,:,:)),ibuf),shape(syfu%fy(ix,:,:)))
+                 syfu%fy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fy(ix,:,:)),ibuf),shape(syfu%fy(ix,:,:)))
               end do
               do ix = syfu%ixming+1,syfu%ixmin-1
-                syfu%fz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fz(ix,:,:)),ibuf),shape(syfu%fz(ix,:,:)))
+                 syfu%fz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfu%fz(ix,:,:)),ibuf),shape(syfu%fz(ix,:,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (syfl%nxguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           if (syfl%nxguard>1) then
               call mpi_packbuffer_init(3*size(syfl%ezx(syfl%ixmax+1:syfl%ixmaxg-1,:,:)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do ix=syfl%ixmax+1,syfl%ixmaxg-1
-                syfl%fx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fx(ix,:,:)),ibuf),shape(syfl%fx(ix,:,:)))
+                 syfl%fx(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fx(ix,:,:)),ibuf),shape(syfl%fx(ix,:,:)))
               end do
               do ix=syfl%ixmax+1,syfl%ixmaxg-1
-                syfl%fy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fy(ix,:,:)),ibuf),shape(syfl%fy(ix,:,:)))
+                 syfl%fy(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fy(ix,:,:)),ibuf),shape(syfl%fy(ix,:,:)))
               end do
               do ix=syfl%ixmax+1,syfl%ixmaxg-1
-                syfl%fz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fz(ix,:,:)),ibuf),shape(syfl%fz(ix,:,:)))
+                 syfl%fz(ix,:,:) = reshape(mpi_unpack_real_array( size(syfl%fz(ix,:,:)),ibuf),shape(syfl%fz(ix,:,:)))
               end do
-            end if
-          end if
-      end select
+           end if
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bndf_xrecv
 #endif
 
 subroutine em3d_exchange_bndj_x(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! --------------------------------------------
+  ! Send/exchange the current at the x boundary
+  ! --------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix,ibuf,nguardinl,nguardinu, n_slices, bufsize
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
 
-            ! --- send data down in z
-            nguardinu = yfu%nxguard
-            call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
-            do ix = -yfu%nxguard,-1+nguardinu
+        if(l_mpiverbose) write(STDOUT,*) '-- sending j along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in x
+
+           ! Number of slices to communicate along x
+           nguardinu = yfu%nxguard
+           n_slices = (3*(yfu%nzguard+nguardinu) + 2)
+           bufsize = n_slices * size(yfu%J(0,:,:,1))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%J_circ(0,:,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the Jx, Jy and Jz slices into that buffer
+           ! Jx
+           do ix = -yfu%nxguard,-1+nguardinu
               call mympi_pack(yfu%J(ix,:,:,1),ibuf)
-            end do
-            do ix = -yfu%nxguard,nguardinu
+              if (yfu%circ_m > 0) call mympi_pack(yfu%J_circ(ix,:,1,:),ibuf)
+           end do
+           ! Jy and Jz
+           do ix = -yfu%nxguard,nguardinu
               call mympi_pack(yfu%J(ix,:,:,2),ibuf)
               call mympi_pack(yfu%J(ix,:,:,3),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+              if (yfu%circ_m > 0) then
+                 call mympi_pack( yfu%J_circ(ix,:,2,:), ibuf)
+                 call mympi_pack( yfu%J_circ(ix,:,3,:), ibuf)
+              endif
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in z
-            nguardinl = yfl%nxguard
-            call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
-            do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard-1
+        else if (fu%proc/=my_index) then
+           ! --- send data up in x
+
+           ! Number of slices to communicate along x
+           nguardinl = yfl%nxguard
+           n_slices = (3*(yfl%nxguard+nguardinl) + 2)
+           bufsize = n_slices * size(yfl%J(0,:,:,1))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%J_circ(0,:,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the Jx, Jy and Jz slices into that buffer
+           ! Jx
+           do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard-1
               call mympi_pack(yfl%J(ix,:,:,1),ibuf)
-            end do
-            do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard
+              if (yfl%circ_m > 0) call mympi_pack(yfl%J_circ(ix,:,1,:),ibuf)
+           end do
+           ! Jy and Jz
+           do ix = yfl%nx-nguardinl, yfl%nx+yfl%nxguard
               call mympi_pack(yfl%J(ix,:,:,2),ibuf)
               call mympi_pack(yfl%J(ix,:,:,3),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+              if (yfl%circ_m > 0) then
+                 call mympi_pack( yfl%J_circ(ix,:,2,:),ibuf )
+                 call mympi_pack( yfl%J_circ(ix,:,3,:),ibuf )
+              endif
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
-            nguardinu = yfu%nxguard
-            nguardinl = yfl%nxguard
-            yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  &
-                                                   + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) 
-            yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  &
-                                                   + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           nguardinu = yfu%nxguard
+           nguardinl = yfl%nxguard
 
-            yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)
-            yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3) = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3) 
+           yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)  &
+                + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) 
+           yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)  &
+                + yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3)
+           yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,:,1) = yfu%J(-nguardinu:yfu%nxguard-1,:,:,1)
+           yfl%J(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:,2:3) = yfu%J(-nguardinu:yfu%nxguard,:,:,2:3)
+
+           if (yfu%circ_m > 0) then
+              yfu%J_circ(-nguardinu:yfu%nxguard-1,:,1,:) = yfu%J_circ(-nguardinu:yfu%nxguard-1,:,1,:)  &
+                   + yfl%J_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,1,:) 
+              yfu%J_circ(-nguardinu:yfu%nxguard,:,2:3,:) = yfu%J_circ(-nguardinu:yfu%nxguard,:,2:3,:)  &
+                   + yfl%J_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,2:3,:)
+              yfl%J_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard-1,:,1,:) = yfu%J_circ(-nguardinu:yfu%nxguard-1,:,1,:)
+              yfl%J_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,2:3,:) = yfu%J_circ(-nguardinu:yfu%nxguard,:,2:3,:)
+           endif
+           
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndj_x
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndj_xrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! -----------------------------------------
+  ! Receive the current at the x boundary
+  ! -----------------------------------------  
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix,ibuf,nguardinl,nguardinu,n_slices,bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nxguard
-            call mpi_packbuffer_init((3*(yfu%nxguard+nguardinu)+2)*size(yfu%J(0,:,:,1)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix = -nguardinu,yfu%nxguard-1
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving j along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in x
+
+           ! Number of slices to communicate along x
+           nguardinu = yfu%nxguard
+           n_slices = (3*(yfu%nxguard+nguardinu) + 2)
+           bufsize = n_slices*size(yfu%J(0,:,:,1))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%J_circ(0,:,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the Jx, Jy and Jz slices from that buffer
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do ix = -nguardinu,yfu%nxguard-1
               yfu%J(ix,:,:,1) = yfu%J(ix,:,:,1) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
-                                                                                shape(yfu%J(0,:,:,1)))
-            end do
-            do ix = -nguardinu,yfu%nxguard
+                   shape(yfu%J(0,:,:,1)))
+              if ( yfu%circ_m > 0 ) &
+                   yfu%J_circ(ix,:,1,:) = yfu%J_circ(ix,:,1,:) + reshape( mpi_unpack_complex_array( &
+                   size(yfu%J_circ(0,:,1,:)),ibuf), shape(yfu%J_circ(0,:,1,:)) )
+           end do
+           do ix = -nguardinu,yfu%nxguard
               yfu%J(ix,:,:,2) = yfu%J(ix,:,:,2) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
                                                                                 shape(yfu%J(0,:,:,1)))
               yfu%J(ix,:,:,3) = yfu%J(ix,:,:,3) + reshape(mpi_unpack_real_array( size(yfu%J(0,:,:,1)),ibuf), &
-                                                                                shape(yfu%J(0,:,:,1)))
-            end do
+                   shape(yfu%J(0,:,:,1)))
+              if ( yfu%circ_m > 0 ) then
+                 yfu%J_circ(ix,:,2,:) = yfu%J_circ(ix,:,2,:) + reshape( mpi_unpack_complex_array( &
+                      size(yfu%J_circ(0,:,2,:)),ibuf), shape(yfu%J_circ(0,:,2,:)) )
+                 yfu%J_circ(ix,:,3,:) = yfu%J_circ(ix,:,3,:) + reshape( mpi_unpack_complex_array( &
+                      size(yfu%J_circ(0,:,3,:)),ibuf), shape(yfu%J_circ(0,:,3,:)) )
+              endif
+           end do
 
-          else if (fu%proc/=my_index) then
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in x
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nxguard
-            call mpi_packbuffer_init((3*(yfl%nxguard+nguardinl)+2)*size(yfl%J(0,:,:,1)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix = -yfl%nxguard,nguardinl-1
-              yfl%J(yfl%nx+ix,:,:,1) = yfl%J(yfl%nx+ix,:,:,1) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,1)),ibuf),&
-                                                                                              shape(yfl%J(yfl%nx-1,:,:,1)))
-            end do
-            do ix = -yfl%nxguard,nguardinl
-              yfl%J(yfl%nx+ix,:,:,2) = yfl%J(yfl%nx+ix,:,:,2) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,2)),ibuf),&
-                                                                                              shape(yfl%J(yfl%nx-1,:,:,2)))
-              yfl%J(yfl%nx+ix,:,:,3) = yfl%J(yfl%nx+ix,:,:,3) + reshape(mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,3)),ibuf),&
-                                                                                              shape(yfl%J(yfl%nx-1,:,:,3)))
-            end do
-          end if
-      end select
+           ! Number of slices to communicate along x
+           nguardinl = yfl%nxguard
+           n_slices = (3*(yfl%nxguard+nguardinl) + 2)
+           bufsize = n_slices*size(yfl%J(0,:,:,1))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%J_circ(0,:,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the Jx, Jy and Jz slices from that buffer
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do ix = -yfl%nxguard,nguardinl-1
+              yfl%J(yfl%nx+ix,:,:,1) = yfl%J(yfl%nx+ix,:,:,1) + reshape( &
+                   mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,1)),ibuf), shape(yfl%J(yfl%nx-1,:,:,1)))
+              if ( yfl%circ_m > 0 ) &
+                   yfl%J_circ(yfl%nx+ix,:,1,:) = yfl%J_circ(yfl%nx+ix,:,1,:) + reshape( &
+                   mpi_unpack_complex_array( size(yfl%J_circ(yfl%nx-1,:,1,:)),ibuf), shape(yfl%J_circ(yfl%nx-1,:,1,:)))
+           end do
+           do ix = -yfl%nxguard,nguardinl
+              yfl%J(yfl%nx+ix,:,:,2) = yfl%J(yfl%nx+ix,:,:,2) + reshape( &
+                   mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,2)),ibuf), shape(yfl%J(yfl%nx-1,:,:,2)))
+              yfl%J(yfl%nx+ix,:,:,3) = yfl%J(yfl%nx+ix,:,:,3) + reshape( &
+                   mpi_unpack_real_array( size(yfl%J(yfl%nx-1,:,:,3)),ibuf), shape(yfl%J(yfl%nx-1,:,:,3)))
+              if ( yfl%circ_m > 0 ) then
+                 yfl%J_circ(yfl%nx+ix,:,2,:) = yfl%J_circ(yfl%nx+ix,:,2,:) + reshape( &
+                      mpi_unpack_complex_array( size(yfl%J_circ(yfl%nx-1,:,2,:)),ibuf), shape(yfl%J_circ(yfl%nx-1,:,2,:)))
+                 yfl%J_circ(yfl%nx+ix,:,3,:) = yfl%J_circ(yfl%nx+ix,:,3,:) + reshape( &
+                      mpi_unpack_complex_array( size(yfl%J_circ(yfl%nx-1,:,3,:)),ibuf), shape(yfl%J_circ(yfl%nx-1,:,3,:)))
+              endif
+           end do
+        end if
+     end select
   end select
 
   return
@@ -7033,101 +7926,168 @@ end subroutine em3d_exchange_bndj_xrecv
 #endif
 
 subroutine em3d_exchange_bndrho_x(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the field rho at the x boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix,ibuf,nguardinl,nguardinu,n_slices,bufsize
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            nguardinu = yfu%nxguard            
-            ! --- send data down in z
-            call mpi_packbuffer_init(size(yfu%rho(-yfu%nxguard:nguardinu,:,:)),ibuf)
-            do ix = -yfu%nxguard,nguardinu
+        if(l_mpiverbose) write(STDOUT,*) '-- sending rho along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in x
+
+           ! Number of slices to communicate along z
+           nguardinu = yfu%nxguard
+           n_slices =  yfu%nxguard + nguardinu + 1
+           bufsize = n_slices*size(yfu%rho(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%rho_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Pack rho
+           do ix = -yfu%nxguard,nguardinu
               call mympi_pack(yfu%rho(ix,:,:),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+              if (yfu%circ_m > 0) &
+                   call mympi_pack(yfu%rho_circ(ix,:,:),ibuf)
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in z
-            nguardinl = yfl%nxguard
-            call mpi_packbuffer_init(size(yfl%rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)),ibuf)
-            do ix = yfl%nx-nguardinl,yfl%nx+yfl%nxguard
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+
+           ! Number of slices to communicate along z
+           nguardinl = yfl%nxguard
+           n_slices =  yfl%nxguard + nguardinl + 1
+           bufsize = n_slices*size(yfl%rho(yfl%nx,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%rho_circ(yfl%nx,:,:))
+           ! Allocate a buffer array in mpibuffer           
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Pack rho
+           do ix = yfl%nx-nguardinl,yfl%nx+yfl%nxguard
               call mympi_pack(yfl%rho(ix,:,:),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+              if (yfl%circ_m > 0) &
+                   call mympi_pack(yfl%rho_circ(ix,:,:),ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
-          nguardinu = yfu%nxguard
-          nguardinl = yfl%nxguard
-          yfu%Rho(-nguardinu:yfu%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:) &
-                                              + yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)
-          yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:)
+           nguardinu = yfu%nxguard
+           nguardinl = yfl%nxguard
+           yfu%Rho(-nguardinu:yfu%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:) &
+                + yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)
+           yfl%Rho(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:) = yfu%Rho(-nguardinu:yfu%nxguard,:,:)
+           if ( yfu%circ_m>0 ) then
+              yfu%Rho_circ(-nguardinu:yfu%nxguard,:,:) = yfu%Rho_circ(-nguardinu:yfu%nxguard,:,:) &
+                   + yfl%Rho_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:)
+              yfl%Rho_circ(yfl%nx-nguardinl:yfl%nx+yfl%nxguard,:,:) = &
+                   yfu%Rho_circ(-nguardinu:yfu%nxguard,:,:)
+           endif
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndrho_x
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndrho_xrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! --------------------------------------------
+  ! Receive the field rho at the x boundary
+  ! --------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ix, ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ix, ibuf,nguardinl,nguardinu, n_slices, bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nxguard            
-            call mpi_packbuffer_init(size(yfu%rho(-nguardinu:yfu%nxguard,:,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do ix = -nguardinu,yfu%nxguard
-              yfu%rho(ix,:,:) = yfu%rho(ix,:,:) + reshape(mpi_unpack_real_array( size(yfu%rho(0,:,:)),ibuf), &
-                                                                                    shape(yfu%rho(0,:,:)))
-            end do
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving rho along x'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in x
 
-          else if (fu%proc/=my_index) then
+           ! Number of slices to communicate along x
+           nguardinu = yfu%nxguard
+           n_slices =  yfu%nxguard + nguardinu + 1
+           bufsize = n_slices*size(yfu%rho(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%rho_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Receive rho
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do ix = -nguardinu,yfu%nxguard
+              yfu%rho(ix,:,:) = yfu%rho(ix,:,:) + reshape( &
+                   mpi_unpack_real_array( size(yfu%rho(0,:,:)),ibuf), shape(yfu%rho(0,:,:)))
+              if(yfu%circ_m>0) &
+                 yfu%rho_circ(ix,:,:) = yfu%rho_circ(ix,:,:) + reshape( &
+                 mpi_unpack_complex_array( size(yfu%rho_circ(0,:,:)),ibuf), &
+                 shape(yfu%rho_circ(0,:,:)))
+           end do
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nxguard
-            call mpi_packbuffer_init(size(yfl%rho(yfl%nx-yfl%nxguard:yfl%nx+nguardinl,:,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do ix = yfl%nx-yfl%nxguard,yfl%nx+nguardinl
-              yfl%rho(ix,:,:) = yfl%rho(ix,:,:) + reshape(mpi_unpack_real_array(size(yfl%rho(yfl%nx,:,:)),ibuf),&
-                                                                                            shape(yfl%rho(yfl%nx,:,:)))
-            end do
-          end if
-      end select
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in x
+
+           ! Number of slices to communicate along x
+           nguardinl = yfl%nxguard
+           n_slices =  yfl%nxguard + nguardinl + 1
+           bufsize = n_slices*size(yfl%rho(0,:,:))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%rho_circ(0,:,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Receive rho
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do ix = yfl%nx-yfl%nxguard,yfl%nx+nguardinl
+              yfl%rho(ix,:,:) = yfl%rho(ix,:,:) + reshape( &
+                   mpi_unpack_real_array(size(yfl%rho(yfl%nx,:,:)),ibuf),&
+                   shape(yfl%rho(yfl%nx,:,:)))
+              if(yfl%circ_m>0) &
+                 yfl%rho_circ(ix,:,:) = yfl%rho_circ(ix,:,:) + reshape( &
+                 mpi_unpack_complex_array( size(yfl%rho_circ(yfl%nx,:,:)),ibuf), &
+                 shape(yfl%rho_circ(yfl%nx,:,:)))
+           end do
+        end if
+     end select
   end select
 
   return
@@ -7135,74 +8095,74 @@ end subroutine em3d_exchange_bndrho_xrecv
 #endif
 
 subroutine em3d_exchange_bnde_y(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iy
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iy
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%ez(:,0,:)),ibuf)
-            if (yfu%nyguard>1) then
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%ez(:,0,:)),ibuf)
+           if (yfu%nyguard>1) then
               do iy = yfu%iymin+1,yfu%iymin+yfu%nyguard-1
-                call mympi_pack(yfu%ex(:,iy,:),ibuf)
+                 call mympi_pack(yfu%ex(:,iy,:),ibuf)
               end do
-            end if
-            do iy = yfu%iymin,yfu%iymin+yfu%nyguard-1
+           end if
+           do iy = yfu%iymin,yfu%iymin+yfu%nyguard-1
               call mympi_pack(yfu%ey(:,iy,:),ibuf)
-            end do
-            if (yfu%nyguard>1) then
+           end do
+           if (yfu%nyguard>1) then
               do iy = yfu%iymin+1,yfu%iymin+yfu%nyguard-1
-                call mympi_pack(yfu%ez(:,iy,:),ibuf)
+                 call mympi_pack(yfu%ez(:,iy,:),ibuf)
               end do
-            end if
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,0,:)),ibuf)
-            if (yfl%nyguard>1) then
+           end if
+           call mpi_isend_pack(fl%proc,1,ibuf)
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,0,:)),ibuf)
+           if (yfl%nyguard>1) then
               do iy = yfl%iymax-yfl%nyguard+1,yfl%iymax-1
-                call mympi_pack(yfl%ex(:,iy,:),ibuf)
+                 call mympi_pack(yfl%ex(:,iy,:),ibuf)
               end do
-            end if
-            do iy =yfl%iymax-yfl%nyguard,yfl%iymax-1
+           end if
+           do iy =yfl%iymax-yfl%nyguard,yfl%iymax-1
               call mympi_pack(yfl%ey(:,iy,:),ibuf)
-            end do
-            if (yfl%nyguard>1) then
+           end do
+           if (yfl%nyguard>1) then
               do iy = yfl%iymax-yfl%nyguard+1,yfl%iymax-1
-                call mympi_pack(yfl%ez(:,iy,:),ibuf)
+                 call mympi_pack(yfl%ez(:,iy,:),ibuf)
               end do
-            end if
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
+           end if
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
 #endif
-            yfl%ex(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%ex(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
-            yfl%ey(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%ey(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
-            yfl%ez(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%ez(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
+           yfl%ex(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%ex(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
+           yfl%ey(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%ey(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
+           yfl%ez(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%ez(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
 
-            yfu%ex(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%ex(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
-            yfu%ey(:,yfu%iyming  :yfu%iymin-1,:) = yfl%ey(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
-            yfu%ez(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%ez(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
+           yfu%ex(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%ex(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
+           yfu%ey(:,yfu%iyming  :yfu%iymin-1,:) = yfl%ey(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
+           yfu%ez(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%ez(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
 
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           ! --- case lower yee, upper split yee
@@ -7262,37 +8222,37 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init( 6*int(size(syfu%exx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:))) &
                                     + 3*int(size(syfu%ezx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:))) ,ibuf)
 
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%exx(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%exy(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%exz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%eyx(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%eyy(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%eyz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%ezx(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%ezy(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%ezz(:,iy,:),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fl%proc,3,ibuf)
+           call mpi_isend_pack(fl%proc,3,ibuf)
 
             mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
@@ -7300,65 +8260,65 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init(6*int(size(syfl%ezx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))) &
                                     +3*int(size(syfl%ezx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:))),ibuf)
 
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%exx(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%exy(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%exz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%eyx(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%eyy(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%eyz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%ezx(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%ezy(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%ezz(:,iy,:),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
+           call mpi_isend_pack(fu%proc,4,ibuf)
 
-            mpireqpnt=mpireqpnt+1
-          else
+           mpireqpnt=mpireqpnt+1
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%exx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%exy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%exz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%eyx(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%eyy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%eyz(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyz(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%ezy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%ezz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           if (fl%proc/=fu%proc) return
+           syfu%exx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%exy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%exz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%exz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%eyx(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%eyy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%eyz(:,syfu%iyming  :syfu%iymin-1,:) = syfl%eyz(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%ezy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%ezz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%ezz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
 
-          syfl%exx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%exy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%exz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%eyx(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%eyy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%eyz(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyz(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%ezy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%ezz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%exx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%exy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%exz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%exz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%eyx(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%eyy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%eyz(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%eyz(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%ezy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%ezz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%ezz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -7366,202 +8326,202 @@ end subroutine em3d_exchange_bnde_y
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bnde_yrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy,ibuf
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%Ez(:,0,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            if (yfu%nyguard>1) then
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           call mpi_packbuffer_init((3*yfu%nyguard-2)*size(yfu%Ez(:,0,:)),ibuf)
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           if (yfu%nyguard>1) then
               do iy = yfu%iyming+1,yfu%iymin-1
-                yfu%ex(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,0,:)),ibuf),shape(yfu%Ez(:,0,:)))
+                 yfu%ex(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,0,:)),ibuf),shape(yfu%Ez(:,0,:)))
               end do
-            end if
-            do iy = yfu%iyming,yfu%iymin-1
+           end if
+           do iy = yfu%iyming,yfu%iymin-1
               yfu%ey(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,0,:)),ibuf),shape(yfu%Ez(:,0,:)))
-            end do
-            if (yfu%nyguard>1) then
+           end do
+           if (yfu%nyguard>1) then
               do iy = yfu%iyming+1,yfu%iymin-1
-                yfu%ez(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,0,:)),ibuf),shape(yfu%Ez(:,0,:)))
+                 yfu%ez(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,0,:)),ibuf),shape(yfu%Ez(:,0,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,yfl%iymin,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            if (yfl%nyguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           call mpi_packbuffer_init((3*yfl%nyguard-2)*size(yfl%ez(:,yfl%iymin,:)),ibuf)
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           if (yfl%nyguard>1) then
               do iy = yfl%iymax+1,yfl%iymaxg-1
-                yfl%ex(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,0,:)),ibuf),shape(yfl%Ez(:,0,:)))
+                 yfl%ex(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,0,:)),ibuf),shape(yfl%Ez(:,0,:)))
               end do
-            end if
-            do iy = yfl%iymax,yfl%iymaxg-1
+           end if
+           do iy = yfl%iymax,yfl%iymaxg-1
               yfl%ey(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,0,:)),ibuf),shape(yfl%Ez(:,0,:)))
-            end do
-            if (yfl%nyguard>1) then
+           end do
+           if (yfl%nyguard>1) then
               do iy = yfl%iymax+1,yfl%iymaxg-1
-                yfl%ez(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,0,:)),ibuf),shape(yfl%Ez(:,0,:)))
+                 yfl%ez(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,0,:)),ibuf),shape(yfl%Ez(:,0,:)))
               end do
-            end if
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init(6*size(syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:)) &
-                                    +3*size(syfu%ezx(:,syfu%iyming  :syfu%iymin-1,:)),ibuf)
-            call mpi_recv_pack(fl%proc,4,ibuf)
+           end if
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           call mpi_packbuffer_init(6*size(syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:)) &
+                +3*size(syfu%ezx(:,syfu%iyming  :syfu%iymin-1,:)),ibuf)
+           call mpi_recv_pack(fl%proc,4,ibuf)
 
-            do iy = syfu%iyming+1,syfu%iymin-1
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%exx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%exx(:,iy,:)),ibuf),shape(syfu%exx(:,iy,:)))
-            end do
-            do iy = syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%exy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%exy(:,iy,:)),ibuf),shape(syfu%exy(:,iy,:)))
-            end do
-            do iy = syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%exz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%exz(:,iy,:)),ibuf),shape(syfu%exz(:,iy,:)))
-            end do
+           end do
 
-            do iy = syfu%iyming,syfu%iymin-1
+           do iy = syfu%iyming,syfu%iymin-1
               syfu%eyx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%eyx(:,iy,:)),ibuf),shape(syfu%eyx(:,iy,:)))
-            end do
-            do iy = syfu%iyming,syfu%iymin-1
+           end do
+           do iy = syfu%iyming,syfu%iymin-1
               syfu%eyy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%eyy(:,iy,:)),ibuf),shape(syfu%eyy(:,iy,:)))
-            end do
-            do iy = syfu%iyming,syfu%iymin-1
+           end do
+           do iy = syfu%iyming,syfu%iymin-1
               syfu%eyz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%eyz(:,iy,:)),ibuf),shape(syfu%eyz(:,iy,:)))
-            end do
+           end do
 
-            do iy = syfu%iyming+1,syfu%iymin-1
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%ezx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%ezx(:,iy,:)),ibuf),shape(syfu%ezx(:,iy,:)))
-            end do
-            do iy = syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%ezy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%ezy(:,iy,:)),ibuf),shape(syfu%ezy(:,iy,:)))
-            end do
-            do iy = syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy = syfu%iyming+1,syfu%iymin-1
               syfu%ezz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%ezz(:,iy,:)),ibuf),shape(syfu%ezz(:,iy,:)))
-            end do
+           end do
 
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init(6*size(syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:)) &
-                                    +3*size(syfl%ezx(:,syfl%iymax  :syfl%iymaxg-1,:)),ibuf)
-            call mpi_recv_pack(fu%proc,3,ibuf)
-            
-            do iy=syfl%iymax+1,syfl%iymaxg-1
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           call mpi_packbuffer_init(6*size(syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:)) &
+                +3*size(syfl%ezx(:,syfl%iymax  :syfl%iymaxg-1,:)),ibuf)
+           call mpi_recv_pack(fu%proc,3,ibuf)
+
+           do iy=syfl%iymax+1,syfl%iymaxg-1
               syfl%exx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%exx(:,iy,:)),ibuf),shape(syfl%exx(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
               syfl%exy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%exy(:,iy,:)),ibuf),shape(syfl%exy(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
               syfl%exz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%exz(:,iy,:)),ibuf),shape(syfl%exz(:,iy,:)))
-            end do
-            
-            do iy=syfl%iymax,syfl%iymaxg-1
-              syfl%eyx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyx(:,iy,:)),ibuf),shape(syfl%eyx(:,iy,:)))
-            end do
-            do iy=syfl%iymax,syfl%iymaxg-1
-              syfl%eyy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyy(:,iy,:)),ibuf),shape(syfl%eyy(:,iy,:)))
-            end do
-            do iy=syfl%iymax,syfl%iymaxg-1
-              syfl%eyz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyz(:,iy,:)),ibuf),shape(syfl%eyz(:,iy,:)))
-            end do
-            
-            do iy=syfl%iymax+1,syfl%iymaxg-1
-              syfl%ezx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezx(:,iy,:)),ibuf),shape(syfl%ezx(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
-              syfl%ezy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezy(:,iy,:)),ibuf),shape(syfl%ezy(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
-              syfl%ezz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezz(:,iy,:)),ibuf),shape(syfl%ezz(:,iy,:)))
-            end do
+           end do
 
-          end if
-      end select
+           do iy=syfl%iymax,syfl%iymaxg-1
+              syfl%eyx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyx(:,iy,:)),ibuf),shape(syfl%eyx(:,iy,:)))
+           end do
+           do iy=syfl%iymax,syfl%iymaxg-1
+              syfl%eyy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyy(:,iy,:)),ibuf),shape(syfl%eyy(:,iy,:)))
+           end do
+           do iy=syfl%iymax,syfl%iymaxg-1
+              syfl%eyz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%eyz(:,iy,:)),ibuf),shape(syfl%eyz(:,iy,:)))
+           end do
+
+           do iy=syfl%iymax+1,syfl%iymaxg-1
+              syfl%ezx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezx(:,iy,:)),ibuf),shape(syfl%ezx(:,iy,:)))
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
+              syfl%ezy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezy(:,iy,:)),ibuf),shape(syfl%ezy(:,iy,:)))
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
+              syfl%ezz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%ezz(:,iy,:)),ibuf),shape(syfl%ezz(:,iy,:)))
+           end do
+
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bnde_yrecv
 #endif
 
 subroutine em3d_exchange_bndb_y(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ)   ::ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iy
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iy
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%by(:,0,:)),ibuf)
-            do iy=yfu%iymin,yfu%iymin+yfu%nyguard-1
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%by(:,0,:)),ibuf)
+           do iy=yfu%iymin,yfu%iymin+yfu%nyguard-1
               call mympi_pack(yfu%bx(:,iy,:),ibuf)
-            end do
-            do iy=yfu%iymin+1, yfu%iymin+yfu%nyguard-1
+           end do
+           do iy=yfu%iymin+1, yfu%iymin+yfu%nyguard-1
               call mympi_pack(yfu%by(:,iy,:),ibuf)
-            end do
-            do iy=yfu%iymin,yfu%iymin+yfu%nyguard-1
+           end do
+           do iy=yfu%iymin,yfu%iymin+yfu%nyguard-1
               call mympi_pack(yfu%bz(:,iy,:),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%by(:,0,:)),ibuf)
-            do iy=yfl%iymax-yfl%nyguard,yfl%iymax-1
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%by(:,0,:)),ibuf)
+           do iy=yfl%iymax-yfl%nyguard,yfl%iymax-1
               call mympi_pack(yfl%bx(:,iy,:),ibuf)
-            end do
-            do iy=yfl%iymax-yfl%nyguard+1,yfl%iymax-1
+           end do
+           do iy=yfl%iymax-yfl%nyguard+1,yfl%iymax-1
               call mympi_pack(yfl%by(:,iy,:),ibuf)
-            end do
-            do iy=yfl%iymax-yfl%nyguard,yfl%iymax-1
+           end do
+           do iy=yfl%iymax-yfl%nyguard,yfl%iymax-1
               call mympi_pack(yfl%bz(:,iy,:),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
 #endif
-          yfl%bx(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%bx(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
-          yfl%by(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%by(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
-          yfl%bz(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%bz(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
+           yfl%bx(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%bx(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
+           yfl%by(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%by(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
+           yfl%bz(:,yfl%iymax  :yfl%iymaxg-1,:) = yfu%bz(:,yfu%iymin  :yfu%iymin+yfu%nyguard-1,:)
 
-          yfu%bx(:,yfu%iyming  :yfu%iymin-1,:) = yfl%bx(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
-          yfu%by(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%by(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
-          yfu%bz(:,yfu%iyming  :yfu%iymin-1,:) = yfl%bz(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
-          
+           yfu%bx(:,yfu%iyming  :yfu%iymin-1,:) = yfl%bx(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
+           yfu%by(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%by(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
+           yfu%bz(:,yfu%iyming  :yfu%iymin-1,:) = yfl%bz(:,yfl%iymax-yfl%nyguard  :yfl%iymax-1,:)
+
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           syfu=>fu%syf
@@ -7605,26 +8565,26 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init(4*size(syfu%byx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)) &
                                     +2*size(syfu%byx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)),ibuf)
 
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%bxy(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%bxz(:,iy,:),ibuf)
-            end do
-            
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%byx(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%byz(:,iy,:),ibuf)
-            end do
-            
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           end do
+
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%bzx(:,iy,:),ibuf)
-            end do
-            do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
+           end do
+           do iy=syfu%iymin,syfu%iymin+syfu%nyguard-1
               call mympi_pack(syfu%bzy(:,iy,:),ibuf)
-            end do
+           end do
 
             call mpi_isend_pack(fl%proc,3,ibuf)
           else if (fu%proc/=my_index) then
@@ -7632,47 +8592,47 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init(4*size(syfl%byx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)) &
                                     +2*size(syfl%byx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)),ibuf)
 
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%bxy(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%bxz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%byx(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
               call mympi_pack(syfl%byz(:,iy,:),ibuf)
-            end do
+           end do
 
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%bzx(:,iy,:),ibuf)
-            end do
-            do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
+           end do
+           do iy=syfl%iymax-syfl%nyguard,syfl%iymax-1
               call mympi_pack(syfl%bzy(:,iy,:),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
-          else
+           call mpi_isend_pack(fu%proc,4,ibuf)
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%bxy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bxy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%bxz(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bxz(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%byx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%byx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%byz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%byz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%bzx(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bzx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfu%bzy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bzy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
-          syfl%bxy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bxy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%bxz(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bxz(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%byx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%byx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%byz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%byz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%bzx(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bzx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
-          syfl%bzy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bzy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           if (fl%proc/=fu%proc) return
+           syfu%bxy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bxy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%bxz(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bxz(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%byx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%byx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%byz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%byz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%bzx(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bzx(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfu%bzy(:,syfu%iyming  :syfu%iymin-1,:) = syfl%bzy(:,syfl%iymax-syfl%nyguard  :syfl%iymax-1,:)
+           syfl%bxy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bxy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%bxz(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bxz(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%byx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%byx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%byz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%byz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%bzx(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bzx(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
+           syfl%bzy(:,syfl%iymax  :syfl%iymaxg-1,:) = syfu%bzy(:,syfu%iymin  :syfu%iymin+syfu%nyguard-1,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -7680,46 +8640,46 @@ end subroutine em3d_exchange_bndb_y
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndb_yrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ibuf,iy
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ibuf,iy
 
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%bx(:,0,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iy=yfu%iyming,yfu%iymin-1
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           call mpi_packbuffer_init((3*yfu%nyguard-1)*size(yfu%bx(:,0,:)),ibuf)
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iy=yfu%iyming,yfu%iymin-1
               yfu%bx(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%bx(:,iy,:)),ibuf),shape(yfu%bx(:,iy,:)))
-            end do
-            do iy=yfu%iyming+1,yfu%iymin-1
+           end do
+           do iy=yfu%iyming+1,yfu%iymin-1
               yfu%by(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%by(:,iy,:)),ibuf),shape(yfu%by(:,iy,:)))
-            end do
-            do iy=yfu%iyming,yfu%iymin-1
+           end do
+           do iy=yfu%iyming,yfu%iymin-1
               yfu%bz(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%bz(:,iy,:)),ibuf),shape(yfu%bz(:,iy,:)))
-            end do
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%bx(:,0,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iy=yfl%iymax,yfl%iymaxg-1
+           end do
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           call mpi_packbuffer_init((3*yfl%nyguard-1)*size(yfl%bx(:,0,:)),ibuf)
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iy=yfl%iymax,yfl%iymaxg-1
               yfl%bx(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%bx(:,iy,:)),ibuf),shape(yfl%bx(:,iy,:)))
-            end do
-            do iy=yfl%iymax+1,yfl%iymaxg-1
+           end do
+           do iy=yfl%iymax+1,yfl%iymaxg-1
               yfl%by(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%by(:,iy,:)),ibuf),shape(yfl%by(:,iy,:)))
-            end do
-            do iy=yfl%iymax,yfl%iymaxg-1
+           end do
+           do iy=yfl%iymax,yfl%iymaxg-1
               yfl%bz(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%bz(:,iy,:)),ibuf),shape(yfl%bz(:,iy,:)))
             end do
           end if
@@ -7737,20 +8697,20 @@ integer(ISZ) :: ibuf,iy
             ! --- recv data from down in z
             do iy=syfu%iyming,syfu%iymin-1
               syfu%bxy(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%bxy(:,iy,:)),ibuf),shape(syfu%bxy(:,iy,:)))
-            end do
-            do iy=syfu%iyming,syfu%iymin-1
+           end do
+           do iy=syfu%iyming,syfu%iymin-1
               syfu%bxz(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%bxz(:,iy,:)),ibuf),shape(syfu%bxz(:,iy,:)))
-            end do
-            do iy=syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy=syfu%iyming+1,syfu%iymin-1
               syfu%byx(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%byx(:,iy,:)),ibuf),shape(syfu%byx(:,iy,:)))
-            end do
-            do iy=syfu%iyming+1,syfu%iymin-1
+           end do
+           do iy=syfu%iyming+1,syfu%iymin-1
               syfu%byz(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%byz(:,iy,:)),ibuf),shape(syfu%byz(:,iy,:)))
-            end do
-            do iy=syfu%iyming,syfu%iymin-1
+           end do
+           do iy=syfu%iyming,syfu%iymin-1
               syfu%bzx(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%bzx(:,iy,:)),ibuf),shape(syfu%bzx(:,iy,:)))
-            end do
-            do iy=syfu%iyming,syfu%iymin-1
+           end do
+           do iy=syfu%iyming,syfu%iymin-1
               syfu%bzy(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfu%bzy(:,iy,:)),ibuf),shape(syfu%bzy(:,iy,:)))
             end do
           else if (fu%proc/=my_index) then
@@ -7760,24 +8720,24 @@ integer(ISZ) :: ibuf,iy
             call mpi_recv_pack(fu%proc,3,ibuf)
             do iy=syfl%iymax,syfl%iymaxg-1
               syfl%bxy(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%bxy(:,iy,:)),ibuf),shape(syfl%bxy(:,iy,:)))
-            end do
-            do iy=syfl%iymax,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax,syfl%iymaxg-1
               syfl%bxz(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%bxz(:,iy,:)),ibuf),shape(syfl%bxz(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
               syfl%byx(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%byx(:,iy,:)),ibuf),shape(syfl%byx(:,iy,:)))
-            end do
-            do iy=syfl%iymax+1,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax+1,syfl%iymaxg-1
               syfl%byz(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%byz(:,iy,:)),ibuf),shape(syfl%byz(:,iy,:)))
-            end do
-            do iy=syfl%iymax,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax,syfl%iymaxg-1
               syfl%bzx(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%bzx(:,iy,:)),ibuf),shape(syfl%bzx(:,iy,:)))
-            end do
-            do iy=syfl%iymax,syfl%iymaxg-1
+           end do
+           do iy=syfl%iymax,syfl%iymaxg-1
               syfl%bzy(:,iy,:) =  reshape(mpi_unpack_real_array( size(syfl%bzy(:,iy,:)),ibuf),shape(syfl%bzy(:,iy,:)))
-            end do
-          end if
-      end select
+           end do
+        end if
+     end select
   end select
 
   return
@@ -7785,53 +8745,53 @@ end subroutine em3d_exchange_bndb_yrecv
 #endif
 
 subroutine em3d_exchange_bndf_y(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iy
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iy
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            if (yfu%nyguard>1) then
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           if (yfu%nyguard>1) then
               call mpi_packbuffer_init((yfu%nyguard-1)*size(yfu%f(:,0,:)),ibuf)
               do iy = yfu%iymin+1,yfu%iymin+yfu%nyguard-1
-                call mympi_pack(yfu%f(:,iy,:),ibuf)
+                 call mympi_pack(yfu%f(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,1,ibuf)
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (yfl%nyguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           if (yfl%nyguard>1) then
               call mpi_packbuffer_init((yfl%nyguard-1)*size(yfl%f(:,0,:)),ibuf)
               do iy = yfl%iymax-yfl%nyguard+1,yfl%iymax-1
-                call mympi_pack(yfl%f(:,iy,:),ibuf)
+                 call mympi_pack(yfl%f(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,2,ibuf)
-            end if
-          else
+           end if
+        else
 #endif
-            yfl%f(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%f(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
-            yfu%f(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%f(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
+           yfl%f(:,yfl%iymax+1:yfl%iymaxg-1,:) = yfu%f(:,yfu%iymin+1:yfu%iymin+yfu%nyguard-1,:)
+           yfu%f(:,yfu%iyming+1:yfu%iymin-1,:) = yfl%f(:,yfl%iymax-yfl%nyguard+1:yfl%iymax-1,:)
 
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           ! --- case lower yee, upper split yee
@@ -7867,47 +8827,47 @@ integer(MPIISZ)::mpirequest(2),mpierror
             if (syfu%nyguard>1) then
               call mpi_packbuffer_init( 3*int(size(syfu%fx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:))) ,ibuf)
               do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
-                call mympi_pack(syfu%fx(:,iy,:),ibuf)
+                 call mympi_pack(syfu%fx(:,iy,:),ibuf)
               end do
               do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
-                call mympi_pack(syfu%fy(:,iy,:),ibuf)
+                 call mympi_pack(syfu%fy(:,iy,:),ibuf)
               end do
               do iy=syfu%iymin+1,syfu%iymin+syfu%nyguard-1
-                call mympi_pack(syfu%fz(:,iy,:),ibuf)
+                 call mympi_pack(syfu%fz(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (syfl%nyguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           if (syfl%nyguard>1) then
               call mpi_packbuffer_init(3*int(size(syfl%fx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))) ,ibuf)
               do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
-                call mympi_pack(syfl%fx(:,iy,:),ibuf)
+                 call mympi_pack(syfl%fx(:,iy,:),ibuf)
               end do
               do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
-                call mympi_pack(syfl%fy(:,iy,:),ibuf)
+                 call mympi_pack(syfl%fy(:,iy,:),ibuf)
               end do
               do iy=syfl%iymax-syfl%nyguard+1,syfl%iymax-1
-                call mympi_pack(syfl%fz(:,iy,:),ibuf)
+                 call mympi_pack(syfl%fz(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else
+           end if
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%fx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%fy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
-          syfu%fz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           if (fl%proc/=fu%proc) return
+           syfu%fx(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%fy(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fy(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
+           syfu%fz(:,syfu%iyming+1:syfu%iymin-1,:) = syfl%fz(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:)
 
-          syfl%fx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%fy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
-          syfl%fz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%fx(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fx(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%fy(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fy(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
+           syfl%fz(:,syfl%iymax+1:syfl%iymaxg-1,:) = syfu%fz(:,syfu%iymin+1:syfu%iymin+syfu%nyguard-1,:)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -7915,140 +8875,140 @@ end subroutine em3d_exchange_bndf_y
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndf_yrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy,ibuf
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (yfu%nyguard>1) then
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           if (yfu%nyguard>1) then
               call mpi_packbuffer_init((yfu%nyguard-1)*size(yfu%Ez(:,0,:)),ibuf)
               call mpi_recv_pack(fl%proc,2,ibuf)
               do iy = yfu%iyming+1,yfu%iymin-1
-                yfu%f(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%F(:,0,:)),ibuf),shape(yfu%F(:,0,:)))
+                 yfu%f(:,iy,:) = reshape(mpi_unpack_real_array( size(yfu%F(:,0,:)),ibuf),shape(yfu%F(:,0,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (yfl%nyguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           if (yfl%nyguard>1) then
               call mpi_packbuffer_init((yfl%nyguard-1)*size(yfl%ez(:,yfl%iymin,:)),ibuf)
               call mpi_recv_pack(fu%proc,1,ibuf)
               do iy = yfl%iymax+1,yfl%iymaxg-1
-                yfl%f(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%F(:,0,:)),ibuf),shape(yfl%F(:,0,:)))
+                 yfl%f(:,iy,:) = reshape(mpi_unpack_real_array( size(yfl%F(:,0,:)),ibuf),shape(yfl%F(:,0,:)))
               end do
-            end if
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (syfu%nyguard>1) then
+           end if
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           if (syfu%nyguard>1) then
               call mpi_packbuffer_init(3*size(syfu%ezx(:,syfu%iyming+1:syfu%iymin-1,:)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
               do iy = syfu%iyming+1,syfu%iymin-1
-                syfu%fx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fx(:,iy,:)),ibuf),shape(syfu%fx(:,iy,:)))
+                 syfu%fx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fx(:,iy,:)),ibuf),shape(syfu%fx(:,iy,:)))
               end do
               do iy = syfu%iyming+1,syfu%iymin-1
-                syfu%fy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fy(:,iy,:)),ibuf),shape(syfu%fy(:,iy,:)))
+                 syfu%fy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fy(:,iy,:)),ibuf),shape(syfu%fy(:,iy,:)))
               end do
               do iy = syfu%iyming+1,syfu%iymin-1
-                syfu%fz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fz(:,iy,:)),ibuf),shape(syfu%fz(:,iy,:)))
+                 syfu%fz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfu%fz(:,iy,:)),ibuf),shape(syfu%fz(:,iy,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (syfl%nyguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           if (syfl%nyguard>1) then
               call mpi_packbuffer_init(3*size(syfl%ezx(:,syfl%iymax+1:syfl%iymaxg-1,:)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do iy=syfl%iymax+1,syfl%iymaxg-1
-                syfl%fx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fx(:,iy,:)),ibuf),shape(syfl%fx(:,iy,:)))
+                 syfl%fx(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fx(:,iy,:)),ibuf),shape(syfl%fx(:,iy,:)))
               end do
               do iy=syfl%iymax+1,syfl%iymaxg-1
-                syfl%fy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fy(:,iy,:)),ibuf),shape(syfl%fy(:,iy,:)))
+                 syfl%fy(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fy(:,iy,:)),ibuf),shape(syfl%fy(:,iy,:)))
               end do
               do iy=syfl%iymax+1,syfl%iymaxg-1
-                syfl%fz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fz(:,iy,:)),ibuf),shape(syfl%fz(:,iy,:)))
+                 syfl%fz(:,iy,:) = reshape(mpi_unpack_real_array( size(syfl%fz(:,iy,:)),ibuf),shape(syfl%fz(:,iy,:)))
               end do
-            end if
-          end if
-      end select
+           end if
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bndf_yrecv
 #endif
 
 subroutine em3d_exchange_bndj_y(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
+        if (fl%proc/=my_index) then
 
-            ! --- send data down in z
-            nguardinu = yfu%nyguard
-            call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,-1,:,1)),ibuf)
-            do iy = -yfu%nyguard,nguardinu
+           ! --- send data down in z
+           nguardinu = yfu%nyguard
+           call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,-1,:,1)),ibuf)
+           do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%J(:,iy,:,1),ibuf)
-            end do
-            do iy = -yfu%nyguard,nguardinu-1
+           end do
+           do iy = -yfu%nyguard,nguardinu-1
               call mympi_pack(yfu%J(:,iy,:,2),ibuf)
-            end do
-            do iy = -yfu%nyguard,nguardinu
+           end do
+           do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%J(:,iy,:,3),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in z
-            nguardinl = yfl%nyguard
-            call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
-            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
+        else if (fu%proc/=my_index) then
+
+           ! --- send data up in z
+           nguardinl = yfl%nyguard
+           call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
+           do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
               call mympi_pack(yfl%J(:,iy,:,1),ibuf)
-            end do
-            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard-1
+           end do
+           do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard-1
               call mympi_pack(yfl%J(:,iy,:,2),ibuf)
-            end do
-            do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
+           end do
+           do iy = yfl%ny-nguardinl, yfl%ny+yfl%nyguard
               call mympi_pack(yfl%J(:,iy,:,3),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
           nguardinu = yfu%nyguard
           nguardinl = yfl%nyguard
@@ -8057,41 +9017,41 @@ integer(MPIISZ)::mpirequest(2),mpierror
           yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    ) = yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    ) &
                                                     + yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard-1,:,2    ) 
 
-          yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard  ,:,1:3:2) = yfu%J(:,-nguardinu:yfu%nyguard  ,:,1:3:2)
-          yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard-1,:,2    ) = yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    )
+           yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard  ,:,1:3:2) = yfu%J(:,-nguardinu:yfu%nyguard  ,:,1:3:2)
+           yfl%J(:,yfl%ny-nguardinl:+yfl%ny+yfl%nyguard-1,:,2    ) = yfu%J(:,-nguardinu:yfu%nyguard-1,:,2    )
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndj_y
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndj_yrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nyguard
-            call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,0,:,1)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iy = -nguardinu,yfu%nyguard
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=my_index) then
+
+           ! --- recv data from down in z
+           nguardinu = yfu%nyguard
+           call mpi_packbuffer_init((3*(yfu%nyguard+nguardinu)+2)*size(yfu%J(:,0,:,1)),ibuf)
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iy = -nguardinu,yfu%nyguard
               yfu%J(:,iy,:  ,1) = yfu%J(:,iy,:  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,0,:,1)),ibuf), &
                                                                                     shape(yfu%J(:,0,:,1)))
             end do
@@ -8104,13 +9064,13 @@ integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
                                                                                     shape(yfu%J(:,0,:,1)))
             end do
 
-          else if (fu%proc/=my_index) then
+        else if (fu%proc/=my_index) then
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nyguard
-            call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iy = -yfl%nyguard,nguardinl
+           ! --- recv data from up in z
+           nguardinl = yfl%nyguard
+           call mpi_packbuffer_init((3*(yfl%nyguard+nguardinl)+2)*size(yfl%J(:,0,:,1)),ibuf)
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iy = -yfl%nyguard,nguardinl
               yfl%J(:,yfl%ny+iy,:,1) = yfl%J(:,yfl%ny+iy,:,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,yfl%ny-1,:,1)),ibuf),&
                                                                                               shape(yfl%J(:,yfl%ny-1,:,1)))
             end do
@@ -8131,46 +9091,46 @@ end subroutine em3d_exchange_bndj_yrecv
 #endif
 
 subroutine em3d_exchange_bndrho_y(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy,ibuf,nguardinl,nguardinu
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            nguardinu = yfu%nyguard
-            ! --- send data down in y
-            call mpi_packbuffer_init(size(yfu%rho(:,-yfu%nyguard:nguardinu,:)),ibuf)
-            do iy = -yfu%nyguard,nguardinu
+        if (fl%proc/=my_index) then
+           nguardinu = yfu%nyguard
+           ! --- send data down in y
+           call mpi_packbuffer_init(size(yfu%rho(:,-yfu%nyguard:nguardinu,:)),ibuf)
+           do iy = -yfu%nyguard,nguardinu
               call mympi_pack(yfu%rho(:,iy,:),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in y
-            nguardinl = yfl%nyguard
-            call mpi_packbuffer_init(size(yfl%rho(:,-nguardinl:yfl%nyguard,:)),ibuf)
-            do iy = -nguardinl,yfl%nyguard
+        else if (fu%proc/=my_index) then
+
+           ! --- send data up in y
+           nguardinl = yfl%nyguard
+           call mpi_packbuffer_init(size(yfl%rho(:,-nguardinl:yfl%nyguard,:)),ibuf)
+           do iy = -nguardinl,yfl%nyguard
               call mympi_pack(yfl%rho(:,yfl%ny+iy,:),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
           nguardinu = yfu%nyguard
           nguardinl = yfl%nyguard
@@ -8178,49 +9138,49 @@ integer(MPIISZ)::mpirequest(2),mpierror
                                               + yfl%Rho(:,-nguardinl:yfl%nyguard,:)
           yfl%Rho(:,-nguardinl:yfl%nyguard,:) = yfu%Rho(:,-nguardinu:yfu%nyguard,:)                                     
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndrho_y
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndrho_yrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iy, ibuf,nguardinl,nguardinu
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nyguard
-            call mpi_packbuffer_init(size(yfu%rho(:,-nguardinu:yfu%nyguard,:)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iy = -nguardinu,yfu%nyguard
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=my_index) then
+
+           ! --- recv data from down in z
+           nguardinu = yfu%nyguard
+           call mpi_packbuffer_init(size(yfu%rho(:,-nguardinu:yfu%nyguard,:)),ibuf)
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iy = -nguardinu,yfu%nyguard
               yfu%rho(:,iy,:) = yfu%rho(:,iy,:) + reshape(mpi_unpack_real_array( size(yfu%rho(:,0,:)),ibuf), &
-                                                                                shape(yfu%rho(:,0,:)))
-            end do
+                   shape(yfu%rho(:,0,:)))
+           end do
 
-          else if (fu%proc/=my_index) then
+        else if (fu%proc/=my_index) then
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nyguard
-            call mpi_packbuffer_init(size(yfl%rho(:,yfl%ny-yfl%nyguard:yfl%ny+nguardinl,:)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iy = yfl%ny-yfl%nyguard,yfl%ny+nguardinl
+           ! --- recv data from up in z
+           nguardinl = yfl%nyguard
+           call mpi_packbuffer_init(size(yfl%rho(:,yfl%ny-yfl%nyguard:yfl%ny+nguardinl,:)),ibuf)
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iy = yfl%ny-yfl%nyguard,yfl%ny+nguardinl
               yfl%rho(:,iy,:) = yfl%rho(:,iy,:) + reshape(mpi_unpack_real_array(size(yfl%rho(:,yfl%ny,:)),ibuf),&
                                                                                              shape(yfl%rho(:,yfl%ny,:)))
             end do
@@ -8233,70 +9193,129 @@ end subroutine em3d_exchange_bndrho_yrecv
 #endif
 
 subroutine em3d_exchange_bnde_z(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the electric field at the z boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf, n_slices, bufsize
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iz
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%ez(:,:,0)),ibuf)
-            do iz = yfu%izmin,yfu%izmin+yfu%nzguard-1
+        
+        if(l_mpiverbose) write(STDOUT,*) '-- sending e along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for ez, yfu%nzguard-1 for ex and ey)
+           n_slices = (3*yfu%nzguard-2)
+           bufsize = n_slices*size(yfu%ez(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%ez_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ez, ex and ey slices into that buffer
+           ! ez
+           do iz = yfu%izmin,yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%ez(:,:,iz),ibuf)
-            end do
-            if (yfu%nzguard>1) then
+              if (yfu%circ_m > 0) call mympi_pack(yfu%ez_circ(:,iz,:),ibuf)
+           end do
+           if (yfu%nzguard>1) then
+              ! ex
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
-                call mympi_pack(yfu%ex(:,:,iz),ibuf)
+                 call mympi_pack(yfu%ex(:,:,iz),ibuf)
+                 if (yfu%circ_m > 0) call mympi_pack(yfu%ex_circ(:,iz,:),ibuf)
               end do
+              ! ey
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
-                call mympi_pack(yfu%ey(:,:,iz),ibuf)
+                 call mympi_pack(yfu%ey(:,:,iz),ibuf)
+                 if (yfu%circ_m > 0) call mympi_pack(yfu%ey_circ(:,iz,:),ibuf)
               end do
-            end if
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,0)),ibuf)
-            do iz =yfl%izmax-yfl%nzguard,yfl%izmax-1
+           end if
+           call mpi_isend_pack(fl%proc,1,ibuf)
+           
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for ez, yfu%nzguard-1 for ex and ey)
+           n_slices = (3*yfl%nzguard-2)
+           bufsize = n_slices*size(yfl%ez(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%ez_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the ez, ex and ey slices into that buffer
+           ! ez
+           do iz =yfl%izmax-yfl%nzguard,yfl%izmax-1
               call mympi_pack(yfl%ez(:,:,iz),ibuf)
-            end do
-            if (yfl%nzguard>1) then
+              if (yfl%circ_m > 0) call mympi_pack(yfl%ez_circ(:,iz,:),ibuf)
+           end do
+           if (yfl%nzguard>1) then
+              ! ex
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
-                call mympi_pack(yfl%ex(:,:,iz),ibuf)
+                 call mympi_pack(yfl%ex(:,:,iz),ibuf)
+                 if (yfl%circ_m > 0) call mympi_pack(yfl%ex_circ(:,iz,:),ibuf)
               end do
+              ! ey
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
-                call mympi_pack(yfl%ey(:,:,iz),ibuf)
+                 call mympi_pack(yfl%ey(:,:,iz),ibuf)
+                 if (yfl%circ_m > 0) call mympi_pack(yfl%ey_circ(:,iz,:),ibuf)
               end do
-            end if
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
+           end if
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
 #endif
-            yfl%ex(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%ex(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
-            yfl%ey(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%ey(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
-            yfl%ez(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%ez(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           yfl%ex(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%ex(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
+           yfl%ey(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%ey(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
+           yfl%ez(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%ez(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
 
-            yfu%ex(:,:,yfu%izming+1:yfu%izmin-1) = yfl%ex(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
-            yfu%ey(:,:,yfu%izming+1:yfu%izmin-1) = yfl%ey(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
-            yfu%ez(:,:,yfu%izming  :yfu%izmin-1) = yfl%ez(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
+           yfu%ex(:,:,yfu%izming+1:yfu%izmin-1) = yfl%ex(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+           yfu%ey(:,:,yfu%izming+1:yfu%izmin-1) = yfl%ey(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+           yfu%ez(:,:,yfu%izming  :yfu%izmin-1) = yfl%ez(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
 
+           if (yfu%circ_m > 0) then
+              yfl%ex_circ(:,yfl%izmax+1:yfl%izmaxg-1,:) = &
+                   yfu%ex_circ(:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1,:)
+              yfl%ey_circ(:,yfl%izmax+1:yfl%izmaxg-1,:) = &
+                   yfu%ey_circ(:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1,:)
+              yfl%ez_circ(:,yfl%izmax  :yfl%izmaxg-1,:) = &
+                   yfu%ez_circ(:,yfu%izmin  :yfu%izmin+yfu%nzguard-1,:)
+              
+              yfu%ex_circ(:,yfu%izming+1:yfu%izmin-1,:) = &
+                   yfl%ex_circ(:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1,:)
+              yfu%ey_circ(:,yfu%izming+1:yfu%izmin-1,:) = &
+                   yfl%ey_circ(:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1,:)
+              yfu%ez_circ(:,yfu%izming  :yfu%izmin-1,:) = &
+                   yfl%ez_circ(:,yfl%izmax-yfl%nzguard  :yfl%izmax-1,:)
+          endif
+           
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
         case(splityeefield)
           ! --- case lower yee, upper split yee
@@ -8356,103 +9375,103 @@ integer(MPIISZ)::mpirequest(2),mpierror
             call mpi_packbuffer_init( 6*int(size(syfu%exx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))) &
                                     + 3*int(size(syfu%ezx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))) ,ibuf)
 
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%exx(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%exy(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%exz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%eyx(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%eyy(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%eyz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%ezx(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%ezy(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%ezz(:,:,iz),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fl%proc,3,ibuf)
+           call mpi_isend_pack(fl%proc,3,ibuf)
 
-            mpireqpnt=mpireqpnt+1
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init(6*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) &
-                                    +3*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))),ibuf)
+           mpireqpnt=mpireqpnt+1
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           call mpi_packbuffer_init(6*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) &
+                +3*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))),ibuf)
 
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%exx(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%exy(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%exz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%eyx(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%eyy(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%eyz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%ezx(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%ezy(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%ezz(:,:,iz),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
+           call mpi_isend_pack(fu%proc,4,ibuf)
 
-            mpireqpnt=mpireqpnt+1
-          else
+           mpireqpnt=mpireqpnt+1
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%exx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%exy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%exz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%eyx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%eyy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%eyz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%ezx(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%ezy(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%ezz(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           if (fl%proc/=fu%proc) return
+           syfu%exx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%exy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%exz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%exz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%eyx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%eyy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%eyz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%eyz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%ezx(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%ezy(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%ezz(:,:,syfu%izming  :syfu%izmin-1) = syfl%ezz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
 
-          syfl%exx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%exy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%exz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%eyx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%eyy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%eyz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%ezx(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%ezy(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%ezz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%exx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%exy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%exz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%exz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%eyx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%eyy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%eyz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%eyz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%ezx(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%ezy(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%ezz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%ezz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -8460,309 +9479,414 @@ end subroutine em3d_exchange_bnde_z
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bnde_zrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Receive the electric field at the z boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz,ibuf,n_slices,bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-2)*size(yfu%Ez(:,:,0)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz = yfu%izming,yfu%izmin-1
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving e along z'
+
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for ez, yfu%nzguard-1 for ex and ey)
+           n_slices = (3*yfu%nzguard-2)
+           bufsize = n_slices*size(yfu%Ez(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%Ez_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the ex, ey and ez slices into that buffer
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iz = yfu%izming,yfu%izmin-1
               yfu%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
-            end do
-            if (yfu%nzguard>1) then
+              if (yfu%circ_m > 0) &
+                   yfu%ez_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%Ez_circ(:,0,:)),ibuf),shape(yfu%Ez_circ(:,0,:)))
+           end do
+           if (yfu%nzguard>1) then
               do iz = yfu%izming+1,yfu%izmin-1
-                yfu%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
+                 yfu%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ex(:,:,0)),ibuf),shape(yfu%Ex(:,:,0)))
+                 if (yfu%circ_m > 0) &
+                      yfu%ex_circ(:,iz,:) = &
+                      reshape(mpi_unpack_complex_array( size(yfu%Ex_circ(:,0,:)),ibuf),shape(yfu%Ex_circ(:,0,:)))
               end do
               do iz = yfu%izming+1,yfu%izmin-1
-                yfu%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ez(:,:,0)),ibuf),shape(yfu%Ez(:,:,0)))
+                 yfu%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%Ey(:,:,0)),ibuf),shape(yfu%Ey(:,:,0)))
+                 if (yfu%circ_m > 0) &
+                      yfu%ey_circ(:,iz,:) = &
+                      reshape(mpi_unpack_complex_array( size(yfu%Ey_circ(:,0,:)),ibuf),shape(yfu%Ey_circ(:,0,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-2)*size(yfl%ez(:,:,yfl%izmin)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz = yfl%izmax,yfl%izmaxg-1
+           end if
+           
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for ez, yfu%nzguard-1 for ex and ey)
+           n_slices = (3*yfl%nzguard-2)
+           bufsize = n_slices*size(yfl%Ez(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%Ez_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the ex, ey and ez slices into that buffer
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iz = yfl%izmax,yfl%izmaxg-1
               yfl%ez(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
-            end do
-            if (yfl%nzguard>1) then
+              if (yfl%circ_m > 0) &
+                   yfl%ez_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%Ez_circ(:,0,:)),ibuf),shape(yfl%Ez_circ(:,0,:)))
+           end do
+           if (yfl%nzguard>1) then
               do iz = yfl%izmax+1,yfl%izmaxg-1
-                yfl%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
+                 yfl%ex(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ex(:,:,0)),ibuf),shape(yfl%Ex(:,:,0)))
+                 if (yfl%circ_m > 0) &
+                      yfl%ex_circ(:,iz,:) = &
+                      reshape(mpi_unpack_complex_array( size(yfl%Ex_circ(:,0,:)),ibuf),shape(yfl%Ex_circ(:,0,:)))
               end do
               do iz = yfl%izmax+1,yfl%izmaxg-1
-                yfl%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ez(:,:,0)),ibuf),shape(yfl%Ez(:,:,0)))
+                 yfl%ey(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%Ey(:,:,0)),ibuf),shape(yfl%Ey(:,:,0)))
+                 if (yfl%circ_m > 0) &
+                      yfl%ey_circ(:,iz,:) = &
+                      reshape(mpi_unpack_complex_array( size(yfl%Ey_circ(:,0,:)),ibuf),shape(yfl%Ey_circ(:,0,:)))
               end do
-            end if
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init(6*size(syfu%ezx(:,:,syfu%izming+1:syfu%izmin-1)) &
-                                    +3*size(syfu%ezx(:,:,syfu%izming  :syfu%izmin-1)),ibuf)
-            call mpi_recv_pack(fl%proc,4,ibuf)
+           end if
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           call mpi_packbuffer_init(6*size(syfu%ezx(:,:,syfu%izming+1:syfu%izmin-1)) &
+                +3*size(syfu%ezx(:,:,syfu%izming  :syfu%izmin-1)),ibuf)
+           call mpi_recv_pack(fl%proc,4,ibuf)
 
-            do iz = syfu%izming+1,syfu%izmin-1
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%exx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%exx(:,:,iz)),ibuf),shape(syfu%exx(:,:,iz)))
-            end do
-            do iz = syfu%izming+1,syfu%izmin-1
+           end do
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%exy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%exy(:,:,iz)),ibuf),shape(syfu%exy(:,:,iz)))
-            end do
-            do iz = syfu%izming+1,syfu%izmin-1
+           end do
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%exz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%exz(:,:,iz)),ibuf),shape(syfu%exz(:,:,iz)))
-            end do
+           end do
 
-            do iz = syfu%izming+1,syfu%izmin-1
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%eyx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%eyx(:,:,iz)),ibuf),shape(syfu%eyx(:,:,iz)))
-            end do
-            do iz = syfu%izming+1,syfu%izmin-1
+           end do
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%eyy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%eyy(:,:,iz)),ibuf),shape(syfu%eyy(:,:,iz)))
-            end do
-            do iz = syfu%izming+1,syfu%izmin-1
+           end do
+           do iz = syfu%izming+1,syfu%izmin-1
               syfu%eyz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%eyz(:,:,iz)),ibuf),shape(syfu%eyz(:,:,iz)))
-            end do
+           end do
 
-            do iz = syfu%izming,syfu%izmin-1
+           do iz = syfu%izming,syfu%izmin-1
               syfu%ezx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%ezx(:,:,iz)),ibuf),shape(syfu%ezx(:,:,iz)))
-            end do
-            do iz = syfu%izming,syfu%izmin-1
+           end do
+           do iz = syfu%izming,syfu%izmin-1
               syfu%ezy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%ezy(:,:,iz)),ibuf),shape(syfu%ezy(:,:,iz)))
-            end do
-            do iz = syfu%izming,syfu%izmin-1
+           end do
+           do iz = syfu%izming,syfu%izmin-1
               syfu%ezz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%ezz(:,:,iz)),ibuf),shape(syfu%ezz(:,:,iz)))
-            end do
+           end do
 
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init(6*size(syfl%ezx(:,:,syfl%izmax+1:syfl%izmaxg-1)) &
-                                    +3*size(syfl%ezx(:,:,syfl%izmax  :syfl%izmaxg-1)),ibuf)
-            call mpi_recv_pack(fu%proc,3,ibuf)
-            
-            do iz=syfl%izmax+1,syfl%izmaxg-1
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           call mpi_packbuffer_init(6*size(syfl%ezx(:,:,syfl%izmax+1:syfl%izmaxg-1)) &
+                +3*size(syfl%ezx(:,:,syfl%izmax  :syfl%izmaxg-1)),ibuf)
+           call mpi_recv_pack(fu%proc,3,ibuf)
+
+           do iz=syfl%izmax+1,syfl%izmaxg-1
               syfl%exx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%exx(:,:,iz)),ibuf),shape(syfl%exx(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
               syfl%exy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%exy(:,:,iz)),ibuf),shape(syfl%exy(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
               syfl%exz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%exz(:,:,iz)),ibuf),shape(syfl%exz(:,:,iz)))
-            end do
-            
-            do iz=syfl%izmax+1,syfl%izmaxg-1
-              syfl%eyx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyx(:,:,iz)),ibuf),shape(syfl%eyx(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
-              syfl%eyy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyy(:,:,iz)),ibuf),shape(syfl%eyy(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
-              syfl%eyz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyz(:,:,iz)),ibuf),shape(syfl%eyz(:,:,iz)))
-            end do
-            
-            do iz=syfl%izmax,syfl%izmaxg-1
-              syfl%ezx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezx(:,:,iz)),ibuf),shape(syfl%ezx(:,:,iz)))
-            end do
-            do iz=syfl%izmax,syfl%izmaxg-1
-              syfl%ezy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezy(:,:,iz)),ibuf),shape(syfl%ezy(:,:,iz)))
-            end do
-            do iz=syfl%izmax,syfl%izmaxg-1
-              syfl%ezz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezz(:,:,iz)),ibuf),shape(syfl%ezz(:,:,iz)))
-            end do
+           end do
 
-          end if
-      end select
+           do iz=syfl%izmax+1,syfl%izmaxg-1
+              syfl%eyx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyx(:,:,iz)),ibuf),shape(syfl%eyx(:,:,iz)))
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
+              syfl%eyy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyy(:,:,iz)),ibuf),shape(syfl%eyy(:,:,iz)))
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
+              syfl%eyz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%eyz(:,:,iz)),ibuf),shape(syfl%eyz(:,:,iz)))
+           end do
+
+           do iz=syfl%izmax,syfl%izmaxg-1
+              syfl%ezx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezx(:,:,iz)),ibuf),shape(syfl%ezx(:,:,iz)))
+           end do
+           do iz=syfl%izmax,syfl%izmaxg-1
+              syfl%ezy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezy(:,:,iz)),ibuf),shape(syfl%ezy(:,:,iz)))
+           end do
+           do iz=syfl%izmax,syfl%izmaxg-1
+              syfl%ezz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%ezz(:,:,iz)),ibuf),shape(syfl%ezz(:,:,iz)))
+           end do
+
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bnde_zrecv
 #endif
 
 subroutine em3d_exchange_bndb_z(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Send/exchange the magnetic field at the z boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ)   ::ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ)   ::ibuf, n_slices, bufsize
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iz
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%by(:,:,0)),ibuf)
-            do iz=yfu%izmin,yfu%izmin+yfu%nzguard-1
+        if(l_mpiverbose) write(STDOUT,*) '-- sending b along z'
+
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for bx and by, yfu%nzguard-1 for bz)
+           n_slices = (3*yfu%nzguard-1)
+           bufsize = n_slices*size(yfu%by(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%by_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the bx, by and bz slices into that buffer
+           ! bx
+           do iz=yfu%izmin,yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%bx(:,:,iz),ibuf)
-            end do
-            do iz=yfu%izmin, yfu%izmin+yfu%nzguard-1
+              if (yfu%circ_m > 0) call mympi_pack(yfu%bx_circ(:,iz,:),ibuf)
+           end do
+           ! by
+          do iz=yfu%izmin, yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%by(:,:,iz),ibuf)
-            end do
-            do iz=yfu%izmin+1,yfu%izmin+yfu%nzguard-1
+              if (yfu%circ_m > 0) call mympi_pack(yfu%by_circ(:,iz,:),ibuf)           
+           end do
+           ! bz
+           do iz=yfu%izmin+1,yfu%izmin+yfu%nzguard-1
               call mympi_pack(yfu%bz(:,:,iz),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%by(:,:,0)),ibuf)
-            do iz=yfl%izmax-yfl%nzguard,yfl%izmax-1
+             if (yfu%circ_m > 0) call mympi_pack(yfu%bz_circ(:,iz,:),ibuf)
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
+           
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           
+           ! Number of slices to communicate along z
+           ! (yfl%nzguard for bx and by, yfl%nzguard-1 for bz)
+           n_slices = (3*yfl%nzguard-1)
+           bufsize = n_slices*size(yfl%by(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%by_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the bx, by and bz slices into that buffer
+           ! bx
+           do iz=yfl%izmax-yfl%nzguard,yfl%izmax-1
               call mympi_pack(yfl%bx(:,:,iz),ibuf)
-            end do
-            do iz=yfl%izmax-yfl%nzguard,yfl%izmax-1
+              if (yfl%circ_m > 0) call mympi_pack(yfl%bx_circ(:,iz,:),ibuf)
+           end do
+           ! by
+           do iz=yfl%izmax-yfl%nzguard,yfl%izmax-1
               call mympi_pack(yfl%by(:,:,iz),ibuf)
-            end do
-            do iz=yfl%izmax-yfl%nzguard+1,yfl%izmax-1
+              if (yfl%circ_m > 0) call mympi_pack(yfl%by_circ(:,iz,:),ibuf)
+           end do
+           ! bz
+           do iz=yfl%izmax-yfl%nzguard+1,yfl%izmax-1
               call mympi_pack(yfl%bz(:,:,iz),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
-          else
+              if (yfl%circ_m > 0) call mympi_pack(yfl%bz_circ(:,iz,:),ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
+        else
 #endif
-          yfl%bx(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
-          yfl%by(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%by(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
-          yfl%bz(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%bz(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           yfl%bx(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
+           yfl%by(:,:,yfl%izmax  :yfl%izmaxg-1) = yfu%by(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)
+           yfl%bz(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%bz(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
 
-          yfu%bx(:,:,yfu%izming  :yfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
-          yfu%by(:,:,yfu%izming  :yfu%izmin-1) = yfl%by(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
-          yfu%bz(:,:,yfu%izming+1:yfu%izmin-1) = yfl%bz(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
-          
+           yfu%bx(:,:,yfu%izming  :yfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
+           yfu%by(:,:,yfu%izming  :yfu%izmin-1) = yfl%by(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)
+           yfu%bz(:,:,yfu%izming+1:yfu%izmin-1) = yfl%bz(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+
+           if (yfu%circ_m > 0) then
+              yfl%bx_circ(:,yfl%izmax+1:yfl%izmaxg-1,:) = &
+                   yfu%bx_circ(:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1,:)
+              yfl%by_circ(:,yfl%izmax+1:yfl%izmaxg-1,:) = &
+                   yfu%by_circ(:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1,:)
+              yfl%bz_circ(:,yfl%izmax  :yfl%izmaxg-1,:) = &
+                   yfu%bz_circ(:,yfu%izmin  :yfu%izmin+yfu%nzguard-1,:)
+              
+              yfu%bx_circ(:,yfu%izming+1:yfu%izmin-1,:) = &
+                   yfl%bx_circ(:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1,:)
+              yfu%by_circ(:,yfu%izming+1:yfu%izmin-1,:) = &
+                   yfl%by_circ(:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1,:)
+              yfu%bz_circ(:,yfu%izming  :yfu%izmin-1,:) = &
+                   yfl%bz_circ(:,yfl%izmax-yfl%nzguard  :yfl%izmax-1,:)
+          endif
+           
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=fu%proc) return
-          yfl%bx(:,:,yfl%izmax  :yfl%izmaxg-1) = (syfu%bxy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1) &
-                                               +  syfu%bxz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))/syfu%clight
-          yfl%by(:,:,yfl%izmax  :yfl%izmaxg-1) = (syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1) &
-                                               +  syfu%byz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))/syfu%clight
-          yfl%bz(:,:,yfl%izmax+1:yfl%izmaxg-1) = (syfu%bzx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
-                                               +  syfu%bzy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))/syfu%clight
-          syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = 0.
-          syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
-          syfu%byx(:,:,syfu%izming  :syfu%izmin-1) = 0.
-          syfu%byz(:,:,syfu%izming  :syfu%izmin-1) = yfl%by(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
-          syfu%bzx(:,:,syfu%izming+1:syfu%izmin-1) = yfl%bz(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)*syfu%clight
-          syfu%bzy(:,:,syfu%izming+1:syfu%izmin-1) = 0.
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=fu%proc) return
-          yfu%bx(:,:,yfu%izming  :yfu%izmin-1) = (syfl%bxy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1) &
-                                               +  syfl%bxz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))/syfl%clight
-          yfu%by(:,:,yfu%izming  :yfu%izmin-1) = (syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1) &
-                                               +  syfl%byz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))/syfl%clight
-          yfu%bz(:,:,yfu%izming+1:yfu%izmin-1) = (syfl%bzx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
-                                               +  syfl%bzy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))/syfl%clight
-          syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
-          syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
-          syfl%byx(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
-          syfl%byz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%by(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
-          syfl%bzx(:,:,syfl%izmax+1:syfl%izmaxg-1) = yfu%bz(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)*syfl%clight
-          syfl%bzy(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
-        case(splityeefield)
-          syfu=>fu%syf
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=fu%proc) return
+        yfl%bx(:,:,yfl%izmax  :yfl%izmaxg-1) = (syfu%bxy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1) &
+             +  syfu%bxz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))/syfu%clight
+        yfl%by(:,:,yfl%izmax  :yfl%izmaxg-1) = (syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1) &
+             +  syfu%byz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1))/syfu%clight
+        yfl%bz(:,:,yfl%izmax+1:yfl%izmaxg-1) = (syfu%bzx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
+             +  syfu%bzy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))/syfu%clight
+        syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = 0.
+        syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = yfl%bx(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
+        syfu%byx(:,:,syfu%izming  :syfu%izmin-1) = 0.
+        syfu%byz(:,:,syfu%izming  :syfu%izmin-1) = yfl%by(:,:,yfl%izmax-yfl%nzguard  :yfl%izmax-1)*syfu%clight
+        syfu%bzx(:,:,syfu%izming+1:syfu%izmin-1) = yfl%bz(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)*syfu%clight
+        syfu%bzy(:,:,syfu%izming+1:syfu%izmin-1) = 0.
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        if (fl%proc/=fu%proc) return
+        yfu%bx(:,:,yfu%izming  :yfu%izmin-1) = (syfl%bxy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1) &
+             +  syfl%bxz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))/syfl%clight
+        yfu%by(:,:,yfu%izming  :yfu%izmin-1) = (syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1) &
+             +  syfl%byz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1))/syfl%clight
+        yfu%bz(:,:,yfu%izming+1:yfu%izmin-1) = (syfl%bzx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
+             +  syfl%bzy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))/syfl%clight
+        syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
+        syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%bx(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
+        syfl%byx(:,:,syfl%izmax  :syfl%izmaxg-1) = 0.
+        syfl%byz(:,:,syfl%izmax  :syfl%izmaxg-1) = yfu%by(:,:,yfu%izmin  :yfu%izmin+yfu%nzguard-1)*syfl%clight
+        syfl%bzx(:,:,syfl%izmax+1:syfl%izmaxg-1) = yfu%bz(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)*syfl%clight
+        syfl%bzy(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
+     case(splityeefield)
+        syfu=>fu%syf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            call mpi_packbuffer_init(4*size(syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)) &
-                                    +2*size(syfu%byx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)),ibuf)
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           call mpi_packbuffer_init(4*size(syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)) &
+                +2*size(syfu%byx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)),ibuf)
 
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%bxy(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%bxz(:,:,iz),ibuf)
-            end do
-            
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           end do
+
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%byx(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%byz(:,:,iz),ibuf)
-            end do
-            
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%bzx(:,:,iz),ibuf)
-            end do
-            do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
+           end do
+           do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
               call mympi_pack(syfu%bzy(:,:,iz),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fl%proc,3,ibuf)
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            call mpi_packbuffer_init(4*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)) &
-                                    +2*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)),ibuf)
+           call mpi_isend_pack(fl%proc,3,ibuf)
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           call mpi_packbuffer_init(4*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)) &
+                +2*size(syfl%byx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)),ibuf)
 
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%bxy(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%bxz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%byx(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard,syfl%izmax-1
               call mympi_pack(syfl%byz(:,:,iz),ibuf)
-            end do
+           end do
 
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%bzx(:,:,iz),ibuf)
-            end do
-            do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
+           end do
+           do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
               call mympi_pack(syfl%bzy(:,:,iz),ibuf)
-            end do
+           end do
 
-            call mpi_isend_pack(fu%proc,4,ibuf)
-          else
+           call mpi_isend_pack(fu%proc,4,ibuf)
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = syfl%bxy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = syfl%bxz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%byx(:,:,syfu%izming  :syfu%izmin-1) = syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%byz(:,:,syfu%izming  :syfu%izmin-1) = syfl%byz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
-          syfu%bzx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%bzx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%bzy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%bzy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%bxy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%bxz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%byx(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%byz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%byz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
-          syfl%bzx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%bzx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%bzy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%bzy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           if (fl%proc/=fu%proc) return
+           syfu%bxy(:,:,syfu%izming  :syfu%izmin-1) = syfl%bxy(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%bxz(:,:,syfu%izming  :syfu%izmin-1) = syfl%bxz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%byx(:,:,syfu%izming  :syfu%izmin-1) = syfl%byx(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%byz(:,:,syfu%izming  :syfu%izmin-1) = syfl%byz(:,:,syfl%izmax-syfl%nzguard  :syfl%izmax-1)
+           syfu%bzx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%bzx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%bzy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%bzy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%bxy(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%bxz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%bxz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%byx(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%byx(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%byz(:,:,syfl%izmax  :syfl%izmaxg-1) = syfu%byz(:,:,syfu%izmin  :syfu%izmin+syfu%nzguard-1)
+           syfl%bzx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%bzx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%bzy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%bzy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -8770,104 +9894,151 @@ end subroutine em3d_exchange_bndb_z
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndb_zrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------------
+  ! Receive the magnetic field at the z boundary
+  ! ---------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: ibuf,iz
-
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: ibuf,iz,n_slices,bufsize
+  
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            call mpi_packbuffer_init((3*yfu%nzguard-1)*size(yfu%bx(:,:,0)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz=yfu%izming,yfu%izmin-1
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving b along z'
+
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+
+           ! Number of slices to communicate along z
+           ! (yfu%nzguard for bx and by, yfu%nzguard-1 for bz)
+           n_slices = (3*yfu%nzguard-1)
+           bufsize = n_slices*size(yfu%by(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%by_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the bx, by and bz slices from that buffer
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iz=yfu%izming,yfu%izmin-1
               yfu%bx(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%bx(:,:,iz)),ibuf),shape(yfu%bx(:,:,iz)))
-            end do
-            do iz=yfu%izming,yfu%izmin-1
+              if (yfu%circ_m > 0) &
+                   yfu%bx_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%bx_circ(:,iz,:)),ibuf),shape(yfu%bx_circ(:,iz,:)))
+           end do
+           do iz=yfu%izming,yfu%izmin-1
               yfu%by(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%by(:,:,iz)),ibuf),shape(yfu%by(:,:,iz)))
-            end do
-            do iz=yfu%izming+1,yfu%izmin-1
+              if (yfu%circ_m > 0) &
+                   yfu%by_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%by_circ(:,iz,:)),ibuf),shape(yfu%by_circ(:,iz,:)))
+           end do
+           do iz=yfu%izming+1,yfu%izmin-1
               yfu%bz(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%bz(:,:,iz)),ibuf),shape(yfu%bz(:,:,iz)))
-            end do
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init((3*yfl%nzguard-1)*size(yfl%bx(:,:,0)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz=yfl%izmax,yfl%izmaxg-1
+              if (yfu%circ_m > 0) &
+                   yfu%bz_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfu%bz_circ(:,iz,:)),ibuf),shape(yfu%bz_circ(:,iz,:)))
+           end do
+           
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+
+           ! Number of slices to communicate along z
+           ! (yfl%nzguard for bx and by, yfl%nzguard-1 for bz)
+           n_slices = (3*yfl%nzguard-1)
+           bufsize = n_slices*size(yfl%by(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%by_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the bx, by and bz slices from that buffer
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iz=yfl%izmax,yfl%izmaxg-1
               yfl%bx(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%bx(:,:,iz)),ibuf),shape(yfl%bx(:,:,iz)))
-            end do
-            do iz=yfl%izmax,yfl%izmaxg-1
+              if (yfl%circ_m > 0) &
+                   yfl%bx_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%bx_circ(:,0,:)),ibuf), shape(yfl%bx_circ(:,0,:)))
+           end do
+           do iz=yfl%izmax,yfl%izmaxg-1
               yfl%by(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%by(:,:,iz)),ibuf),shape(yfl%by(:,:,iz)))
-            end do
-            do iz=yfl%izmax+1,yfl%izmaxg-1
+              if (yfl%circ_m > 0) &
+                   yfl%by_circ(:,iz,:) = &
+                   reshape(mpi_unpack_complex_array( size(yfl%by_circ(:,0,:)),ibuf),shape(yfl%by_circ(:,0,:)))
+           end do
+           do iz=yfl%izmax+1,yfl%izmaxg-1
               yfl%bz(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%bz(:,:,iz)),ibuf),shape(yfl%bz(:,:,iz)))
-            end do
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(yeefield)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            call mpi_packbuffer_init(4*size(syfu%bxy(:,:,syfu%izming  :syfu%izmin-1)) &
-                                    +2*size(syfu%bxy(:,:,syfu%izming+1:syfu%izmin-1)),ibuf)
-            call mpi_recv_pack(fl%proc,4,ibuf)
-            ! --- recv data from down in z
-            do iz=syfu%izming,syfu%izmin-1
+              if (yfl%circ_m > 0) &
+                   yfl%bz_circ(:,iz,:) = & 
+                   reshape(mpi_unpack_complex_array( size(yfl%bz_circ(:,0,:)),ibuf),shape(yfl%bz_circ(:,0,:)))
+           end do
+        end if
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(yeefield)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           call mpi_packbuffer_init(4*size(syfu%bxy(:,:,syfu%izming  :syfu%izmin-1)) &
+                +2*size(syfu%bxy(:,:,syfu%izming+1:syfu%izmin-1)),ibuf)
+           call mpi_recv_pack(fl%proc,4,ibuf)
+           ! --- recv data from down in z
+           do iz=syfu%izming,syfu%izmin-1
               syfu%bxy(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%bxy(:,:,iz)),ibuf),shape(syfu%bxy(:,:,iz)))
-            end do
-            do iz=syfu%izming,syfu%izmin-1
+           end do
+           do iz=syfu%izming,syfu%izmin-1
               syfu%bxz(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%bxz(:,:,iz)),ibuf),shape(syfu%bxz(:,:,iz)))
-            end do
-            do iz=syfu%izming,syfu%izmin-1
+           end do
+           do iz=syfu%izming,syfu%izmin-1
               syfu%byx(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%byx(:,:,iz)),ibuf),shape(syfu%byx(:,:,iz)))
-            end do
-            do iz=syfu%izming,syfu%izmin-1
+           end do
+           do iz=syfu%izming,syfu%izmin-1
               syfu%byz(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%byz(:,:,iz)),ibuf),shape(syfu%byz(:,:,iz)))
-            end do
-            do iz=syfu%izming+1,syfu%izmin-1
+           end do
+           do iz=syfu%izming+1,syfu%izmin-1
               syfu%bzx(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%bzx(:,:,iz)),ibuf),shape(syfu%bzx(:,:,iz)))
-            end do
-            do iz=syfu%izming+1,syfu%izmin-1
+           end do
+           do iz=syfu%izming+1,syfu%izmin-1
               syfu%bzy(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfu%bzy(:,:,iz)),ibuf),shape(syfu%bzy(:,:,iz)))
-            end do
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            call mpi_packbuffer_init(4*size(syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1)) &
-                                    +2*size(syfl%bxy(:,:,syfl%izmax+1:syfl%izmaxg-1)),ibuf)
-            call mpi_recv_pack(fu%proc,3,ibuf)
-            do iz=syfl%izmax,syfl%izmaxg-1
+           end do
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           call mpi_packbuffer_init(4*size(syfl%bxy(:,:,syfl%izmax  :syfl%izmaxg-1)) &
+                +2*size(syfl%bxy(:,:,syfl%izmax+1:syfl%izmaxg-1)),ibuf)
+           call mpi_recv_pack(fu%proc,3,ibuf)
+           do iz=syfl%izmax,syfl%izmaxg-1
               syfl%bxy(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%bxy(:,:,iz)),ibuf),shape(syfl%bxy(:,:,iz)))
-            end do
-            do iz=syfl%izmax,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax,syfl%izmaxg-1
               syfl%bxz(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%bxz(:,:,iz)),ibuf),shape(syfl%bxz(:,:,iz)))
-            end do
-            do iz=syfl%izmax,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax,syfl%izmaxg-1
               syfl%byx(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%byx(:,:,iz)),ibuf),shape(syfl%byx(:,:,iz)))
-            end do
-            do iz=syfl%izmax,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax,syfl%izmaxg-1
               syfl%byz(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%byz(:,:,iz)),ibuf),shape(syfl%byz(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
               syfl%bzx(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%bzx(:,:,iz)),ibuf),shape(syfl%bzx(:,:,iz)))
-            end do
-            do iz=syfl%izmax+1,syfl%izmaxg-1
+           end do
+           do iz=syfl%izmax+1,syfl%izmaxg-1
               syfl%bzy(:,:,iz) =  reshape(mpi_unpack_real_array( size(syfl%bzy(:,:,iz)),ibuf),shape(syfl%bzy(:,:,iz)))
-            end do
-          end if
-      end select
+           end do
+        end if
+     end select
   end select
 
   return
@@ -8875,129 +10046,168 @@ end subroutine em3d_exchange_bndb_zrecv
 #endif
 
 subroutine em3d_exchange_bndf_z(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! -----------------------------------------------
+  ! Send/exchange the field f at the z boundary
+  ! -----------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
 
-integer(ISZ)   ::ibuf
+  integer(ISZ)   ::ibuf, n_slices, bufsize
 #ifdef MPIPARALLEL
-integer(ISZ)   ::iz
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(ISZ)   ::iz
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          ! --- case lower yee, upper yee
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        ! --- case lower yee, upper yee
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            if (yfu%nzguard>1) then
-              call mpi_packbuffer_init((yfu%nzguard-1)*size(yfu%f(:,:,0)),ibuf)
+
+        if(l_mpiverbose) write(STDOUT,*) '-- sending f along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+
+           if (yfu%nzguard>1) then
+              ! Number of slices to communicate along z
+              n_slices = (yfu%nzguard-1)
+              bufsize = n_slices*size(yfu%f(:,:,0))
+              ! Check whether to also pack the circ arrays
+              if (yfu%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfu%f_circ(:,0,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Pack f
               do iz = yfu%izmin+1,yfu%izmin+yfu%nzguard-1
-                call mympi_pack(yfu%f(:,:,iz),ibuf)
+                 call mympi_pack(yfu%f(:,:,iz),ibuf)
+                 if (yfu%circ_m > 0) &
+                      call mympi_pack(yfu%f_circ(:,iz,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,1,ibuf)
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (yfl%nzguard>1) then
-              call mpi_packbuffer_init((yfl%nzguard-1)*size(yfl%f(:,:,0)),ibuf)
+           end if
+           
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           
+           if (yfl%nzguard>1) then
+              ! Number of slices to communicate along z
+              n_slices = (yfl%nzguard-1)
+              bufsize = n_slices*size(yfl%f(:,:,0))
+              ! Check whether to also pack the circ arrays
+              if (yfl%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfl%f_circ(:,0,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Pack f
+              call mpi_packbuffer_init( bufsize, ibuf )
               do iz = yfl%izmax-yfl%nzguard+1,yfl%izmax-1
-                call mympi_pack(yfl%f(:,:,iz),ibuf)
+                 call mympi_pack(yfl%f(:,:,iz),ibuf)
+                 if (yfl%circ_m > 0) &
+                      call mympi_pack(yfl%f_circ(:,iz,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,2,ibuf)
-            end if
-          else
+           end if
+        else
 #endif
-            yfl%f(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%f(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
-            yfu%f(:,:,yfu%izming+1:yfu%izmin-1) = yfl%f(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+           yfl%f(:,:,yfl%izmax+1:yfl%izmaxg-1) = yfu%f(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
+           yfu%f(:,:,yfu%izming+1:yfu%izmin-1) = yfl%f(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+
+           if (yfu%circ_m > 0) then
+              yfl%f_circ(:,yfl%izmax+1:yfl%izmaxg-1,:) = &
+                   yfu%f(:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1,:)
+              yfu%f_circ(:,yfu%izming+1:yfu%izmin-1,:) = &
+                   yfl%f(:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1,:)
+           endif
 
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-        case(splityeefield)
-          ! --- case lower yee, upper split yee
-          if (fl%proc/=fu%proc) return
-          syfu=>fu%syf
-          yfl%f(:,:,yfl%izmax+1:yfl%izmaxg-1) = syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
-                                              + syfu%fy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
-                                              + syfu%fz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfu%fx(:,:,syfu%izming+1:syfu%izmin-1) = 0.
-          syfu%fy(:,:,syfu%izming+1:syfu%izmin-1) = 0.
-          syfu%fz(:,:,syfu%izming+1:syfu%izmin-1) = yfl%f(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
+     case(splityeefield)
+        ! --- case lower yee, upper split yee
+        if (fl%proc/=fu%proc) return
+        syfu=>fu%syf
+        yfl%f(:,:,yfl%izmax+1:yfl%izmaxg-1) = syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
+             + syfu%fy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1) &
+             + syfu%fz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+        syfu%fx(:,:,syfu%izming+1:syfu%izmin-1) = 0.
+        syfu%fy(:,:,syfu%izming+1:syfu%izmin-1) = 0.
+        syfu%fz(:,:,syfu%izming+1:syfu%izmin-1) = yfl%f(:,:,yfl%izmax-yfl%nzguard+1:yfl%izmax-1)
 
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-          ! --- case lower split yee, upper yee
-        case(yeefield)
-          if (fl%proc/=fu%proc) return
-          yfu=>fu%yf
-          yfu%f(:,:,yfu%izming+1:yfu%izmin-1)      = syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
-                                                   + syfl%fy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
-                                                   + syfl%fz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfl%fx(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
-          syfl%fy(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
-          syfl%fz(:,:,syfl%izmax+1:syfl%izmaxg-1) = yfu%f(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
-        case(splityeefield)
-          ! --- case lower split yee, upper split yee
-          syfu=>fu%syf
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+        ! --- case lower split yee, upper yee
+     case(yeefield)
+        if (fl%proc/=fu%proc) return
+        yfu=>fu%yf
+        yfu%f(:,:,yfu%izming+1:yfu%izmin-1)      = syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
+             + syfl%fy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1) &
+             + syfl%fz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+        syfl%fx(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
+        syfl%fy(:,:,syfl%izmax+1:syfl%izmaxg-1) = 0.
+        syfl%fz(:,:,syfl%izmax+1:syfl%izmaxg-1) = yfu%f(:,:,yfu%izmin+1:yfu%izmin+yfu%nzguard-1)
+     case(splityeefield)
+        ! --- case lower split yee, upper split yee
+        syfu=>fu%syf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            ! --- send data down in z
-            if (syfu%nzguard>1) then
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+           if (syfu%nzguard>1) then
               call mpi_packbuffer_init( 3*int(size(syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1))) ,ibuf)
               do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
-                call mympi_pack(syfu%fx(:,:,iz),ibuf)
+                 call mympi_pack(syfu%fx(:,:,iz),ibuf)
               end do
               do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
-                call mympi_pack(syfu%fy(:,:,iz),ibuf)
+                 call mympi_pack(syfu%fy(:,:,iz),ibuf)
               end do
               do iz=syfu%izmin+1,syfu%izmin+syfu%nzguard-1
-                call mympi_pack(syfu%fz(:,:,iz),ibuf)
+                 call mympi_pack(syfu%fz(:,:,iz),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- send data up in z
-            if (syfl%nzguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           if (syfl%nzguard>1) then
               call mpi_packbuffer_init(3*int(size(syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) ,ibuf)
               do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
-                call mympi_pack(syfl%fx(:,:,iz),ibuf)
+                 call mympi_pack(syfl%fx(:,:,iz),ibuf)
               end do
               do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
-                call mympi_pack(syfl%fy(:,:,iz),ibuf)
+                 call mympi_pack(syfl%fy(:,:,iz),ibuf)
               end do
               do iz=syfl%izmax-syfl%nzguard+1,syfl%izmax-1
-                call mympi_pack(syfl%fz(:,:,iz),ibuf)
+                 call mympi_pack(syfl%fz(:,:,iz),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
               mpireqpnt=mpireqpnt+1
-            end if
-          else
+           end if
+        else
 #endif
-          if (fl%proc/=fu%proc) return
-          syfu%fx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%fy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
-          syfu%fz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           if (fl%proc/=fu%proc) return
+           syfu%fx(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%fy(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fy(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
+           syfu%fz(:,:,syfu%izming+1:syfu%izmin-1) = syfl%fz(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1)
 
-          syfl%fx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%fy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
-          syfl%fz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%fx(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fx(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%fy(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fy(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
+           syfl%fz(:,:,syfl%izmax+1:syfl%izmaxg-1) = syfu%fz(:,:,syfu%izmin+1:syfu%izmin+syfu%nzguard-1)
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
 
   return
@@ -9005,218 +10215,353 @@ end subroutine em3d_exchange_bndf_z
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndf_zrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! --------------------------------------------
+  ! Receive the field f at the z boundary
+  ! --------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz,ibuf,n_slices,bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (yfu%nzguard>1) then
-              call mpi_packbuffer_init((yfu%nzguard-1)*size(yfu%Ez(:,:,0)),ibuf)
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving f along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+
+           if (yfu%nzguard>1) then
+              ! Number of slices to communicate along z
+              n_slices = (yfu%nzguard-1)
+              bufsize = n_slices*size(yfu%f(:,:,0))
+              ! Check whether to also pack the circ arrays
+              if (yfu%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfu%f_circ(:,0,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Receive f
               call mpi_recv_pack(fl%proc,2,ibuf)
               do iz = yfu%izming+1,yfu%izmin-1
-                yfu%f(:,:,iz) = reshape(mpi_unpack_real_array( size(yfu%F(:,:,0)),ibuf),shape(yfu%F(:,:,0)))
+                 yfu%f(:,:,iz) = reshape(mpi_unpack_real_array( &
+                      size(yfu%F(:,:,0)),ibuf),shape(yfu%F(:,:,0)))
+                 if (yfu%circ_m > 0) &
+                      yfu%f_circ(:,iz,:) = reshape(mpi_unpack_complex_array( &
+                      size(yfu%F_circ(:,0,:)),ibuf),shape(yfu%F_circ(:,0,:)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (yfl%nzguard>1) then
-              call mpi_packbuffer_init((yfl%nzguard-1)*size(yfl%ez(:,:,yfl%izmin)),ibuf)
+           end if
+
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           
+           if (yfl%nzguard>1) then
+              ! Number of slices to communicate along z
+              n_slices = (yfl%nzguard-1)
+              bufsize = n_slices*size(yfl%f(:,:,0))
+              ! Check whether to also pack the circ arrays
+              if (yfl%circ_m > 0) &
+                   ! Factor 2 since a complex takes up twice more space
+                   bufsize = bufsize + 2*n_slices*size(yfl%f_circ(:,0,:))
+              ! Allocate a buffer array in mpibuffer
+              call mpi_packbuffer_init( bufsize, ibuf )
+              ! Receive f
               call mpi_recv_pack(fu%proc,1,ibuf)
               do iz = yfl%izmax+1,yfl%izmaxg-1
-                yfl%f(:,:,iz) = reshape(mpi_unpack_real_array( size(yfl%F(:,:,0)),ibuf),shape(yfl%F(:,:,0)))
+                 yfl%f(:,:,iz) = reshape(mpi_unpack_real_array( &
+                      size(yfl%F(:,:,0)),ibuf),shape(yfl%F(:,:,0)))
+                 if (yfl%circ_m > 0) &
+                      yfl%f_circ(:,iz,:) = reshape(mpi_unpack_complex_array( &
+                      size(yfl%F_circ(:,0,:)),ibuf),shape(yfl%F_circ(:,0,:)))
               end do
-            end if
-          end if
-      end select
-    case(splityeefield)
-      syfl=>fl%syf
-      select case(fu%fieldtype)
-        case(splityeefield)
-          syfu=>fu%syf
-          if (fl%proc/=my_index) then
-            ! --- recv data from down in z
-            if (syfu%nzguard>1) then
+           end if
+        end if
+        
+     end select
+  case(splityeefield)
+     syfl=>fl%syf
+     select case(fu%fieldtype)
+     case(splityeefield)
+        syfu=>fu%syf
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           if (syfu%nzguard>1) then
               call mpi_packbuffer_init(3*size(syfu%ezx(:,:,syfu%izming+1:syfu%izmin-1)),ibuf)
               call mpi_recv_pack(fl%proc,4,ibuf)
 
               do iz = syfu%izming+1,syfu%izmin-1
-                syfu%fx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fx(:,:,iz)),ibuf),shape(syfu%fx(:,:,iz)))
+                 syfu%fx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fx(:,:,iz)),ibuf),shape(syfu%fx(:,:,iz)))
               end do
               do iz = syfu%izming+1,syfu%izmin-1
-                syfu%fy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fy(:,:,iz)),ibuf),shape(syfu%fy(:,:,iz)))
+                 syfu%fy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fy(:,:,iz)),ibuf),shape(syfu%fy(:,:,iz)))
               end do
               do iz = syfu%izming+1,syfu%izmin-1
-                syfu%fz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fz(:,:,iz)),ibuf),shape(syfu%fz(:,:,iz)))
+                 syfu%fz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfu%fz(:,:,iz)),ibuf),shape(syfu%fz(:,:,iz)))
               end do
-            end if
-          else if (fu%proc/=my_index) then
-            ! --- recv data from up in z
-            if (syfl%nzguard>1) then
+           end if
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           if (syfl%nzguard>1) then
               call mpi_packbuffer_init(3*size(syfl%ezx(:,:,syfl%izmax+1:syfl%izmaxg-1)),ibuf)
               call mpi_recv_pack(fu%proc,3,ibuf)
               do iz=syfl%izmax+1,syfl%izmaxg-1
-                syfl%fx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fx(:,:,iz)),ibuf),shape(syfl%fx(:,:,iz)))
+                 syfl%fx(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fx(:,:,iz)),ibuf),shape(syfl%fx(:,:,iz)))
               end do
               do iz=syfl%izmax+1,syfl%izmaxg-1
-                syfl%fy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fy(:,:,iz)),ibuf),shape(syfl%fy(:,:,iz)))
+                 syfl%fy(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fy(:,:,iz)),ibuf),shape(syfl%fy(:,:,iz)))
               end do
               do iz=syfl%izmax+1,syfl%izmaxg-1
-                syfl%fz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fz(:,:,iz)),ibuf),shape(syfl%fz(:,:,iz)))
+                 syfl%fz(:,:,iz) = reshape(mpi_unpack_real_array( size(syfl%fz(:,:,iz)),ibuf),shape(syfl%fz(:,:,iz)))
               end do
-            end if
-          end if
-      end select
+           end if
+        end if
+     end select
   end select
-!  call parallelbarrier()
+  !  call parallelbarrier()
   return
 end subroutine em3d_exchange_bndf_zrecv
 #endif
 
 subroutine em3d_exchange_bndj_z(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ---------------------------------------------
+  ! Send/exchange the current at the z boundary
+  ! ---------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz,ibuf,nguardinl,nguardinu,n_slices,bufsize
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
 
-            ! --- send data down in z
-            nguardinu = yfu%nzguard
-            call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
-            do iz = -yfu%nzguard,nguardinu
+        if(l_mpiverbose) write(STDOUT,*) '-- sending j along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+
+           ! Number of slices to communicate along z
+           nguardinu = yfu%nzguard
+           n_slices = 3*(yfu%nzguard+nguardinu)+2
+           bufsize = n_slices*size(yfu%J(:,:,0,1))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%J_circ(:,0,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the Jx, Jy and Jz slices into that buffer
+           ! Jx
+           do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%J(:,:,iz,1),ibuf)
-            end do
-            do iz = -yfu%nzguard,nguardinu
+              if (yfu%circ_m > 0) &
+                   call mympi_pack(yfu%J_circ(:,iz,1,:),ibuf)
+           end do
+           ! Jy
+           do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%J(:,:,iz,2),ibuf)
-            end do
-            do iz = -yfu%nzguard,nguardinu-1
+              if (yfu%circ_m > 0) &
+                   call mympi_pack(yfu%J_circ(:,iz,2,:),ibuf)
+           end do
+           ! Jz
+           do iz = -yfu%nzguard,nguardinu-1
               call mympi_pack(yfu%J(:,:,iz,3),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+              if (yfu%circ_m > 0) &
+                   call mympi_pack(yfu%J_circ(:,iz,3,:),ibuf)
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in z
-            nguardinl = yfl%nzguard
-            call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
-            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+
+           ! Number of slices to communicate along z
+           nguardinl = yfl%nzguard
+           n_slices = 3*(yfl%nzguard+nguardinl)+2
+           bufsize = n_slices*size(yfl%J(:,:,0,1))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%J_circ(:,0,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively pack the Jx, Jy and Jz slices into that buffer
+           ! Jx
+           do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
               call mympi_pack(yfl%J(:,:,iz,1),ibuf)
-            end do
-            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
+              if (yfl%circ_m > 0) &
+                   call mympi_pack(yfl%J_circ(:,iz,1,:),ibuf)
+           end do
+           do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard
               call mympi_pack(yfl%J(:,:,iz,2),ibuf)
-            end do
-            do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard-1
+              if (yfl%circ_m > 0) &
+                   call mympi_pack(yfl%J_circ(:,iz,2,:),ibuf)
+           end do
+           do iz = yfl%nz-nguardinl, yfl%nz+yfl%nzguard-1
               call mympi_pack(yfl%J(:,:,iz,3),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+              if (yfl%circ_m > 0) &
+                   call mympi_pack(yfl%J_circ(:,iz,3,:),ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
-          nguardinl = yfl%nzguard
-          nguardinu = yfu%nzguard
-          
-          yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) &
-                                                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2)
-                                                
-          yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) &
-                                                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) 
-                                                
-          yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2)
-          
-          yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3)
+           ! Arrays are on the same processor, no need to send a buffer through mpi
+           ! Instead exchange the data directly from array to array
+           nguardinl = yfl%nzguard
+           nguardinu = yfu%nzguard
+
+           yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2) &
+                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2)
+           yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3) &
+                + yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) 
+           yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2) = yfu%J(:,:,-nguardinu:yfu%nzguard,1:2)
+           yfl%J(:,:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3) = yfu%J(:,:,-nguardinu:yfu%nzguard-1,3)
+
+           if (yfu%circ_m > 0) then
+              yfu%J_circ(:,-nguardinu:yfu%nzguard,1:2,:) = yfu%J_circ(:,-nguardinu:yfu%nzguard,1:2,:) &
+                   + yfl%J_circ(:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2,:)
+              yfu%J_circ(:,-nguardinu:yfu%nzguard-1,3,:) = yfu%J_circ(:,-nguardinu:yfu%nzguard-1,3,:) &
+                   + yfl%J_circ(:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3,:) 
+              yfl%J_circ(:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard,1:2,:) = &
+                   yfu%J_circ(:,-nguardinu:yfu%nzguard,1:2,:)
+              yfl%J_circ(:,yfl%nz-nguardinl:yfl%nz+yfl%nzguard-1,3,:) = &
+                   yfu%J_circ(:,-nguardinu:yfu%nzguard-1,3,:)
+           endif
+           
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndj_z
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndj_zrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! -----------------------------------------
+  ! Receive the current at the z boundary
+  ! -----------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz,ibuf,nguardinl,nguardinu, n_slices, bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nzguard
-            call mpi_packbuffer_init((3*(yfu%nzguard+nguardinu)+2)*size(yfu%J(:,:,0,1)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz = -nguardinu,yfu%nzguard
-              yfu%J(:,:,iz  ,1) = yfu%J(:,:,iz  ,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
-                                                                                     shape(yfu%J(:,:,0,1)))
-            end do
-            do iz = -nguardinu,yfu%nzguard
-              yfu%J(:,:,iz  ,2) = yfu%J(:,:,iz  ,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
-                                                                                     shape(yfu%J(:,:,0,1)))
-            end do
-            do iz = -nguardinu,yfu%nzguard-1
-              yfu%J(:,:,iz  ,3) = yfu%J(:,:,iz  ,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
-                                                                                     shape(yfu%J(:,:,0,1)))
-            end do
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
+        
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving j along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
 
-          else if (fu%proc/=my_index) then
+           ! Number of slices to communicate along z
+           nguardinu = yfu%nzguard
+           n_slices = (3*(yfu%nzguard+nguardinu) + 2)
+           bufsize = n_slices*size(yfu%J(:,:,0,1))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%J_circ(:,0,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the Jx, Jy and Jz slices from that buffer
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iz = -nguardinu,yfu%nzguard
+              yfu%J(:,:,iz,1) = yfu%J(:,:,iz,1) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                   shape(yfu%J(:,:,0,1)))
+              if ( yfu%circ_m > 0 ) &
+                   yfu%J_circ(:,iz,1,:) = yfu%J_circ(:,iz,1,:) + reshape( mpi_unpack_complex_array( &
+                   size(yfu%J_circ(:,0,1,:)),ibuf), shape(yfu%J_circ(:,0,1,:)) )
+           end do
+           do iz = -nguardinu,yfu%nzguard
+              yfu%J(:,:,iz,2) = yfu%J(:,:,iz,2) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                   shape(yfu%J(:,:,0,1)))
+              if ( yfu%circ_m > 0 ) &
+                   yfu%J_circ(:,iz,2,:) = yfu%J_circ(:,iz,2,:) + reshape( mpi_unpack_complex_array( &
+                   size(yfu%J_circ(:,0,2,:)),ibuf), shape(yfu%J_circ(:,0,2,:)) )
+           end do
+           do iz = -nguardinu,yfu%nzguard-1
+              yfu%J(:,:,iz,3) = yfu%J(:,:,iz,3) + reshape(mpi_unpack_real_array( size(yfu%J(:,:,0,1)),ibuf), &
+                   shape(yfu%J(:,:,0,1)))
+              if ( yfu%circ_m > 0 ) &
+                   yfu%J_circ(:,iz,3,:) = yfu%J_circ(:,iz,3,:) + reshape( mpi_unpack_complex_array( &
+                   size(yfu%J_circ(:,0,3,:)),ibuf), shape(yfu%J_circ(:,0,3,:)) )
+           end do
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nzguard
-            call mpi_packbuffer_init((3*(yfl%nzguard+nguardinl)+2)*size(yfl%J(:,:,0,1)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz = -yfl%nzguard,nguardinl
-              yfl%J(:,:,yfl%nz+iz,1) = yfl%J(:,:,yfl%nz+iz,1) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,1)),ibuf),&
-                                                                                              shape(yfl%J(:,:,yfl%nz-1,1)))
-            end do
-            do iz = -yfl%nzguard,nguardinl
-              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,2)),ibuf),&
-                                                                                              shape(yfl%J(:,:,yfl%nz-1,2)))
-            end do
-            do iz = -yfl%nzguard,nguardinl-1
-              yfl%J(:,:,yfl%nz+iz,3) = yfl%J(:,:,yfl%nz+iz,3) + reshape(mpi_unpack_real_array( size(yfl%J(:,:,yfl%nz-1,3)),ibuf),&
-                                                                                              shape(yfl%J(:,:,yfl%nz-1,3)))
-            end do
-          end if
-      end select
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+           
+           ! Number of slices to communicate along z
+           nguardinl = yfl%nzguard
+           n_slices = (3*(yfl%nzguard+nguardinl) + 2)
+           bufsize = n_slices*size(yfl%J(:,:,0,1))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%J_circ(:,0,1,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Successively receive the Jx, Jy and Jz slices from that buffer
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iz = -yfl%nzguard,nguardinl
+              yfl%J(:,:,yfl%nz+iz,1) = yfl%J(:,:,yfl%nz+iz,1) + &
+                   reshape(mpi_unpack_real_array( &
+                   size(yfl%J(:,:,yfl%nz-1,1)),ibuf), shape(yfl%J(:,:,yfl%nz-1,1)))
+              if ( yfl%circ_m > 0 ) &
+                   yfl%J_circ(:,yfl%nz+iz,1,:) = yfl%J_circ(:,yfl%nz+iz,1,:) + &
+                   reshape( mpi_unpack_complex_array( &
+                   size(yfl%J_circ(:,0,1,:)),ibuf), shape(yfl%J_circ(:,0,1,:)) )
+           end do
+           do iz = -yfl%nzguard,nguardinl
+              yfl%J(:,:,yfl%nz+iz,2) = yfl%J(:,:,yfl%nz+iz,2) + &
+                   reshape(mpi_unpack_real_array( &
+                   size(yfl%J(:,:,yfl%nz-1,2)),ibuf), shape(yfl%J(:,:,yfl%nz-1,2)))
+              if ( yfl%circ_m > 0 ) &
+                   yfl%J_circ(:,yfl%nz+iz,2,:) = yfl%J_circ(:,yfl%nz+iz,2,:) + &
+                   reshape( mpi_unpack_complex_array( &
+                   size(yfl%J_circ(:,0,2,:)),ibuf), shape(yfl%J_circ(:,0,2,:)) )
+           end do
+           do iz = -yfl%nzguard,nguardinl-1
+              yfl%J(:,:,yfl%nz+iz,3) = yfl%J(:,:,yfl%nz+iz,3) + &
+                   reshape(mpi_unpack_real_array( &
+                   size(yfl%J(:,:,yfl%nz-1,3)),ibuf), shape(yfl%J(:,:,yfl%nz-1,3)))
+              if ( yfl%circ_m > 0 ) &
+                   yfl%J_circ(:,yfl%nz+iz,3,:) = yfl%J_circ(:,yfl%nz+iz,3,:) + &
+                   reshape( mpi_unpack_complex_array( &
+                   size(yfl%J_circ(:,0,3,:)),ibuf), shape(yfl%J_circ(:,0,3,:)) )
+           end do
+        end if
+     end select
   end select
 
   return
@@ -9224,101 +10569,169 @@ end subroutine em3d_exchange_bndj_zrecv
 #endif
 
 subroutine em3d_exchange_bndrho_z(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! ------------------------------------------------
+  ! Send/exchange the field rho at the z boundary
+  ! ------------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz,ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz,ibuf,nguardinl,nguardinu, n_slices, bufsize
 
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2),mpierror
-          if (fl%proc/=my_index .and. fu%proc/=my_index) return
+  integer(MPIISZ)::mpirequest(2),mpierror
+  if (fl%proc/=my_index .and. fu%proc/=my_index) return
 #endif
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 #ifdef MPIPARALLEL
-          if (fl%proc/=my_index) then
-            nguardinu = yfu%nzguard
-            ! --- send data down in z
-            call mpi_packbuffer_init(size(yfu%rho(:,:,-yfu%nzguard:nguardinu)),ibuf)
-            do iz = -yfu%nzguard,nguardinu
+        if(l_mpiverbose) write(STDOUT,*) '-- sending rho along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- send data down in z
+
+           ! Number of slices to communicate along z
+           nguardinu = yfu%nzguard
+           n_slices =  yfu%nzguard + nguardinu + 1
+           bufsize = n_slices*size(yfu%rho(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%rho_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Pack rho
+           do iz = -yfu%nzguard,nguardinu
               call mympi_pack(yfu%rho(:,:,iz  ),ibuf)
-            end do
-            call mpi_isend_pack(fl%proc,1,ibuf)
-            
-          else if (fu%proc/=my_index) then
+              if (yfu%circ_m > 0) &
+                   call mympi_pack(yfu%rho_circ(:,iz,:),ibuf)
+           end do
+           call mpi_isend_pack(fl%proc,1,ibuf)
 
-            ! --- send data up in z
-            nguardinl = yfl%nzguard
-            call mpi_packbuffer_init(size(yfl%rho(:,:,-nguardinl:yfl%nzguard)),ibuf)
-            do iz = -nguardinl,yfl%nzguard
+        else if (fu%proc/=my_index) then
+           ! --- send data up in z
+           
+           ! Number of slices to communicate along z
+           nguardinl = yfl%nzguard
+           n_slices =  yfl%nzguard + nguardinl + 1
+           bufsize = n_slices*size(yfl%rho(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%rho_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Pack rho
+           do iz = -nguardinl,yfl%nzguard
               call mympi_pack(yfl%rho(:,:,yfl%nz+iz  ),ibuf)
-            end do
-            call mpi_isend_pack(fu%proc,2,ibuf)
+              if (yfl%circ_m > 0) &
+                   call mympi_pack(yfl%rho_circ(:,yfl%nz+iz,:),ibuf)
+           end do
+           call mpi_isend_pack(fu%proc,2,ibuf)
 
-          else
+        else
 #endif
-          nguardinl = yfl%nzguard
-          nguardinu = yfu%nzguard
-          yfu%Rho(:,:,-nguardinu:yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard) &
-                                              + yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard)
-          yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard)
+           nguardinl = yfl%nzguard
+           nguardinu = yfu%nzguard
+
+           yfu%Rho(:,:,-nguardinu:yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard) &
+                + yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard)
+           yfl%Rho(:,:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard) = yfu%Rho(:,:,-nguardinu:yfu%nzguard)
+
+           if (yfu%circ_m > 0) then
+              yfu%Rho_circ(:,-nguardinu:yfu%nzguard,:) = yfu%Rho_circ(:,-nguardinu:yfu%nzguard,:) &
+                   + yfl%Rho_circ(:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard,:)
+              yfl%Rho_circ(:,yfl%nz-nguardinl:yfl%nz+yfu%nzguard,:) = &
+                   yfu%Rho_circ(:,-nguardinu:yfu%nzguard,:)
+           endif
+           
 #ifdef MPIPARALLEL
-          end if
+        end if
 #endif
-      end select
+     end select
   end select
   return
 end subroutine em3d_exchange_bndrho_z
 
 #ifdef MPIPARALLEL
 subroutine em3d_exchange_bndrho_zrecv(fl,fu,ibuf)
-use mod_emfield3d
-implicit none
+  ! --------------------------------------------
+  ! Receive the field rho at the z boundary
+  ! --------------------------------------------
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_FIELDtype) :: fl, fu
-TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
-TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
-integer(ISZ) :: iz, ibuf,nguardinl,nguardinu
+  TYPE(EM3D_FIELDtype) :: fl, fu
+  TYPE(EM3D_YEEFIELDtype), pointer :: yfl, yfu
+  TYPE(EM3D_SPLITYEEFIELDtype), pointer :: syfl, syfu
+  integer(ISZ) :: iz, ibuf,nguardinl,nguardinu, n_slices, bufsize
 
   if (fl%proc/=my_index .and. fu%proc/=my_index) return
 
   select case(fl%fieldtype)
-    case(yeefield)
-      yfl=>fl%yf
-      select case(fu%fieldtype)
-        case(yeefield)
-          yfu=>fu%yf
-          if (fl%proc/=my_index) then
-          
-            ! --- recv data from down in z
-            nguardinu = yfu%nzguard
-            call mpi_packbuffer_init(size(yfu%rho(:,:,-nguardinu:yfu%nzguard)),ibuf)
-            call mpi_recv_pack(fl%proc,2,ibuf)
-            do iz = -nguardinu,yfu%nzguard
-              yfu%rho(:,:,iz  ) = yfu%rho(:,:,iz  ) + reshape(mpi_unpack_real_array( size(yfu%rho(:,:,0)),ibuf), &
-                                                                                    shape(yfu%rho(:,:,0)))
-            end do
+  case(yeefield)
+     yfl=>fl%yf
+     select case(fu%fieldtype)
+     case(yeefield)
+        yfu=>fu%yf
 
-          else if (fu%proc/=my_index) then
+        if(l_mpiverbose) write(STDOUT,*) '-- receiving rho along z'
+        
+        if (fl%proc/=my_index) then
+           ! --- recv data from down in z
+           
+           ! Number of slices to communicate along z
+           nguardinu = yfu%nzguard
+           n_slices =  yfu%nzguard + nguardinu + 1
+           bufsize = n_slices*size(yfu%rho(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfu%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfu%rho_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Receive rho
+           call mpi_recv_pack(fl%proc,2,ibuf)
+           do iz = -nguardinu,yfu%nzguard
+              yfu%rho(:,:,iz  ) = yfu%rho(:,:,iz) + reshape(mpi_unpack_real_array( &
+                   size(yfu%rho(:,:,0)),ibuf), shape(yfu%rho(:,:,0)))
+              if (yfu%circ_m > 0) &
+                   yfu%rho_circ(:,iz,: ) = yfu%rho_circ(:,iz,:) + reshape(mpi_unpack_complex_array( &
+                   size(yfu%rho_circ(:,0,:)),ibuf), shape(yfu%rho_circ(:,0,:)))
+           end do
 
-            ! --- recv data from up in z
-            nguardinl = yfl%nzguard
-            call mpi_packbuffer_init(size(yfl%rho(:,:,-yfl%nzguard:nguardinl)),ibuf)
-            call mpi_recv_pack(fu%proc,1,ibuf)
-            do iz = -yfl%nzguard,nguardinl
-              yfl%rho(:,:,yfl%nz+iz  ) = yfl%rho(:,:,yfl%nz+iz  ) + reshape(mpi_unpack_real_array(size(yfl%rho(:,:,yfl%nz)),ibuf),&
-                                                                                            shape(yfl%rho(:,:,yfl%nz  )))
-            end do
-          end if
-      end select
+        else if (fu%proc/=my_index) then
+           ! --- recv data from up in z
+
+           ! Number of slices to communicate along z
+           nguardinl = yfl%nzguard
+           n_slices =  yfl%nzguard + nguardinl + 1
+           bufsize = n_slices*size(yfl%rho(:,:,0))
+           ! Check whether to also pack the circ arrays
+           if (yfl%circ_m > 0) &
+                ! Factor 2 since a complex takes up twice more space
+                bufsize = bufsize + 2*n_slices*size(yfl%rho_circ(:,0,:))
+           ! Allocate a buffer array in mpibuffer
+           call mpi_packbuffer_init( bufsize, ibuf )
+           ! Receive rho
+           call mpi_recv_pack(fu%proc,1,ibuf)
+           do iz = -yfl%nzguard,nguardinl
+              yfl%rho(:,:,yfl%nz+iz  ) = yfl%rho(:,:,yfl%nz+iz  ) + reshape( &
+                   mpi_unpack_real_array(size(yfl%rho(:,:,yfl%nz)),ibuf), shape(yfl%rho(:,:,yfl%nz  )))
+              if (yfl%circ_m > 0) &
+                   yfl%rho_circ(:,yfl%nz+iz,: ) = yfl%rho_circ(:,yfl%nz+iz,:) + reshape( &
+                   mpi_unpack_complex_array(size(yfl%rho_circ(:,yfl%nz,:)),ibuf), &
+                   shape(yfl%rho_circ(:,yfl%nz,:)))
+           end do
+        end if
+     end select
   end select
 
   return
@@ -9326,154 +10739,154 @@ end subroutine em3d_exchange_bndrho_zrecv
 #endif
 
 subroutine em3d_exchange_e(b)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_BLOCKtype) :: b
-integer(ISZ) :: ibuf
+  TYPE(EM3D_BLOCKtype) :: b
+  integer(ISZ) :: ibuf
 
   ibuf = 2
 
   ! --- X
- if (.not.b%core%yf%l_1dz) then
-  ! core<--->sides
-  call em3d_exchange_bnde_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  if (.not.b%core%yf%l_1dz) then
+     ! core<--->sides
+     call em3d_exchange_bnde_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! sides<--->edges
-  call em3d_exchange_bnde_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     ! sides<--->edges
+     call em3d_exchange_bnde_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! edges<--->corners
-  call em3d_exchange_bnde_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     ! edges<--->corners
+     call em3d_exchange_bnde_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bnde_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bnde_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
- endif
-
-  ! --- Y
- if (.not.b%core%yf%l_2dxz) then
-  ! core<--->sides
-  call em3d_exchange_bnde_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  ! sides<--->edges
-  call em3d_exchange_bnde_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  ! edges<--->corners
-  call em3d_exchange_bnde_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
-#endif
-  call em3d_exchange_bnde_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
-#ifdef MPIPARALLEL
-  call em3d_exchange_bnde_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bnde_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bnde_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
-  
+
+  ! --- Y
+  if (.not.b%core%yf%l_2dxz) then
+     ! core<--->sides
+     call em3d_exchange_bnde_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     ! sides<--->edges
+     call em3d_exchange_bnde_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     ! edges<--->corners
+     call em3d_exchange_bnde_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+     call em3d_exchange_bnde_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+#ifdef MPIPARALLEL
+     call em3d_exchange_bnde_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bnde_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
+#endif
+  endif
+
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bnde_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
@@ -9546,156 +10959,156 @@ integer(ISZ) :: ibuf
 end subroutine em3d_exchange_e
 
 subroutine em3d_exchange_b(b)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_BLOCKtype) :: b
-integer(ISZ) :: ibuf
- 
+  TYPE(EM3D_BLOCKtype) :: b
+  integer(ISZ) :: ibuf
+
 !  if (b%core%yf%spectral) return
-  
+
   ibuf = 200
-  
+
   ! --- X
- if (.not.b%core%yf%l_1dz) then
-  ! core<--->sides
-  call em3d_exchange_bndb_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  if (.not.b%core%yf%l_1dz) then
+     ! core<--->sides
+     call em3d_exchange_bndb_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! sides<--->edges
-  call em3d_exchange_bndb_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     ! sides<--->edges
+     call em3d_exchange_bndb_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! edges<--->corners
-  call em3d_exchange_bndb_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     ! edges<--->corners
+     call em3d_exchange_bndb_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
-  ! core<--->sides
-  call em3d_exchange_bndb_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     ! core<--->sides
+     call em3d_exchange_bndb_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! sides<--->edges
-  call em3d_exchange_bndb_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+     ! sides<--->edges
+     call em3d_exchange_bndb_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! edges<--->corners
-  call em3d_exchange_bndb_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+     ! edges<--->corners
+     call em3d_exchange_bndb_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndb_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndb_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndb_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndb_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndb_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
-  
+
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndb_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
@@ -9768,154 +11181,154 @@ integer(ISZ) :: ibuf
 end subroutine em3d_exchange_b
 
 subroutine em3d_exchange_f(b)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_BLOCKtype) :: b
-integer(ISZ) :: ibuf
- 
+  TYPE(EM3D_BLOCKtype) :: b
+  integer(ISZ) :: ibuf
+
   ibuf = 400
 
   ! --- X
- if (.not.b%core%yf%l_1dz) then
-  ! core<--->sides
-  call em3d_exchange_bndf_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  if (.not.b%core%yf%l_1dz) then
+     ! core<--->sides
+     call em3d_exchange_bndf_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! sides<--->edges
-  call em3d_exchange_bndf_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     ! sides<--->edges
+     call em3d_exchange_bndf_x(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%edgexlyl, b%sideyl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%sideyl,   b%edgexryl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%edgexlyr, b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%sideyr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%edgexlzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%sidezl,   b%edgexrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%edgexlzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%sidezr,   b%edgexrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! edges<--->corners
-  call em3d_exchange_bndf_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     ! edges<--->corners
+     call em3d_exchange_bndf_x(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%cornerxlylzl, b%edgeylzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%edgeylzl,     b%cornerxrylzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%cornerxlyrzl, b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%edgeyrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%cornerxlylzr, b%edgeylzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%edgeylzr,     b%cornerxrylzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_x(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_xrecv(b%cornerxlyrzr, b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_xrecv(b%edgeyrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
- endif
+  endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
-  ! core<--->sides
-  call em3d_exchange_bndf_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     ! core<--->sides
+     call em3d_exchange_bndf_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! sides<--->edges
-  call em3d_exchange_bndf_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+     ! sides<--->edges
+     call em3d_exchange_bndf_y(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%edgexlyl, b%sidexl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%sidexl,   b%edgexlyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%edgexryl, b%sidexr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%sidexr,   b%edgexryr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%edgeylzl, b%sidezl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%sidezl,   b%edgeyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%edgeylzr, b%sidezr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%sidezr,   b%edgeyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  ! edges<--->corners
-  call em3d_exchange_bndf_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+     ! edges<--->corners
+     call em3d_exchange_bndf_y(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%cornerxlylzl, b%edgexlzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%edgexlzl,     b%cornerxlyrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%cornerxrylzl, b%edgexrzl, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%edgexrzl,     b%cornerxryrzl, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%cornerxlylzr, b%edgexlzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%edgexlzr,     b%cornerxlyrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
-  call em3d_exchange_bndf_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_y(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  call em3d_exchange_bndf_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndf_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     call em3d_exchange_bndf_yrecv(b%cornerxrylzr, b%edgexrzr, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndf_yrecv(b%edgexrzr,     b%cornerxryrzr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
-  
+
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndf_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
@@ -9988,40 +11401,40 @@ integer(ISZ) :: ibuf
 end subroutine em3d_exchange_f
 
 subroutine em3d_exchange_j(b)
-use mod_emfield3d
-implicit none
-TYPE(EM3D_BLOCKtype) :: b
-integer(ISZ) :: ibuf
+  use mod_emfield3d
+  implicit none
+  TYPE(EM3D_BLOCKtype) :: b
+  integer(ISZ) :: ibuf
 #ifdef MPIPARALLEL
-integer(MPIISZ)::mpirequest(2)
+  integer(MPIISZ)::mpirequest(2)
 #endif
 
   ibuf = 600
 
   ! --- X
- if (.not.b%core%yf%l_1dz) then
-  ! core<--->sides
-  call em3d_exchange_bndj_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  if(b%xrbnd /= periodic) call em3d_exchange_bndj_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  if (.not.b%core%yf%l_1dz) then
+     ! core<--->sides
+     call em3d_exchange_bndj_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     if(b%xrbnd /= periodic) call em3d_exchange_bndj_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%xrbnd /= periodic) call em3d_exchange_bndj_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndj_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     if(b%xrbnd /= periodic) call em3d_exchange_bndj_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndj_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
- endif
+  endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
-  ! core<--->sides
-  call em3d_exchange_bndj_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  if(b%yrbnd /= periodic) call em3d_exchange_bndj_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     ! core<--->sides
+     call em3d_exchange_bndj_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     if(b%yrbnd /= periodic) call em3d_exchange_bndj_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%yrbnd /= periodic) call em3d_exchange_bndj_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndj_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     if(b%yrbnd /= periodic) call em3d_exchange_bndj_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndj_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
-  
+
   ! --- Z
   ! core<--->sides
   call em3d_exchange_bndj_z(b%core,   b%sidezr, ibuf); ibuf=ibuf+1
@@ -10036,35 +11449,35 @@ integer(MPIISZ)::mpirequest(2)
 end subroutine em3d_exchange_j
 
 subroutine em3d_exchange_rho(b)
-use mod_emfield3d
-implicit none
+  use mod_emfield3d
+  implicit none
 
-TYPE(EM3D_BLOCKtype) :: b
-integer(ISZ) :: ibuf
+  TYPE(EM3D_BLOCKtype) :: b
+  integer(ISZ) :: ibuf
 
   ibuf = 800
 
   ! --- X
- if (.not.b%core%yf%l_1dz) then
-  ! core<--->sides
-  call em3d_exchange_bndrho_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+  if (.not.b%core%yf%l_1dz) then
+     ! core<--->sides
+     call em3d_exchange_bndrho_x(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     if(b%xrbnd /= periodic) call em3d_exchange_bndrho_x(b%sidexl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%xrbnd /= periodic) call em3d_exchange_bndrho_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndrho_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     if(b%xrbnd /= periodic) call em3d_exchange_bndrho_xrecv(b%sidexl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndrho_xrecv(b%core,   b%sidexr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
- endif
+  endif
 
   ! --- Y
   if (.not.b%core%yf%l_2dxz) then
-  ! core<--->sides
-  call em3d_exchange_bndrho_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     ! core<--->sides
+     call em3d_exchange_bndrho_y(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     if(b%yrbnd /= periodic) call em3d_exchange_bndrho_y(b%sideyl, b%core, ibuf); ibuf=ibuf+1
 #ifdef MPIPARALLEL
-  if(b%yrbnd /= periodic) call em3d_exchange_bndrho_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
-  call em3d_exchange_bndrho_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
-  call mpi_waitall_requests()
+     if(b%yrbnd /= periodic) call em3d_exchange_bndrho_yrecv(b%sideyl, b%core, ibuf); ibuf=ibuf+1
+     call em3d_exchange_bndrho_yrecv(b%core,   b%sideyr, ibuf); ibuf=ibuf+1
+     call mpi_waitall_requests()
 #endif
   endif
 
@@ -10081,252 +11494,290 @@ integer(ISZ) :: ibuf
 end subroutine em3d_exchange_rho
 
 subroutine yee2node3d(f)
-! puts EM value from Yee grid to nodes
-use mod_emfield3d
-implicit none
-TYPE(EM3D_YEEFIELDtype) :: f
+  ! puts EM value from Yee grid to nodes
+  use mod_emfield3d
+  implicit none
+  TYPE(EM3D_YEEFIELDtype) :: f
 
-INTEGER :: j,k,l
+  INTEGER :: j,k,l
 
-if (f%l_nodecentered) return
+  if (f%l_nodecentered) return
 
-if (.not.f%l_2dxz) then
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
-        f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
-        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
-        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
-      enddo
-    enddo
-  enddo
+  if (.not.f%l_2dxz) then
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+              f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
+              f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
+              f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
+           enddo
+        enddo
+     enddo
 
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%eyp(j,k,l)=0.5*(f%eyp(j,k,l)+f%eyp(j,k-1,l))
-        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j,k-1,l))
-        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k-1,l))
-      enddo
-    enddo
-  enddo
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%eyp(j,k,l)=0.5*(f%eyp(j,k,l)+f%eyp(j,k-1,l))
+              f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j,k-1,l))
+              f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k-1,l))
+           enddo
+        enddo
+     enddo
 
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
-        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
-        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
-      enddo
-    enddo
-  enddo
+     do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
+              f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
+              f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
+           enddo
+        enddo
+     enddo
 
-else
+  else
 
- if (f%l_1dz) then
-  j = 0
-  k = 0
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-        f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
-        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
-        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
-  enddo
- else
-  k = 0
-  do l=-f%nzguard,f%nz+f%nzguard
-      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
-        f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
-        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
-        f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
-      enddo
-  enddo
+     if (f%l_1dz) then
+        j = 0
+        k = 0
+        do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+           f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
+           f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
+           f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
+        enddo
+     else
+        k = 0
+        do l=-f%nzguard,f%nz+f%nzguard
+           do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+              f%exp(j,k,l)=0.5*(f%exp(j,k,l)+f%exp(j-1,k,l))
+              f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j-1,k,l))
+              f%bzp(j,k,l)=0.5*(f%bzp(j,k,l)+f%bzp(j-1,k,l))
+           enddo
+        enddo
 
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
-        f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
-        f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
-      enddo
-  enddo
- endif
-endif
+        do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%ezp(j,k,l)=0.5*(f%ezp(j,k,l)+f%ezp(j,k,l-1))
+              f%bxp(j,k,l)=0.5*(f%bxp(j,k,l)+f%bxp(j,k,l-1))
+              f%byp(j,k,l)=0.5*(f%byp(j,k,l)+f%byp(j,k,l-1))
+           enddo
+        enddo
 
-f%l_nodecentered = .true.
+        if (f%circ_m>0) then
+           do l=-f%nzguard,f%nz+f%nzguard
+              do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+                 f%exp_circ(j,l,:)=0.5*(f%exp_circ(j,l,:)+f%exp_circ(j-1,l,:))
+                 f%byp_circ(j,l,:)=0.5*(f%byp_circ(j,l,:)+f%byp_circ(j-1,l,:))
+                 f%bzp_circ(j,l,:)=0.5*(f%bzp_circ(j,l,:)+f%bzp_circ(j-1,l,:))
+              enddo
+           enddo
+
+           do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+              do j=-f%nxguard,f%nx+f%nxguard
+                 f%ezp_circ(j,l,:)=0.5*(f%ezp_circ(j,l,:)+f%ezp_circ(j,l-1,:))
+                 f%bxp_circ(j,l,:)=0.5*(f%bxp_circ(j,l,:)+f%bxp_circ(j,l-1,:))
+                 f%byp_circ(j,l,:)=0.5*(f%byp_circ(j,l,:)+f%byp_circ(j,l-1,:))
+              enddo
+           enddo
+        end if
+
+     endif
+  endif
+
+  f%l_nodecentered = .true.
 
   return
 end subroutine yee2node3d
 
 subroutine node2yee3d(f)
-! puts EM field back from node to Yee grid
-use mod_emfield3d
-implicit none
-TYPE(EM3D_YEEFIELDtype) :: f
+  ! puts EM field back from node to Yee grid
+  use mod_emfield3d
+  implicit none
+  TYPE(EM3D_YEEFIELDtype) :: f
 
-INTEGER :: j,k,l
-!return
+  INTEGER :: j,k,l
+  !return
 
-if (.not.f%l_nodecentered) return
+  if (.not.f%l_nodecentered) return
 
-if (.not.f%l_2dxz) then
+  if (.not.f%l_2dxz) then
 
-  do l=-f%nzguard+1,f%nz+f%nzguard-1
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
-        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
-        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
-      enddo
-    enddo
-  enddo
+     do l=-f%nzguard+1,f%nz+f%nzguard-1
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
+              f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
+              f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
+           enddo
+        enddo
+     enddo
 
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=-f%nyguard+1,f%ny+f%nyguard-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%eyp(j,k,l)=2.*f%eyp(j,k,l)-f%eyp(j,k-1,l)
-        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j,k-1,l)
-        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k-1,l)
-      enddo
-    enddo
-  enddo
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=-f%nyguard+1,f%ny+f%nyguard-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%eyp(j,k,l)=2.*f%eyp(j,k,l)-f%eyp(j,k-1,l)
+              f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j,k-1,l)
+              f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k-1,l)
+           enddo
+        enddo
+     enddo
 
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=-f%nxguard+1,f%nx+f%nxguard-1
-        f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
-        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
-        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
-      enddo
-    enddo
-  enddo
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=-f%nxguard+1,f%nx+f%nxguard-1
+              f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
+              f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
+              f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
+           enddo
+        enddo
+     enddo
 
-else
+  else
 
- if (f%l_1dz) then
-  j=0
-  k=0
-  do l=-f%nzguard+1,f%nz+f%nzguard-1
-        f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
-        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
-        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
-  enddo
+     if (f%l_1dz) then
+        j=0
+        k=0
+        do l=-f%nzguard+1,f%nz+f%nzguard-1
+           f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
+           f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
+           f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
+        enddo
 
- else
-  k=0
-  do l=-f%nzguard+1,f%nz+f%nzguard-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
-        f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
-        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
-      enddo
-  enddo
+     else
+        k=0
+        do l=-f%nzguard+1,f%nz+f%nzguard-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%ezp(j,k,l)=2.*f%ezp(j,k,l)-f%ezp(j,k,l-1)
+              f%bxp(j,k,l)=2.*f%bxp(j,k,l)-f%bxp(j,k,l-1)
+              f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j,k,l-1)
+           enddo
+        enddo
 
-  do l=-f%nzguard,f%nz+f%nzguard
-      do j=-f%nxguard+1,f%nx+f%nxguard-1
-        f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
-        f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
-        f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
-      enddo
-  enddo
- endif
+        do l=-f%nzguard,f%nz+f%nzguard
+           do j=-f%nxguard+1,f%nx+f%nxguard-1
+              f%exp(j,k,l)=2.*f%exp(j,k,l)-f%exp(j-1,k,l)
+              f%byp(j,k,l)=2.*f%byp(j,k,l)-f%byp(j-1,k,l)
+              f%bzp(j,k,l)=2.*f%bzp(j,k,l)-f%bzp(j-1,k,l)
+           enddo
+        enddo
 
-endif
+        if (f%circ_m>0) then
+           do l=-f%nzguard+1,f%nz+f%nzguard-1
+              do j=-f%nxguard,f%nx+f%nxguard
+                 f%ezp_circ(j,l,:)=2.*f%ezp_circ(j,l,:)-f%ezp_circ(j,l-1,:)
+                 f%bxp_circ(j,l,:)=2.*f%bxp_circ(j,l,:)-f%bxp_circ(j,l-1,:)
+                 f%byp_circ(j,l,:)=2.*f%byp_circ(j,l,:)-f%byp_circ(j,l-1,:)
+              enddo
+           enddo
 
-f%l_nodecentered = .false.
+           do l=-f%nzguard,f%nz+f%nzguard
+              do j=-f%nxguard+1,f%nx+f%nxguard-1
+                 f%exp_circ(j,l,:)=2.*f%exp_circ(j,l,:)-f%exp_circ(j-1,l,:)
+                 f%byp_circ(j,l,:)=2.*f%byp_circ(j,l,:)-f%byp_circ(j-1,l,:)
+                 f%bzp_circ(j,l,:)=2.*f%bzp_circ(j,l,:)-f%bzp_circ(j-1,l,:)
+              enddo
+           enddo
+        END IF
+
+     endif
+
+  endif
+
+  f%l_nodecentered = .false.
 
   return
 end subroutine node2yee3d
 
 subroutine Jyee2node3d(f)
-! puts EM value from Yee grid to nodes
-use mod_emfield3d
-implicit none
-TYPE(EM3D_YEEFIELDtype) :: f
+  ! puts EM value from Yee grid to nodes
+  use mod_emfield3d
+  implicit none
+  TYPE(EM3D_YEEFIELDtype) :: f
 
-INTEGER :: j,k,l
+  INTEGER :: j,k,l
 
-if (.not.f%l_2dxz) then
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
-        f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
-      enddo
-    enddo
-  enddo
+  if (.not.f%l_2dxz) then
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+              f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
+           enddo
+        enddo
+     enddo
 
-  do l=-f%nzguard,f%nz+f%nzguard
-    do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%J(j,k,l,2)=0.5*(f%J(j,k,l,2)+f%J(j,k-1,l,2))
-      enddo
-    enddo
-  enddo
+     do l=-f%nzguard,f%nz+f%nzguard
+        do k=f%ny+f%nyguard-1,-f%nyguard+1,-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%J(j,k,l,2)=0.5*(f%J(j,k,l,2)+f%J(j,k-1,l,2))
+           enddo
+        enddo
+     enddo
 
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-    do k=-f%nyguard,f%ny+f%nyguard
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
-      enddo
-    enddo
-  enddo
+     do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+        do k=-f%nyguard,f%ny+f%nyguard
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+           enddo
+        enddo
+     enddo
 
-else
- if (f%l_1dz) then
-  j = 0
-  k = 0
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
-  enddo
- else
+  else
+     if (f%l_1dz) then
+        j = 0
+        k = 0
+        do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+           f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+        enddo
+     else
 
-  k = 0
-  do l=-f%nzguard,f%nz+f%nzguard
-      do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
-        f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
-      enddo
-  enddo
+        k = 0
+        do l=-f%nzguard,f%nz+f%nzguard
+           do j=f%nx+f%nxguard-1,-f%nxguard+1,-1
+              f%J(j,k,l,1)=0.5*(f%J(j,k,l,1)+f%J(j-1,k,l,1))
+           enddo
+        enddo
 
-  do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
-      do j=-f%nxguard,f%nx+f%nxguard
-        f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
-      enddo
-  enddo
- endif
-endif
+        do l=f%nz+f%nzguard-1,-f%nzguard+1,-1
+           do j=-f%nxguard,f%nx+f%nxguard
+              f%J(j,k,l,3)=0.5*(f%J(j,k,l,3)+f%J(j,k,l-1,3))
+           enddo
+        enddo
+     endif
+  endif
 
   return
 end subroutine Jyee2node3d
 
 subroutine add_current_slice_3d(f,i)
-use mod_emfield3d
-TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: i
-  
+  use mod_emfield3d
+  TYPE(EM3D_YEEFIELDtype) :: f
+  integer(ISZ) :: i
+
   f%Jarray(:,:,:,:,i) = f%Jarray(:,:,:,:,i) + f%Jarray(:,:,:,:,i+1)
 
 end subroutine add_current_slice_3d
 
 subroutine add_rho_slice_3d(f,i)
-use mod_emfield3d
-TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: i
-  
+  use mod_emfield3d
+  TYPE(EM3D_YEEFIELDtype) :: f
+  integer(ISZ) :: i
+
   f%Rhoarray(:,:,:,i) = f%Rhoarray(:,:,:,i) + f%Rhoarray(:,:,:,i+1)
 
 end subroutine add_rho_slice_3d
 
 subroutine set_incond(f,n,indx)
-use mod_emfield3d
-TYPE(EM3D_YEEFIELDtype) :: f
-integer(ISZ) :: i,n,indx(3,n)
+  use mod_emfield3d
+  TYPE(EM3D_YEEFIELDtype) :: f
+  integer(ISZ) :: i,n,indx(3,n)
 
   if (f%l_2dxz) then
-    do i=1,n
-      f%incond(indx(1,i),0,indx(3,i)) = .true.
-    end do  
+     do i=1,n
+        f%incond(indx(1,i),0,indx(3,i)) = .true.
+     end do
   else
-    do i=1,n
-      f%incond(indx(1,i),indx(2,i),indx(3,i)) = .true.
-    end do  
+     do i=1,n
+        f%incond(indx(1,i),indx(2,i),indx(3,i)) = .true.
+     end do
   end if
 
 end subroutine set_incond
