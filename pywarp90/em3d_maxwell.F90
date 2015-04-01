@@ -5569,8 +5569,9 @@ integer(ISZ), parameter:: otherproc=10, ibuf = 950
 complex(kind=8) :: f(-nxguard:nx+nxguard,-nzguard:nz+nzguard,1:circ_m)
 complex(kind=8) :: i=(0.,1.)
 
-f(:,-nzguard:nz+nzguard-n,:) = f(:,-nzguard+n:nz+nzguard,:)
-if (zr/=otherproc) f(:,nz+nzguard-n+1:,:) = 0.
+if (n > 0) then
+  f(:,-nzguard:nz+nzguard-n,:) = f(:,-nzguard+n:nz+nzguard,:)
+  if (zr/=otherproc) f(:,nz+nzguard-n+1:,:) = 0.
 
 #ifdef MPIPARALLEL
   ! Send and receive the real part of the array
@@ -5599,37 +5600,41 @@ if (zr/=otherproc) f(:,nz+nzguard-n+1:,:) = 0.
  end if
 #endif
 
-  return
-end subroutine shift_circarray_ncells_z
-
-subroutine shift_3darray_ncells_zold(f,nx,ny,nz,nxguard,nyguard,nzguard,zl,zr,n)
-#ifdef MPIPARALLEL
-use mpirz
-#endif
-implicit none
-integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard,n,zl,zr
-integer(ISZ), parameter:: otherproc=10, ibuf = 950
-real(kind=8) :: f(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) 
-
-f(:,:,-nzguard:nz+nzguard-n) = f(:,:,-nzguard+n:nz+nzguard)
-if (zr/=otherproc) f(:,:,nz+nzguard-n+1:nz+nzguard) = 0.
+else if (n < 0) then
+  f(:,-nzguard-n:nz+nzguard,:) = f(:,-nzguard:nz+nzguard+n,:)
+  if (zr/=otherproc) f(:,:-nzguard-n-1,:) = 0.
 
 #ifdef MPIPARALLEL
+  ! Send and receive the real part of the array
   if (zl==otherproc) then
-     call mpi_packbuffer_init(size(f(:,:,0:nzguard)),ibuf)
-     call mympi_pack(f(:,:,0:nzguard),ibuf)
+     call mpi_packbuffer_init(size(f(:,nz-nzguard:nz-nzguard-n-1,:)),ibuf)
+     call mympi_pack(dble(realpart(f(:,nz-nzguard:nz-nzguard-n-1,:))),ibuf)
      call mpi_send_pack(procneighbors(0,2),0,ibuf)
-  end if    
+  end if
   if (zr==otherproc) then
-    call mpi_packbuffer_init(size(f(:,:,nz:nz+nzguard)),ibuf)
+    call mpi_packbuffer_init(size(f(:,-nzguard:-nzguard-n-1,:)),ibuf)
     call mpi_recv_pack(procneighbors(1,2),0,ibuf)
-    f(:,:,nz:nz+nzguard) = reshape(mpi_unpack_real_array( size(f(:,:,nz:nz+nzguard)),ibuf), &
-                                                         shape(f(:,:,nz:nz+nzguard)))
+    f(:,-nzguard:-nzguard-n-1,:) = reshape(mpi_unpack_real_array( size(f(:,-nzguard:-nzguard-n-1,:)),ibuf), &
+                                                                    shape(f(:,-nzguard:-nzguard-n-1,:)))
+  end if
+ ! Send and receive the imaginary part of the array
+  if (zl==otherproc) then
+     call mpi_packbuffer_init(size(f(:,nz-nzguard:nz-nzguard-n-1,:)),ibuf)
+     call mympi_pack(dble(imagpart(f(:,nz-nzguard:nz-nzguard-n-1,:))),ibuf)
+     call mpi_send_pack(procneighbors(0,2),0,ibuf)
+  end if
+  if (zr==otherproc) then
+    call mpi_packbuffer_init(size(f(:,-nzguard:-nzguard-n-1,:)),ibuf)
+    call mpi_recv_pack(procneighbors(1,2),0,ibuf)
+    f(:,-nzguard:-nzguard-n-1,:) = f(:,-nzguard:-nzguard-n-1,:) + i*reshape(mpi_unpack_real_array( &
+         size(f(:,-nzguard:-nzguard-n-1,:)),ibuf), shape(f(:,-nzguard:-nzguard-n-1,:)))
   end if
 #endif
 
+endif
+
   return
-end subroutine shift_3darray_ncells_zold
+end subroutine shift_circarray_ncells_z
 
 subroutine shift_em3dblock_ncells_x(b,n)
 use mod_emfield3d
