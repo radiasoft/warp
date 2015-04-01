@@ -1382,6 +1382,9 @@ smooth3d_121withbounds(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
 smooth3d_121_stride(q(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
    # three points linear smoothing with stride
+smoothcirc_121_stride(q(0:nx,0:nz,0:nm):complex,nx:integer,nz:integer,
+                    nm:integer,npass(3):integer,alpha(3):real,stride(3):integer) subroutine
+   # three points linear smoothing with stride
 smooth3d_121_stride_mask(q(0:nx,0:ny,0:nz):real,mask(0:nx,0:ny,0:nz):real,
                     nx:integer,ny:integer,nz:integer,
                     npass(3):integer,alpha(3):real,stride(3):integer) subroutine
