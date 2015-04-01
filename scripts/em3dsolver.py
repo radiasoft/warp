@@ -3,6 +3,7 @@ from warp import *
 from mkpalette import getpalhrgb
 import collections
 import types
+import operator
 
 try:
     import Opyndx
@@ -53,13 +54,21 @@ class EM3D(SubcycledPoissonSolver):
                       'deposit_energy_density':false,'refinement':None,
                       'l_force_nzlocal2nz':false,'isactiveem':None,
                       'l_coarse_patch':false,'stencil':false,
-                      'l_esirkepov':true,'theta_damp':0.,
+                      'l_esirkepov':true,'l_getrho':false,'theta_damp':0.,
                       'sigmae':0.,'sigmab':0.,
                       'colecoefs':None,'l_setcowancoefs':False,
                       'pml_method':1,
-                      'l_correct_num_Cherenkov':False}
+                      'l_correct_num_Cherenkov':False,
+                      'circ_m':0, 'l_laser_cart':0, 'type_rz_depose':0}
 
     def __init__(self,**kw):
+        try:
+            kw['kwdict'].update(kw)
+            kw = kw['kwdict']
+            del kw['kwdict']
+        except KeyError:
+            pass
+
         self.solveroff=False # flag to turn off the solver, for testing purpose
         assert top.grid_overlap<2,"The EM solver needs top.grid_overlap<2!"
         self.grid_overlap = 1
@@ -79,6 +88,7 @@ class EM3D(SubcycledPoissonSolver):
 #    self.processdefaultsfrompackage(EM3D.__topinputs__,top,kw)
         self.processdefaultsfrompackage(EM3D.__em3dinputs__,em3d,kw)
         self.processdefaultsfromdict(EM3D.__flaginputs__,kw)
+        if self.circ_m>0:w3d.solvergeom=w3d.RZgeom
         if w3d.solvergeom==w3d.XZgeom:self.l_2dxz=True
         if w3d.solvergeom==w3d.RZgeom:self.l_2drz=True
         if w3d.solvergeom==w3d.Zgeom:
@@ -105,6 +115,14 @@ class EM3D(SubcycledPoissonSolver):
             self.nxlocal=self.nx
             self.nylocal=self.ny
             self.nzlocal=self.nz
+
+        # --- Impose that rho be calculated, if l_pushf is active
+        if self.l_pushf:
+            self.l_getrho = True
+
+        # --- Impose type_rz_depose = 0 if not in circ mode
+        if self.l_2drz == False :
+            self.type_rz_depose = 0 
 
         # --- set number of guard cells to appropriate value depending on order of
         # --- current deposition, smoothing and stencil.
@@ -256,24 +274,42 @@ class EM3D(SubcycledPoissonSolver):
         except:
             parent = None
             sibling = None
-        if self.ncyclesperstep is None:
+        if self.ncyclesperstep is None:    # No subcycling
             self.ncyclesperstep = 1
-            if sibling is None:
-                if self.autoset_timestep:
-                    if self.mode==2 and self.dtcoef>0.5:self.dtcoef/=2
+            if sibling is None:            # No mesh refinement
+                if self.autoset_timestep:  # True by default (optional argument of EM3D)
+#                   if self.mode==2 and self.dtcoef>0.5: self.dtcoef/=2 # Obsolete
                     if self.l_1dz:
+                    ### - 1D
                         self.dtcourant=self.dz/clight
                     elif self.l_2dxz:
-                        if self.stencil==0:  # Yee scheme
-                            self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
-                        elif self.stencil in [1,2] : # Cole-Karkkainen scheme
-                            self.dtcourant=min(self.dx,self.dz)/clight
-                            Cx = em3d.alphax -2.*em3d.betaxz
-                            Cz = em3d.alphaz -2.*em3d.betazx
-                            self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
-                        elif self.stencil == 3 : # Lehe scheme
-                            self.dtcourant = 1./clight  * min( self.dz, self.dx )
+                    ### - 2D
+                        if self.l_2drz == False : # 2D Cartesian
+                            if self.stencil==0:  # Yee scheme
+                                self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dz**2))
+                            elif self.stencil in [1,2] : # Cole-Karkkainen scheme
+                                self.dtcourant=min(self.dx,self.dz)/clight
+                                Cx = em3d.alphax -2.*em3d.betaxz
+                                Cz = em3d.alphaz -2.*em3d.betazx
+                                self.dtcourant=1./(clight*sqrt(Cx/self.dx**2+Cz/self.dz**2))
+                            elif self.stencil == 3 : # Lehe scheme
+                                self.dtcourant = 1./clight  * min( self.dz, self.dx )
+                        else :  # 2D r-z
+                            # In the rz case, the Courant limit has been evaluated
+                            # semi-analytically by R. Lehe, and resulted in the following
+                            # coefficients. For an explanation, see (not officially published)
+                            # www.normalesup.org/~lehe/Disp_relation_Circ.pdf
+                            # NB : Here the coefficient for m=1 as compared to this document,
+                            # as it was observed in practice that this coefficient was not
+                            # high enough (The simulation became unstable).
+                            circ_coeffs = [ 0.2105, 1.0, 3.5234, 8.5104, 15.5059, 24.5037 ]
+                            if self.circ_m < len(circ_coeffs) : # Use the table of the coefficients
+                                circ_alpha = circ_coeffs[self.circ_m]
+                            else : # Use a realistic extrapolation
+                                circ_alpha = self.circ_m**2 - 0.4
+                            self.dtcourant=1./(clight*sqrt((1+circ_alpha)/self.dx**2+1./self.dz**2))
                     else:
+                    ### - 3D
                         if self.stencil==0:
                             self.dtcourant=1./(clight*sqrt(1./self.dx**2+1./self.dy**2+1./self.dz**2))
                         elif self.stencil in [1,2] : # Cole-Karakkainen scheme
@@ -478,8 +514,9 @@ class EM3D(SubcycledPoissonSolver):
                                        self.deposit_energy_density,
                                        self.l_nodalgrid,
                                        self.refinement,
-                                       self.l_pushf or self.l_deposit_rho,
+                                       self.l_pushf,
                                        self.l_pushg,
+                                       self.l_getrho,
                                        self.stencil,
                                        self.npass_smooth,
                                        self.l_smooth_particle_fields,
@@ -492,7 +529,8 @@ class EM3D(SubcycledPoissonSolver):
                                        self.sigmab,
                                        excoef,
                                        bycoef,
-                                       self.pml_method)
+                                       self.pml_method,
+                                       self.circ_m)
         self.fields = self.block.core.yf
         if self.l_2drz:
             self.vol = 2.*pi*(arange(self.nx+1)*self.dx+self.block.xmin)*self.dx*self.dz
@@ -574,10 +612,32 @@ class EM3D(SubcycledPoissonSolver):
                     self.laser_nn=1
                     self.laser_xx=zeros(self.laser_nn)
                     self.laser_yy=zeros(self.laser_nn)
-                else:
-                    self.laser_xx = arange(f.nx)*f.dx + f.xmin + 0.5*f.dx
-                    self.laser_nn=shape(self.laser_xx)[0]
-                    self.laser_yy=zeros(self.laser_nn)
+                else:   # 2D and Circ
+                    nlas = 1
+                    if self.l_laser_cart :
+                        # The fictious macroparticles are initialized in a 2D x-y plane, as regularly spaced
+                        self.laser_xx, self.laser_yy = getmesh2d(
+                            -f.xmax+0.5*f.dx/nlas, f.dx/nlas, 2*nlas*f.nx-1,
+                            -f.xmax+0.5*f.dx/nlas, f.dx/nlas, 2*nlas*f.nx-1)
+                        self.laser_xx=self.laser_xx.flatten()
+                        self.laser_yy=self.laser_yy.flatten()
+                        self.laser_nn=shape(self.laser_xx)[0]
+                    else :
+                        # The fictious macroparticles are initialized in a star-pattern, with 4*circ_m branches
+                        self.laser_xx = arange(f.nx*nlas)*f.dx/nlas + f.xmin + 0.5*f.dx/nlas
+                        self.laser_nn=shape(self.laser_xx)[0]
+                        self.laser_yy=zeros(self.laser_nn)
+                        if self.circ_m>0: # Circ
+                            rr = self.laser_xx.copy()
+                            self.weights_circ=2*pi*rr/f.dx/nlas
+                            self.weights_circ/=4*self.circ_m
+                            w0 = self.weights_circ.copy()
+                            for i in range(1,4*self.circ_m):
+                                self.laser_xx = concatenate((self.laser_xx,rr*cos(0.5*pi*float(i)/self.circ_m)))
+                                self.laser_yy = concatenate((self.laser_yy,rr*sin(0.5*pi*float(i)/self.circ_m)))
+                                self.weights_circ = concatenate((self.weights_circ,w0))
+                            self.laser_nn=shape(self.laser_xx)[0]
+
             if self.laser_amplitude_dict is not None:
                 self.laser_xdx={}
                 self.laser_ydy={}
@@ -647,7 +707,16 @@ class EM3D(SubcycledPoissonSolver):
 
 #===============================================================================
     def add_laser(self,field):
-#===============================================================================
+        """
+        Loop over the different laser profiles that exist in the simulation.
+        For each laser profile, calculate the parameters of the corresponding
+        antenna and depose the corresponding current on the grid.
+
+        Parameter :
+        -----------
+        field : EM3D_YEEFIELD
+            The self.fields object, whose attributes are the field arrays Ex, Ey, etc ...
+        """
         if isinstance(self.laser_func_dict,dict):
             for self.laser_key in self.laser_func_dict.keys():
                 self.laser_func = self.laser_func_dict[self.laser_key]
@@ -661,7 +730,16 @@ class EM3D(SubcycledPoissonSolver):
 
 #===============================================================================
     def add_laser_work(self,field):
-#===============================================================================
+        """
+        Calculate the parameters of the laser antenna at a given timestep and
+        depose the corresponding current on the grid.
+
+        Parameter :
+        -----------
+        field : EM3D_YEEFIELD
+            The self.fields object, whose attributes are the field arrays Ex, Ey, etc ...
+        """
+
         if self.laser_profile is None and self.laser_func is None:
             self.block.core.yf.E_inz_pos=w3d.zmmin-(self.nzguard*2.)*self.dz
             return
@@ -674,49 +752,60 @@ class EM3D(SubcycledPoissonSolver):
         else:
             return
 
+        f = self.block.core.yf
+        betafrm = -self.laser_source_v/clight
+        gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
+        
+        # Determine the laser amplitude at this present time (and at the current position of the antenna.)
+        # - either from the user-provided function
         if self.laser_amplitude_func is not None:
             self.laser_amplitude = self.laser_amplitude_func(top.time*(1.-self.laser_source_v/clight))
+        # - or from a user-provided table
         elif self.laser_amplitude_table is not None:
-            if top.time < self.laser_amplitude_table[0,1]:
+            if top.time < self.laser_amplitude_table[0,1]: # The time is out of the provided table bounds
                 self.laser_amplitude = self.laser_amplitude_table[0,0]
-            elif top.time >= self.laser_amplitude_table[-1,1]:
+            elif top.time >= self.laser_amplitude_table[-1,1]: # The time is out of the provided table bounds
                 self.laser_amplitude = self.laser_amplitude_table[-1,0]
-            else:
+            else: # The time is within the provided table bounds : interpolate between the nearest table points 
                 i = self.laser_amplitude_table_i
                 while top.time > self.laser_amplitude_table[i+1,1]:
                     i = i + 1
                 self.laser_amplitude_table_i = i
+                # ww : linear interpolation weight
                 ww = ((top.time - self.laser_amplitude_table[i,1])/
                    (self.laser_amplitude_table[i+1,1]-self.laser_amplitude_table[i,1]))
                 self.laser_amplitude = ((1.-ww)*self.laser_amplitude_table[i,0] +
                                             ww *self.laser_amplitude_table[i+1,0])
-
+                
+        # Determine the laser transverse profile at this present time, and at the positions of
+        # the fictious macroparticles of the antenna.
         if self.laser_profile_func is not None:
             self.laser_profile = self.laser_profile_func(top.time)
             assert len(self.laser_profile[:,0]) == field.nx,"The specified profile must be of length nx"
             assert len(self.laser_profile[0,:]) == field.ny,"The specified profile must be of length ny"
 
-        f = self.block.core.yf
-        betafrm = -self.laser_source_v/clight
-        gammafrm = 1./sqrt((1.-betafrm)*(1.+betafrm))
-
+        # Determine the phase of the laser, at this present time, and at the positions of
+        # the fictious macroparticles of the antenna.
         if self.laser_frequency is not None:
-            if self.laser_phase_func is not None:
+            # If the user provided a phase function, use it
+            if self.laser_phase_func is not None: 
                 t = top.time*(1.-self.laser_source_v/clight)
-                if self.laser_mode==1:
+                if self.laser_mode==1: 
                     x = self.xxex
                     y = self.yyex
                     phaseex = self.laser_phase_func(x,y,t)
                     x = self.xxey
                     y = self.yyey
                     phaseey = self.laser_phase_func(x,y,t)
-                else:
+                else: 
                     x = self.laser_xx
                     y = self.laser_yy
                     phase = self.laser_phase_func(x,y,t)
-            else:
+            # If the user did not provide a phase function, imprint either the phase of a focusing laser
+            # or that of a plane wave propagating at a given angle
+            else:  
                 if self.laser_mode==1:
-                    if self.laser_focus_z is not None:
+                    if self.laser_focus_z is not None: # Focusing laser
                         z0 = self.laser_focus_z
                         if self.laser_focus_z>0.:
                             fsign = -1.
@@ -724,46 +813,54 @@ class EM3D(SubcycledPoissonSolver):
                             fsign = 1.
                         phaseex = (fsign*(sqrt(self.xxex**2+self.yyex**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
                         phaseey = (fsign*(sqrt(self.xxey**2+self.yyey**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-                    else:
+                    else: # Plane wave propagating at a given angle
                         phaseex = ((self.xxex*sin(self.laser_anglex)+self.yyex*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
                         phaseey = ((self.xxey*sin(self.laser_anglex)+self.yyey*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-                elif self.laser_mode==2:
+                            
+                elif self.laser_mode==2: 
                     if 0:
                         z0 = self.laser_focus_z
 #         phase = sin(-self.laser_frequency*top.time+z0*(self.laser_xx**2+self.laser_yy**2)/(SIGMAR*SIGMAR*(1+X^2))-0.5*atan(X))
                     else:
-                        if self.laser_focus_z is not None:
+                        if self.laser_focus_z is not None: # Focusing laser
                             z0 = self.laser_focus_z
                             if self.laser_focus_z>0.:
                                 fsign = -1.
                             else:
                                 fsign = 1.
                             phase = (fsign*(sqrt(self.laser_xx**2+self.laser_yy**2+z0**2)-z0)/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
-                        else:
+                        else: # Plane wave propagating at a given angle
                             phase = ((self.laser_xx*sin(self.laser_anglex)+self.laser_yy*sin(self.laser_angley))/clight-top.time*(1.-self.laser_source_v/clight))*self.laser_frequency
         else:
             phase = 0.
+
+        # Set the value of the fields Ex_inz and Ey_inz, according to the above profiles and phases
         if self.laser_mode==1:
+
             laser_amplitude=self.laser_amplitude*top.dt*clight/w3d.dz
-            if self.l_1dz:
+
+            if self.l_1dz: # 1D case
                 f.Ex_inz[f.jxmin,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
                 f.Ey_inz[f.jxmin,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
-            elif self.l_2dxz:
+                
+            elif self.l_2dxz: # 2D case
                 f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
                 f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
-            else:
+                
+            else: # 3D case
                 f.Ex_inz[f.jxmin:f.jxmax  ,f.jymin:f.jymax+1] = laser_amplitude*self.laser_profile[0]*cos(phaseex)*cos(self.laser_polangle)*(1.-self.laser_source_v/clight)
                 f.Ey_inz[f.jxmin:f.jxmax+1,f.jymin:f.jymax  ] = laser_amplitude*self.laser_profile[1]*cos(phaseey)*sin(self.laser_polangle)*(1.-self.laser_source_v/clight)
             f.Ez_inz[...]=0.
+            
         elif self.laser_mode==2:
-
+        
             self.submethod_laser=2.1 # uses 2.1; 2.2 is not complete (accumulation of displaced charge missing)
             if self.submethod_laser==2.1:
                 # --- displaces fixed weight particles on "continuous" trajectories
-#        dispmax = 0.01*f.dx
-#        laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax*self.laser_frequency
                 dispmax = 0.01*clight
-                if self.laser_func is not None:
+                # Determine the amplitude of the laser along both directions (laser_amplitude_x, laser_amplitude_y)
+                # - If a laser function is provided, it overrides the above profile parameters.
+                if self.laser_func is not None: 
                     x = self.laser_xx
                     y = self.laser_yy
                     t = top.time*(1.-self.laser_source_v/clight)
@@ -775,6 +872,8 @@ class EM3D(SubcycledPoissonSolver):
                         laser_amplitude=laser_amplitude*(1.-self.laser_source_v/clight)/self.laser_emax*dispmax
                         laser_amplitude_x=laser_amplitude*cos(self.laser_polangle)
                         laser_amplitude_y=laser_amplitude*sin(self.laser_polangle)
+                # - If no laser function is provided, use the previously determined profile parameters
+                # (laser_amplitude and laser profile).
                 else:
                     laser_amplitude=self.laser_amplitude/self.laser_emax*dispmax
                     laser_amplitude*=self.laser_profile*cos(phase)*(1.-self.laser_source_v/clight)
@@ -790,18 +889,27 @@ class EM3D(SubcycledPoissonSolver):
                     laser_ux=self.laser_ux
                     laser_ydy=self.laser_ydy
                     laser_uy=self.laser_uy
+                # Set the amplitude of the normalized momenta of the fictious macroparticles
                 laser_ux[...] = laser_amplitude_x
                 laser_uy[...] = laser_amplitude_y
+                # Set the corresponding displacement of the fictious macroparticles
                 laser_xdx[...] += laser_ux*top.dt
                 laser_ydy[...] += laser_uy*top.dt
 #        weights = ones(self.laser_nn)*f.dx*f.dz*eps0/(top.dt)*self.laser_emax*top.dt/(0.1*f.dx)
 #        weights = ones(self.laser_nn)*f.dx*clight*eps0*self.laser_emax/(dispmax*self.laser_frequency)
                 weights = ones(self.laser_nn)*eps0*self.laser_emax/0.01
-                if not self.l_1dz:
-                    weights*=f.dx
-                if not self.l_2dxz:
-                    weights*=f.dy
                 l_particles_weight=False
+                if not self.l_1dz: # 2D and 3D
+                    weights*=f.dx
+                if (not self.l_2dxz) : # 3D cartesian
+                    weights*=f.dy
+                if self.l_laser_cart :
+                    # Laser initialized with particles regularly spaced in x-y plane
+                    weights*=f.dx
+                elif self.circ_m > 0 : # Circ
+                    # Laser initialized with particles in a star-pattern
+                    weights*=f.dx*self.weights_circ
+                    l_particles_weight=True   # Flag indicating that the particles do not all have the same weight
 
             elif self.submethod_laser==2.2:
                 # --- displaces particles on fixed segment, adjusting weights, incomplete!
@@ -824,19 +932,55 @@ class EM3D(SubcycledPoissonSolver):
                     weights*=f.dx*f.dz*eps0/(gammafrm*f.dx/10)
                 l_particles_weight=True
 
-#      print min(self.laser_xdx)/w3d.dx,max(self.laser_xdx)/w3d.dx
+            #      print min(self.laser_xdx)/w3d.dx,max(self.laser_xdx)/w3d.dx
 
+            # If the antenna is not currently in the local grid, return
             if self.laser_source_z<f.zmin+self.zgrid or self.laser_source_z>=f.zmax+self.zgrid:return
+
+            # Depose the current of the antenna
             self.depose_j_laser(f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight)
 
+        
+#===============================================================================            
     def depose_j_laser(self,f,laser_xdx,laser_ydy,laser_ux,laser_uy,weights,l_particles_weight):
+        """
+        Depose the current that generates the laser, on the grid (generation of the laser by an antenna)
+
+        Notice that this current is generated by fictious macroparticles, whose motion is explicitly specified.
+        Thus, this current does not correspond to that of the actual macroparticles of the simulation.
+
+        Parameters :
+        ------------
+
+        f : EM3D_YEEFIELD
+            The self.block.core.yf object, whose attributes are the field arrays Ex, Ey, J, etc...
+
+        laser_xdx, laser_ydy : 1darray
+            1d arrays with one element per fictious macroparticles, containing the displacement of
+            the macroparticles with respect to their mean position along x and y.
+
+        laser_ux, laser_uy : 1darray
+            1d arrays with one element per fictious macroparticles, containing the normalized momenta 
+            of the particles along each direction.
+
+        weights : 1darray
+            1d array with one element per fictious macroparticle, containing the weights of the particles.
+
+        l_particles_weight : bool
+            A flag indicating whether the different fictious macroparticles have different weights
+        """
+        
         if top.ndts[0]<>1:
             print "Error in depose_j_laser: top.ndts[0] must be 1 if injecting a laser"
             raise
         f.J = self.fields.Jarray[:,:,:,:,0]
-        for q in [1.,-1.]:
+        
+        for q in [1.,-1.]:  # q represents the sign of the charged macroparticles
+            # The antenna is made of two types of fictious particles : positive and negative
+            
             if self.l_2dxz:
-                if self.l_1dz:
+
+                if self.l_1dz: # 1D case
                     depose_j_n_1dz(f.J,
                                               self.laser_nn,
                                               self.laser_source_z*ones(self.laser_nn),
@@ -854,28 +998,51 @@ class EM3D(SubcycledPoissonSolver):
                                               self.laser_depos_order_z,
                                               l_particles_weight)
                 else:
-                    depose_jxjyjz_esirkepov_n_2d(f.J,
-                                              self.laser_nn,
-                                              self.laser_xx+q*laser_xdx,
-                                              self.laser_yy+q*laser_ydy,
-                                              self.laser_source_z*ones(self.laser_nn),
-                                              q*laser_ux,
-                                              q*laser_uy,
-                                              self.laser_source_v*ones(self.laser_nn),
-                                              self.laser_gi,
-                                              weights,
-                                              q,
-                                              f.xmin,f.zmin+self.zgrid,
-                                              top.dt,
-                                              f.dx,f.dz,
-                                              f.nx,f.nz,
-                                              f.nxguard,f.nzguard,
-                                              self.laser_depos_order_x,
-                                              self.laser_depos_order_z,
-                                              l_particles_weight,
-                                              w3d.l4symtry,
-                                              self.l_2drz)
-            else:
+                    if self.circ_m == 0 : # pure 2D case
+                        depose_jxjyjz_esirkepov_n_2d(f.J,
+                                                self.laser_nn,
+                                                self.laser_xx+q*laser_xdx,
+                                                self.laser_yy+q*laser_ydy,
+                                                self.laser_source_z*ones(self.laser_nn),
+                                                q*laser_ux,
+                                                q*laser_uy,
+                                                self.laser_source_v*ones(self.laser_nn),
+                                                self.laser_gi,
+                                                weights,
+                                                q,
+                                                f.xmin,f.zmin+self.zgrid,
+                                                top.dt,
+                                                f.dx,f.dz,
+                                                f.nx,f.nz,
+                                                f.nxguard,f.nzguard,
+                                                self.laser_depos_order_x,
+                                                self.laser_depos_order_z,
+                                                l_particles_weight,
+                                                w3d.l4symtry,
+                                                self.l_2drz, self.type_rz_depose)
+                        
+                    else: # Circ case
+                        depose_jxjyjz_esirkepov_n_2d_circ(f.J,f.J_circ,f.circ_m,
+                                                self.laser_nn,
+                                                self.laser_xx+q*laser_xdx,
+                                                self.laser_yy+q*laser_ydy,
+                                                self.laser_source_z*ones(self.laser_nn),
+                                                q*laser_ux,
+                                                q*laser_uy,
+                                                self.laser_source_v*ones(self.laser_nn),
+                                                self.laser_gi,
+                                                weights,
+                                                q,
+                                                f.xmin,f.zmin+self.zgrid,
+                                                top.dt,
+                                                f.dx,f.dz,
+                                                f.nx,f.nz,
+                                                f.nxguard,f.nzguard,
+                                                self.laser_depos_order_x,
+                                                self.laser_depos_order_z,
+                                                l_particles_weight, self.type_rz_depose)
+                        
+            else: # 3D case
                 depose_jxjyjz_esirkepov_n(f.J,
                                              self.laser_nn,
                                              self.laser_xx+q*laser_xdx,
@@ -898,6 +1065,60 @@ class EM3D(SubcycledPoissonSolver):
                                              l_particles_weight,
                                              w3d.l4symtry)
 
+            # --- now deposits Rho if needed - for some reason, does not give correct results...
+            if self.l_getrho :
+                if self.l_2dxz:
+                    if self.circ_m==0:  # pure 2D case
+                        depose_rho_n_2dxz(f.Rho,
+                                             self.laser_nn,
+                                             self.laser_xx+q*laser_xdx,
+                                             self.laser_yy+q*laser_ydy,
+                                             self.laser_source_z*ones(self.laser_nn),
+                                             weights,
+                                             q,
+                                         f.xmin,f.zmin+self.zgrid,
+                                         f.dx,f.dz,
+                                         f.nx,f.nz,
+                                         f.nxguard,f.nzguard,
+                                             self.laser_depos_order_x,
+                                             self.laser_depos_order_z,
+                                         l_particles_weight,w3d.l4symtry,self.l_2drz,
+                                         self.type_rz_depose)
+                    else: # Circ case
+                        depose_rho_n_2d_circ(f.Rho,
+                                         f.Rho_circ,
+                                         f.circ_m,
+                                             self.laser_nn,
+                                             self.laser_xx+q*laser_xdx,
+                                             self.laser_yy+q*laser_ydy,
+                                             self.laser_source_z*ones(self.laser_nn),
+                                             weights,
+                                             q,
+                                         f.xmin,f.zmin+self.zgrid,
+                                         f.dx,f.dz,
+                                         f.nx,f.nz,
+                                         f.nxguard,f.nzguard,
+                                             self.laser_depos_order_x,
+                                             self.laser_depos_order_z,
+                                         l_particles_weight, self.type_rz_depose)
+                else: # 3D case
+                    depose_rho_n(f.Rho,
+                                             self.laser_nn,
+                                             self.laser_xx+q*laser_xdx,
+                                             self.laser_yy+q*laser_ydy,
+                                             self.laser_source_z*ones(self.laser_nn),
+                                             weights,
+                                             q,
+                                       f.xmin,f.ymin,f.zmin+self.zgrid,
+                                       f.dx,f.dy,f.dz,
+                                       f.nx,f.ny,f.nz,
+                                       f.nxguard,f.nyguard,f.nzguard,
+                                             self.laser_depos_order_x,
+                                             self.laser_depos_order_y,
+                                             self.laser_depos_order_z,
+                                       l_particles_weight,w3d.l4symtry)
+
+
 ################################################################################
 # FIELD FETCHING
 ################################################################################
@@ -915,7 +1136,7 @@ class EM3D(SubcycledPoissonSolver):
 #    if (not (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
 #    else:
         f = self.block.core.yf
-
+        
         # --- fetch e
         if top.efetch[w3d.jsfsapi] in [1,3,5]:
             if self.l_1dz:
@@ -927,7 +1148,8 @@ class EM3D(SubcycledPoissonSolver):
                          noz,
                          f.Exp,f.Eyp,f.Ezp)
             elif self.l_2dxz:
-                getf2dxz_n(n,x,y,z,ex,ey,ez,
+                if f.circ_m == 0 :
+                    getf2dxz_n(n,x,y,z,ex,ey,ez,
                          f.xmin,f.zmin+self.zgrid,
                          f.dx,f.dz,
                          f.nx,f.ny,f.nz,
@@ -935,6 +1157,16 @@ class EM3D(SubcycledPoissonSolver):
                          nox,noz,
                          f.Exp,f.Eyp,f.Ezp,
                          w3d.l4symtry,self.l_2drz)
+                else :
+                    getf2drz_circ_n(n,x,y,z,ex,ey,ez,
+                             f.xmin,f.zmin+self.zgrid,
+                             f.dx,f.dz,
+                             f.nx, f.ny, f.nz,
+                             f.nxguard, f.nyguard, f.nzguard,
+                             nox,noz,
+                             f.Exp, f.Eyp, f.Ezp,
+                             f.Exp_circ,f.Eyp_circ,f.Ezp_circ,
+                             f.circ_m)
             else:
                 if nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
                     getf3d_linear(n,x,y,z,ex,ey,ez,
@@ -1000,15 +1232,26 @@ class EM3D(SubcycledPoissonSolver):
                          f.nzguard,
                          noz,
                          f.Bxp,f.Byp,f.Bzp)
-            elif self.l_2dxz:
-                getf2dxz_n(n,x,y,z,bx,by,bz,
-                         f.xmin,f.zmin+self.zgrid,
-                         f.dx,f.dz,
-                         f.nx,f.ny,f.nz,
-                         f.nxguard,f.nyguard,f.nzguard,
-                         nox,noz,
-                         f.Bxp,f.Byp,f.Bzp,
-                         w3d.l4symtry,self.l_2drz)
+            elif self.l_2dxz :
+                if f.circ_m == 0 :
+                    getf2dxz_n(n,x,y,z,bx,by,bz,
+                            f.xmin,f.zmin+self.zgrid,
+                            f.dx,f.dz,
+                            f.nx,f.ny,f.nz,
+                            f.nxguard,f.nyguard,f.nzguard,
+                            nox,noz,
+                            f.Bxp,f.Byp,f.Bzp,
+                            w3d.l4symtry,self.l_2drz)
+                else:
+                    getf2drz_circ_n(n,x,y,z,bx,by,bz,
+                                f.xmin,f.zmin+self.zgrid,
+                                f.dx,f.dz,
+                                f.nx,f.ny,f.nz,
+                                f.nxguard,f.nyguard,f.nzguard,
+                                nox,noz,
+                                f.Bxp,f.Byp,f.Bzp,
+                                f.Bxp_circ,f.Byp_circ,f.Bzp_circ,
+                                f.circ_m)
             else:
                 getf3d_n(n,x,y,z,bx,by,bz,
                          f.xmin,f.ymin,f.zmin+self.zgrid,
@@ -1200,6 +1443,7 @@ class EM3D(SubcycledPoissonSolver):
                                                       l_particles_weight)
             elif self.l_2dxz:
                 j = self.fields.J[:,self.fields.nyguard,:,:]
+                if self.fields.circ_m:j_circ = self.fields.J_circ
                 if 0:
 #          depose_jxjy_esirkepov_linear_serial_2d(j,n,z,x,z-gaminv*uz*top.dt,x-gaminv*ux*top.dt,
 #                                                 uy,gaminv,
@@ -1219,30 +1463,44 @@ class EM3D(SubcycledPoissonSolver):
                                                       l_particles_weight)
                 else:
                     if self.l_esirkepov:
-                        depose_jxjyjz_esirkepov_n_2d(j,n,
-              #          depose_jxjyjz_villasenor_n_2d(j,n,
-                                                          x,y,z,ux,uy,uz,
-                                                          gaminv,wfact,q*w,
-                                                          f.xmin,f.zmin+self.zgrid,
-                                                          top.dt*top.pgroup.ndts[js],
-                                                          f.dx,f.dz,
-                                                          f.nx,f.nz,
-                                                          f.nxguard,f.nzguard,
-                                                          top.depos_order[0,js],
-                                                          top.depos_order[2,js],
-                                                          l_particles_weight,w3d.l4symtry,self.l_2drz)
+                        if self.circ_m==0:
+                            depose_jxjyjz_esirkepov_n_2d(j,n,
+                                                x,y,z,ux,uy,uz,
+                                                gaminv,wfact,q*w,
+                                                f.xmin,f.zmin+self.zgrid,
+                                                top.dt*top.pgroup.ndts[js],
+                                                f.dx,f.dz,
+                                                f.nx,f.nz,
+                                                f.nxguard,f.nzguard,
+                                                top.depos_order[0,js],
+                                                top.depos_order[2,js],
+                                                l_particles_weight,
+                                                w3d.l4symtry,self.l_2drz,
+                                                self.type_rz_depose)
+                        else:
+                            depose_jxjyjz_esirkepov_n_2d_circ(j,j_circ,f.circ_m,n,
+                                                    x,y,z,ux,uy,uz,
+                                                    gaminv,wfact,q*w,
+                                                    f.xmin,f.zmin+self.zgrid,
+                                                    top.dt*top.pgroup.ndts[js],
+                                                    f.dx,f.dz,
+                                                    f.nx,f.nz,
+                                                    f.nxguard,f.nzguard,
+                                                    top.depos_order[0,js],
+                                                    top.depos_order[2,js],
+                                                    l_particles_weight,
+                                                    self.type_rz_depose)
                     else:
-                        depose_j_n_2dxz(j,n,
-                                                          x,z,ux,uy,uz,
-                                                          gaminv,wfact,q*w,
-                                                          f.xmin,f.zmin+self.zgrid,
-                                                          top.dt*top.pgroup.ndts[js],
-                                                          f.dx,f.dz,
-                                                          f.nx,f.nz,
-                                                          f.nxguard,f.nzguard,
-                                                          top.depos_order[0,js],
-                                                          top.depos_order[2,js],
-                                                          l_particles_weight,w3d.l4symtry)
+                        depose_j_n_2dxz(j,n,x,z,ux,uy,uz,
+                                        gaminv,wfact,q*w,
+                                        f.xmin,f.zmin+self.zgrid,
+                                        top.dt*top.pgroup.ndts[js],
+                                        f.dx,f.dz,
+                                        f.nx,f.nz,
+                                        f.nxguard,f.nzguard,
+                                        top.depos_order[0,js],
+                                        top.depos_order[2,js],
+                                        l_particles_weight,w3d.l4symtry)
             else:
                 if 0:#nox==1 and noy==1 and noz==1 and not w3d.l4symtry:
                     depose_jxjyjz_esirkepov_linear_serial(self.fields.J,n,
@@ -1278,18 +1536,35 @@ class EM3D(SubcycledPoissonSolver):
                                               f.nxguard,f.nyguard,f.nzguard,
                                               l_particles_weight,
                                               top.lrelativ)
-        if self.l_pushf or self.l_deposit_rho:
+        if self.l_getrho :
             if self.l_2dxz:
-                depose_rho_n_2dxz(self.fields.Rho,n,
-                                       x,y,z,
-                                       wfact,q*w,
-                                       f.xmin,f.zmin+self.zgrid,
-                                       f.dx,f.dz,
-                                       f.nx,f.nz,
-                                       f.nxguard,f.nzguard,
-                                       top.depos_order[0,js],
-                                       top.depos_order[2,js],
-                                       l_particles_weight,w3d.l4symtry,self.l_2drz)
+                if self.circ_m==0:
+                    depose_rho_n_2dxz(self.fields.Rho,n,
+                                         x,y,z,
+                                         wfact,q*w,
+                                         f.xmin,f.zmin+self.zgrid,
+                                         f.dx,f.dz,
+                                         f.nx,f.nz,
+                                         f.nxguard,f.nzguard,
+                                         top.depos_order[0,js],
+                                         top.depos_order[2,js],
+                                         l_particles_weight,w3d.l4symtry,
+                                         self.l_2drz,
+                                         self.type_rz_depose)
+                else:
+                    depose_rho_n_2d_circ(self.fields.Rho,
+                                         self.fields.Rho_circ,
+                                         self.fields.circ_m,
+                                         n,x,y,z,
+                                         wfact,q*w,
+                                         f.xmin,f.zmin+self.zgrid,
+                                         f.dx,f.dz,
+                                         f.nx,f.nz,
+                                         f.nxguard,f.nzguard,
+                                         top.depos_order[0,js],
+                                         top.depos_order[2,js],
+                                         l_particles_weight,
+                                         self.type_rz_depose)
             else:
                 depose_rho_n(self.fields.Rho,n,
                                        x,y,z,
@@ -1315,7 +1590,7 @@ class EM3D(SubcycledPoissonSolver):
         if self.l_verbose:print 'zerosourcep',self
 
         # --- copy rho to rhoold if needed
-        if (self.l_pushf or self.l_deposit_rho) and self.ncyclesperstep>1:
+        if self.l_getrho and self.ncyclesperstep>1:
             self.fields.Rhoold = self.fields.Rho.copy()
             if self.refinement is not None:
                 self.field_coarse.fields.Rhoold = self.field_coarse.fields.Rho.copy()
@@ -1324,10 +1599,14 @@ class EM3D(SubcycledPoissonSolver):
         for indts in range(top.nsndts):
             if top.ldts[indts]:
                 self.fields.Jarray[...,indts] = 0.
+                if self.fields.circ_m:
+                    self.fields.J_circ[...] = 0.
 #        if self.refinement is not None:
 #          self.field_coarse.fields.Jarray[...,indts] = 0.
-                if self.l_pushf or self.l_deposit_rho:
+                if self.l_getrho:
                     self.fields.Rhoarray[...,indts] = 0.
+                    if self.fields.circ_m:
+                        self.fields.Rho_circ[...] = 0.
 #          if self.refinement is not None:
 #            self.field_coarse.fields.Rho[...,indts] = 0.
                 if self.deposit_energy_density:
@@ -1337,7 +1616,7 @@ class EM3D(SubcycledPoissonSolver):
         if self.l_verbose:print 'setsourcepforparticles'
         # --- point J array to proper Jarray slice
         self.fields.J = self.fields.Jarray[:,:,:,:,indts]
-        if self.l_pushf or self.l_deposit_rho: self.fields.Rho = self.fields.Rhoarray[:,:,:,indts]
+        if self.l_getrho: self.fields.Rho = self.fields.Rhoarray[:,:,:,indts]
 
     def add_source_ndts_slices(self):
         # --- add slices
@@ -1346,7 +1625,7 @@ class EM3D(SubcycledPoissonSolver):
             for indts in range(top.nsndts-2,-1,-1):
                 if top.ldts[indts]:
                     add_current_slice_3d(self.fields,indts+1)
-                    if self.l_pushf or self.l_deposit_rho:add_rho_slice_3d(self.fields,indts+1)
+                    if self.l_getrho:add_rho_slice_3d(self.fields,indts+1)
 
     def finalizesourcep(self):
         if self.sourcepfinalized: return
@@ -1371,7 +1650,8 @@ class EM3D(SubcycledPoissonSolver):
                          block.ylbnd,
                          block.yrbnd,
                          block.zlbnd,
-                         block.zrbnd)
+                         block.zrbnd,
+                         self.type_rz_depose)
         em3d_exchange_rho(block)
 
     def apply_current_bc(self,block):
@@ -1383,7 +1663,8 @@ class EM3D(SubcycledPoissonSolver):
                        block.ylbnd,
                        block.yrbnd,
                        block.zlbnd,
-                       block.zrbnd)
+                       block.zrbnd,
+                       self.type_rz_depose)
         em3d_exchange_j(block)
 
     def applysourceboundaryconditions(self):
@@ -1391,7 +1672,7 @@ class EM3D(SubcycledPoissonSolver):
         self.apply_current_bc(self.block)
         if self.refinement is not None:
             self.apply_current_bc(self.field_coarse.block)
-        if self.l_pushf or self.l_deposit_rho:
+        if self.l_getrho:
             self.apply_rho_bc(self.block)
             if self.refinement is not None:
                 self.apply_rho_bc(self.field_coarse.block)
@@ -1405,11 +1686,13 @@ class EM3D(SubcycledPoissonSolver):
 
         # --- point J to first slice of Jarray
         self.fields.J = self.fields.Jarray[:,:,:,:,0]
-        if self.l_pushf or self.l_deposit_rho:self.fields.Rho = self.fields.Rhoarray[:,:,:,0]
+        if self.l_getrho:self.fields.Rho = self.fields.Rhoarray[:,:,:,0]
 
     def smoothdensity(self):
         if all(self.npass_smooth==0):return
         nx,ny,nz = shape(self.fields.J[...,0])
+        if self.circ_m > 0 :
+            nxc, nzc, circ_m = shape(self.fields.J_circ[:,:,0,:])
         nsm = shape(self.npass_smooth)[1]
         l_mask_method=1
         if self.mask_smooth is None:
@@ -1418,50 +1701,60 @@ class EM3D(SubcycledPoissonSolver):
                 self.mask_smooth.append(None)
         if l_mask_method==2:
             Jcopy = self.fields.J.copy()
-            if self.l_pushf or self.l_deposit_rho:
+            if self.l_getrho:
                 Rhocopy = self.fields.Rho.copy()
         for js in range(nsm):
             if self.mask_smooth[js] is None or l_mask_method==2:
-                smooth3d_121_stride(self.fields.J[...,0],nx-1,ny-1,nz-1,
-                                    self.npass_smooth[:,js].copy(),
-                                    self.alpha_smooth[:,js].copy(),
-                                    self.stride_smooth[:,js].copy())
-                smooth3d_121_stride(self.fields.J[...,1],nx-1,ny-1,nz-1,
-                                    self.npass_smooth[:,js].copy(),
-                                    self.alpha_smooth[:,js].copy(),
-                                    self.stride_smooth[:,js].copy())
-                smooth3d_121_stride(self.fields.J[...,2],nx-1,ny-1,nz-1,
-                                    self.npass_smooth[:,js].copy(),
-                                    self.alpha_smooth[:,js].copy(),
-                                    self.stride_smooth[:,js].copy())
-                if self.l_pushf or self.l_deposit_rho:
-                    smooth3d_121_stride(self.fields.Rho[...],nx-1,ny-1,nz-1,
-                                        self.npass_smooth[:,js].copy(),
-                                        self.alpha_smooth[:,js].copy(),
-                                        self.stride_smooth[:,js].copy())
+                smooth3d_121_stride( self.fields.J[...,0],
+                    nx-1, ny-1, nz-1, self.npass_smooth[:,js].copy(),
+                    self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
+                smooth3d_121_stride( self.fields.J[...,1],
+                    nx-1, ny-1, nz-1, self.npass_smooth[:,js].copy(),
+                    self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
+                smooth3d_121_stride( self.fields.J[...,2],
+                    nx-1, ny-1, nz-1, self.npass_smooth[:,js].copy(),
+                    self.alpha_smooth[:,js].copy(),self.stride_smooth[:,js].copy())
+                if self.circ_m > 0 :
+                    smoothcirc_121_stride( self.fields.J_circ[...,0,:],
+                        nxc-1, nzc-1, circ_m-1, self.npass_smooth[:,js].copy(),
+                        self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
+                    smoothcirc_121_stride( self.fields.J_circ[...,1,:],
+                        nxc-1, nzc-1, circ_m-1, self.npass_smooth[:,js].copy(),
+                        self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
+                    smoothcirc_121_stride( self.fields.J_circ[...,2,:],
+                        nxc-1, nzc-1, circ_m-1, self.npass_smooth[:,js].copy(),
+                        self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
+                if self.l_getrho:
+                    smooth3d_121_stride( self.fields.Rho[...],
+                        nx-1, ny-1, nz-1, self.npass_smooth[:,js].copy(),
+                        self.alpha_smooth[:,js].copy(),self.stride_smooth[:,js].copy())
+                    if self.circ_m > 0 :
+                        smoothcirc_121_stride( self.fields.Rho_circ[...],
+                        nxc-1, nzc-1, circ_m-1, self.npass_smooth[:,js].copy(),
+                        self.alpha_smooth[:,js].copy(), self.stride_smooth[:,js].copy())
             else:
-                smooth3d_121_stride_mask(self.fields.J[...,0],self.mask_smooth[js],nx-1,ny-1,nz-1,
-                                         self.npass_smooth[:,js].copy(),
-                                         self.alpha_smooth[:,js].copy(),
-                                         self.stride_smooth[:,js].copy())
-                smooth3d_121_stride_mask(self.fields.J[...,1],self.mask_smooth[js],nx-1,ny-1,nz-1,
-                                         self.npass_smooth[:,js].copy(),
-                                         self.alpha_smooth[:,js].copy(),
-                                         self.stride_smooth[:,js].copy())
-                smooth3d_121_stride_mask(self.fields.J[...,2],self.mask_smooth[js],nx-1,ny-1,nz-1,
-                                         self.npass_smooth[:,js].copy(),
-                                         self.alpha_smooth[:,js].copy(),
-                                         self.stride_smooth[:,js].copy())
-                if self.l_pushf or self.l_deposit_rho:
-                    smooth3d_121_stride_mask(self.fields.Rho[...],self.mask_smooth[js],nx-1,ny-1,nz-1,
-                                           self.npass_smooth[:,js].copy(),
-                                           self.alpha_smooth[:,js].copy(),
-                                           self.stride_smooth[:,js].copy())
+                smooth3d_121_stride_mask( self.fields.J[...,0],
+                    self.mask_smooth[js], nx-1, ny-1, nz-1,
+                    self.npass_smooth[:,js].copy(), self.alpha_smooth[:,js].copy(),
+                    self.stride_smooth[:,js].copy())
+                smooth3d_121_stride_mask( self.fields.J[...,1],
+                    self.mask_smooth[js], nx-1, ny-1, nz-1,
+                    self.npass_smooth[:,js].copy(), self.alpha_smooth[:,js].copy(),
+                    self.stride_smooth[:,js].copy())
+                smooth3d_121_stride_mask( self.fields.J[...,2],
+                    self.mask_smooth[js], nx-1, ny-1, nz-1,
+                    self.npass_smooth[:,js].copy(), self.alpha_smooth[:,js].copy(),
+                    self.stride_smooth[:,js].copy())
+                if self.l_getrho:
+                    smooth3d_121_stride_mask(self.fields.Rho[...],
+                        self.mask_smooth[js], nx-1, ny-1, nz-1,
+                        self.npass_smooth[:,js].copy(), self.alpha_smooth[:,js].copy(),
+                        self.stride_smooth[:,js].copy())
         if l_mask_method==2:
             for i in range(3):
                 self.fields.J[...,i] *= self.mask_smooth
                 self.fields.J[...,i] += Jcopy[...,i]*(1.-self.mask_smooth)
-            if self.l_pushf or self.l_deposit_rho:
+            if self.l_getrho:
                 self.fields.Rho *= self.mask_smooth
                 self.fields.Rho += Rhocopy*(1.-self.mask_smooth)
 
@@ -1526,7 +1819,7 @@ class EM3D(SubcycledPoissonSolver):
                     self.smootharray(self.fields.Bx,js)
                     self.smootharray(self.fields.By,js)
                     self.smootharray(self.fields.Bz,js)
-                    if self.l_pushf or self.l_deposit_rho:
+                    if self.l_pushf:
                         smooth3d_121(self.fields.F,nx-1,ny-1,nz-1,npass_smooth[:,js]*m,alpha_smooth[:,js].copy())
 
     def smoothfields_poly(self):
@@ -1886,7 +2179,7 @@ class EM3D(SubcycledPoissonSolver):
                 self.nzshifts+=self.refinement[2]
 
     def move_window_fields(self):
-            # --- move window in x
+        # --- move window in x
         self.xgridcont+=self.vxgrid*top.dt
         while (abs(self.xgrid-self.xgridcont)>=0.5*self.dx):
             self.shift_cells_x(int(sign(self.vxgrid)))
@@ -2127,10 +2420,8 @@ class EM3D(SubcycledPoissonSolver):
 
     def push_e_full(self,i):
         dt = top.dt/self.ncyclesperstep
-        if self.l_pushf or self.l_deposit_rho:
+        if self.l_getrho:
             w = float(i+2)/self.ncyclesperstep
-            w=0.5
-            print 'W = ',w
             self.fields.Rho = (1.-w)*self.fields.Rhoold + w*self.fields.Rhoarray[...,0]
         if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
         if self.laser_mode==1:self.add_laser(self.fields)
@@ -2619,29 +2910,85 @@ class EM3D(SubcycledPoissonSolver):
             dxob = Opyndx.DXCollect(dxob)
             return dxob,colorbar#,slice
 
-    ##########################################################################
-    # Gather requested array on processor 0
-    def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0):
-        if self.isactive:
-            f=self.block.core.yf
-            if self.l_1dz:
+    ########################################################
+    # Gather the requested array on processor 0.
+    ########################################################    
+    def gatherarray(self,data,direction=None,slice=None,procs=None,guards=0) :
+        """
+        Gather the requested array on processor 0.
+        Return only a slice of the array, if direction is in [0,1,2]
+
+        Parameters :
+        ------------
+        data : ndarray
+            An array of dimension ndim, containing the field on the local processor
+            (without the guard cells) and which has to be combined with that of the
+            other processors.
+            
+        direction : int
+            A flag indicating the direction of the slice to be selected.
+            If direction is not provided (slice=None), the function returns the full array.
+            direction = 0 : zy slice
+            direction = 1 : zx slice
+            direction = 2 : xy slice
+
+        slice : int
+            Used only if direction is not None.
+            The index of the slice to be gathered, in the global mesh.
+            If slice is not provided (slice=None), this index is set
+            to the middle of the global mesh.
+
+        procs : ndarray or int
+            An integer or array of integers that indicate the processors that
+            have to send data.
+
+        Returns :
+        ---------
+        A ndarray containing the values of the fields.
+        If there is slicing (direction in [0,1,2]), the resulting array has dimension
+        ndim-1. Otherwise, the array has dimension ndim.
+        
+        """
+        
+        if self.isactive: # If the local processor is active
+
+            # Determine the shape of the data array
+            ndim = data.ndim
+            if ndim == 1 : # 1D
                 nzd=shape(data)[0]
                 nxd = 1
                 nyd = 1
-            elif self.l_2dxz:
+            elif ndim == 2 : # 2D Cartesian, or mode 0 of Circ
                 nxd,nzd=shape(data)
                 nyd = 1
-            else:
+            elif ( ndim == 3 and self.circ_m > 0 ) : # modes > 0 of Circ
+                nxd,nzd=shape(data)[0:2]
+            else : # 3D
                 nxd,nyd,nzd=shape(data)
-            if direction==0:
-                if slice is None:
+
+            # If direction is in [0,1,2] (i.e. there is slicing)
+            # determine the index and data of the slice
+
+            # Slicing has no meaning in the 1D case
+            # Instead, return full array
+            if self.l_1dz : direction = None
+            # Slicing in y (xz slice) has no meaning in the 2D and Circ case
+            # Instead, return full array
+            if self.l_2dxz == 1 : 
+                if direction == 1 : direction = None
+                
+            # yz slice, at a given index and position in x
+            if direction==0 : 
+                if slice is None : 
                     if self.l4symtry:
                         slice=0
                     else:
                         slice=self.nx/2
-                xslice = w3d.xmmin+slice*w3d.dx
+                xslice = w3d.xmmin + slice*w3d.dx
+                # selfslice : index of the slice on the local processor
                 selfslice = nint((xslice-self.block.xmin)/self.block.dx)
-                if selfslice<0 or selfslice>nxd-1:
+                # Check whether the local processor is involved for this slice
+                if selfslice < 0 or selfslice > nxd-1 :
                     data=None
                     xmin=xmax=ymin=ymax=0.
                 else:
@@ -2650,15 +2997,19 @@ class EM3D(SubcycledPoissonSolver):
                     ymin=self.block.zmin
                     ymax=self.block.zmax
                     data=data[selfslice,...]
-            if direction==1 and not self.l_2dxz:
+
+            # zx slice, at a given index and position in y
+            elif direction==1 and not self.l_2dxz:
                 if slice is None:
                     if self.l4symtry:
                         slice=0
                     else:
                         slice=self.ny/2
                 yslice = w3d.ymmin+slice*w3d.dy
+                # selfslice : index of the slice on the local processor
                 selfslice = nint((yslice-self.block.ymin)/self.block.dy)
                 if self.l_2dxz:slice=0
+                # Check whether the local processor is involved for this slice
                 if selfslice<0 or selfslice>nyd-1:
                     data=None
                     xmin=xmax=ymin=ymax=0.
@@ -2668,10 +3019,14 @@ class EM3D(SubcycledPoissonSolver):
                     ymin=self.block.zmin
                     ymax=self.block.zmax
                     data=data[:,selfslice,:]
-            if direction==2:
-                if slice is None:slice=self.nz/2
+
+            # xy slice, at a given index and position in z
+            if direction==2 :
+                if slice is None : slice=self.nz/2
                 zslice = w3d.zmmin+slice*w3d.dz
+                # selfslice : index of the slice on the local processor
                 selfslice = nint((zslice-self.block.zmin)/self.block.dz)
+                # Check whether the local processor is involved for this slice
                 if selfslice<0 or selfslice>nzd-1:
                     data=None
                     xmin=xmax=ymin=ymax=0.
@@ -2681,7 +3036,10 @@ class EM3D(SubcycledPoissonSolver):
                     ymin=self.block.ymin
                     ymax=self.block.ymax
                     data=data[...,selfslice]
+
         if procs is None:procs=arange(npes)
+
+        # Determine the number of guard cells
         if me==0:
             if guards:
                 nxg=self.nxguard
@@ -2691,39 +3049,49 @@ class EM3D(SubcycledPoissonSolver):
                 nxg=0
                 nyg=0
                 nzg=0
+
+        # GATHER OPERATION
+                
+        # If there is slicing                
         if direction in [0,1,2] and not (direction==1 and self.l_2dxz):
             if me==0:
-                if self.l_2dxz:
+                # Prepare the global array on the local processor
+                if ndim == 2 : # 2D Cartesian, or mode 0 of Circ
                     if direction==0: datag = zeros([self.nz+1+nzg*2],'d')
-                    if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
                     if direction==2: datag = zeros([self.nx+1+nxg*2],'d')
-                else:
+                elif ( ndim == 3 and self.circ_m > 0 ) : # modes > 0 of Circ
+                    if direction==0: datag = zeros([self.nz+1+nzg*2, self.circ_m],'complex')
+                    if direction==2: datag = zeros([self.nx+1+nxg*2, self.circ_m],'complex')
+                else: # 3D
                     if direction==0: datag = zeros([self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
                     if direction==1: datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
                     if direction==2: datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2],'d')
             else:
                 datag=None
             if isinstance(procs,types.IntType):procs=[procs]
-            validdata = gatherlist(self.isactive and data is not None,bcast=1)
-            validprocs = compress(validdata,arange(len(validdata)))
-            alldata = gatherlist([xmin,ymin,data],dest=0,procs=validprocs)
-            barrier() # this ensures that processor 0 will not bet overflowed with messages
+            # Find the processors that have to send data
+            validdata = gatherlist( self.isactive and data is not None, bcast=1)
+            validprocs = compress( validdata , arange(len(validdata)) )
+            # Send data
+            alldata = gatherlist( [xmin,ymin,data], dest=0, procs=validprocs )
+            barrier() # This ensures that processor 0 will not bet overflowed with messages
             if me==0:
+                # Fill the global array datag with the local arrays contained in alldata
                 for i in range(len(alldata)):
                     xminp = alldata[i][0]
                     yminp = alldata[i][1]
                     data  = alldata[i][-1]
                     if data is not None:
-                        if self.l_2dxz:
-                            if direction==0:
+                        if self.l_2dxz : # 2D and Circ
+                            if direction==0: 
                                 ny = shape(data)[0]
                                 iymin = nint((yminp-self.zmmin)/self.dz)+nzg
                                 datag[iymin:iymin+ny] = data[...]
-                            if direction==2:
+                            if direction==2: 
                                 nx = shape(data)[0]
                                 ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
                                 datag[ixmin:ixmin+nx] = data[...]
-                        else:
+                        else: # 3D
                             nx,ny = shape(data)
                             if direction==0:
                                 ixmin = nint((xminp-self.ymmin)/self.dy)+nyg
@@ -2735,13 +3103,18 @@ class EM3D(SubcycledPoissonSolver):
                                 ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
                                 iymin = nint((yminp-self.ymmin)/self.dy)+nyg
                             datag[ixmin:ixmin+nx,iymin:iymin+ny] = data[...]
+
+        # If there is no slicing
         else:
             if me==0:
-                if self.l_1dz:
+                # Prepare the global array on the local processor
+                if ndim==1 : # 1D
                     datag = zeros([self.nz+1+nzg*2],'d')
-                elif self.l_2dxz:
+                elif ndim==2 : # 2D and mode 0 of Circ
                     datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2],'d')
-                else:
+                elif (ndim==3 and self.circ_m > 0) : # modes > 0 Circ
+                    datag = zeros([self.nx+1+nxg*2,self.nz+1+nzg*2,self.circ_m],'complex')
+                else: # 3D
                     datag = zeros([self.nx+1+nxg*2,self.ny+1+nyg*2,self.nz+1+nzg*2],'d')
             else:
                 datag = None
@@ -2754,23 +3127,29 @@ class EM3D(SubcycledPoissonSolver):
             dx=self.block.dx
             dy=self.block.dy
             dz=self.block.dz
+            # Determine the list of procs that have to send data
+            if procs is None : procs=range(npes) 
+            if type(procs) is int : procs=[procs] 
+            # Send the data
             if me>0 and me in procs:
                 comm_world.send((xmin,xmax,dx,ymin,ymax,dy,zmin,zmax,dz,data),0,3)
             else:
-                for i in range(0,npes):
+                for i in procs :
+                    # Receive the data on proc 0
                     if i != me:
                         xminp,xmaxp,dxp,yminp,ymaxp,dyp,zminp,zmaxp,dzp,data=mpirecv(i,3)
                     else:
                         xminp = xmin
                         yminp = ymin
                         zminp = zmin
+                    # Fill the global array datag with the local arrays sent
                     if data is not None:
                         if self.l_1dz:
                             nz = shape(data)[0]
                             izmin = nint((zminp-self.zmmin)/self.dz)+nzg
                             datag[izmin:izmin+nz] = data[...]
-                        elif self.l_2dxz:
-                            nx,nz = shape(data)
+                        elif self.l_2dxz: # 2D and Circ
+                            nx,nz = shape(data)[0:2]
                             ixmin = nint((xminp-self.xmmin)/self.dx)+nxg
                             izmin = nint((zminp-self.zmmin)/self.dz)+nzg
                             datag[ixmin:ixmin+nx,izmin:izmin+nz] = data[...]
@@ -2780,10 +3159,11 @@ class EM3D(SubcycledPoissonSolver):
                             iymin = nint((yminp-self.ymmin)/self.dy)+nyg
                             izmin = nint((zminp-self.zmmin)/self.dz)+nzg
                             datag[ixmin:ixmin+nx,iymin:iymin+ny,izmin:izmin+nz] = data[...]
-            barrier() # this ensures that processor 0 will not bet overflowed with messages
+            barrier() # This ensures that processor 0 will not bet overflowed with messages
 
-        return datag
-
+        # Return the global array
+        return(datag) 
+        
     def getarray(self,g,guards=0,overlap=0):
         if guards:
             return g
@@ -2801,30 +3181,973 @@ class EM3D(SubcycledPoissonSolver):
             else:
                 return g[f.nxguard:-f.nxguard-ox,f.nyguard:-f.nyguard-oy,f.nzguard:-f.nzguard-oz]
 
-    def pfex(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Exp,guards,overlap=True),'E_x',
-        direction=direction,**kw)
+    def getarray_circ(self,g,guards=0,overlap=0):
+        if guards:
+            return g
+        else:
+            f=self.fields
+            ox=oy=oz=0
+            if not overlap:
+                if self.block.xrbnd==em3d.otherproc:ox=1
+                if self.block.yrbnd==em3d.otherproc:oy=1
+                if self.block.zrbnd==em3d.otherproc:oz=1
+            return g[f.nxguard:-f.nxguard-ox,f.nzguard:-f.nzguard-oz,:]
 
-    def pfey(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Eyp,guards,overlap=True),'E_y',
-        direction=direction,**kw)
+        
+    #############################################################
+    #                   Plotting methods                        #
+    #############################################################
 
-    def pfez(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Ezp,guards,overlap=True),'E_z',
-        direction=direction,**kw)
+    def pfex( self, l_children=1, guards=0, direction=None, m=None,
+              output=False, show=True, **kw) :
+        """
+        Plot the Ex field.
 
-    def pfbx(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Bxp,guards,overlap=True),'B_x',
-        direction=direction,**kw)
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
 
-    def pfby(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Byp,guards,overlap=True),'B_y',
-        direction=direction,**kw)
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
 
-    def pfbz(self,l_children=1,guards=0,direction=None,**kw):
-        return self.genericpfem3d(self.getarray(self.fields.Bzp,guards,overlap=True),'B_z',
-        direction=direction,**kw)
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
 
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+        
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """
+        
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            er0 = self.gatherarray( self.getarray( self.fields.Exp,guards,overlap=True) )  
+            etheta0 = self.gatherarray( self.getarray( self.fields.Eyp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                er = self.gatherarray( \
+                            self.getarray_circ( self.fields.Exp_circ,guards,overlap=True) )  
+                etheta = self.gatherarray( \
+                            self.getarray_circ( self.fields.Eyp_circ,guards,overlap=True ) )
+            else :
+                er = None
+                etheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( er0, etheta0, er, etheta, name='Ex^^',
+                            component='x', m=m, direction=direction,
+                            output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Exp,guards,
+                               overlap=True)
+            if show :
+                self.genericpfem3d( f,'E_x', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+    def pfey( self, l_children=1, guards=0, direction=None, m=None,
+                output=False, show=True, **kw) :
+        """
+        Plot the Ey field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """
+        
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            er0 = self.gatherarray( self.getarray( self.fields.Exp,guards,overlap=True) )  
+            etheta0 = self.gatherarray( self.getarray( self.fields.Eyp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                er = self.gatherarray( self.getarray_circ( \
+                                            self.fields.Exp_circ,guards,overlap=True ) ) 
+                etheta = self.gatherarray( self.getarray_circ( \
+                                            self.fields.Eyp_circ,guards,overlap=True ) ) 
+            else :
+                er = None
+                etheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( er0, etheta0, er, etheta, name='Ey^^',
+                    component='y', m=m, direction=direction,
+                    output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Eyp,guards,overlap=True)
+            if show :
+                self.genericpfem3d(f, 'E_y', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+            
+    def pfez( self, l_children=1, guards=0, direction=None, m=None,
+                output=False, show=True, **kw) :
+        """
+        Plot the Ez field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            ez0 = self.gatherarray( self.getarray( self.fields.Ezp,guards,overlap=True) )  
+            # Modes > 0
+            if self.circ_m > 0 :
+                ez = self.gatherarray( self.getarray_circ( \
+                                    self.fields.Ezp_circ,guards,overlap=True ) ) 
+            else :
+                ez = None
+            # Sum and plot them
+            f = self.pfscalar_circ( ez0, ez, name='Ez^^', m=m,
+                    direction=direction, output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Ezp,guards,overlap=True)
+            if show :
+                self.genericpfem3d( f, 'E_z', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+    def pfer( self, l_children=1, guards=0, direction=None, m=None,
+                output=False, show=True, **kw) :
+        """
+        Plot the Er field (only when using azimuthal
+        decomposition (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            er0 = self.gatherarray( self.getarray( self.fields.Exp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                er = self.gatherarray( self.getarray_circ( \
+                            self.fields.Exp_circ,guards,overlap=True ) ) 
+            else :
+                er = None
+            # Sum and plot them
+            f = self.pfscalar_circ( er0, er, name='Er^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+    def pfet( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the E_theta field (only when using azimuthal decomposition
+         (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)        
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            et0 = self.gatherarray( self.getarray( self.fields.Eyp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                et = self.gatherarray( self.getarray_circ( \
+                                        self.fields.Eyp_circ,guards,overlap=True ) ) 
+            else :
+                et = None
+            # Sum and plot them
+            f = self.pfscalar_circ( et0, et, name='Etheta^^', m=m,
+                    direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+        
+    def pfbx( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Bx field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)        
+        
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            br0 = self.gatherarray( self.getarray( self.fields.Bxp,guards,overlap=True) )
+            btheta0 = self.gatherarray( self.getarray( self.fields.Byp,guards,overlap=True) )  
+            if self.circ_m > 0 :
+                # Modes > 0
+                br = self.gatherarray( self.getarray_circ( \
+                                        self.fields.Bxp_circ,guards,overlap=True ) )  
+                btheta = self.gatherarray( self.getarray_circ( \
+                                        self.fields.Byp_circ,guards,overlap=True ) ) 
+            else :
+                br = None
+                btheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( br0, btheta0, br, btheta, name='Bx^^',
+                            component='x', m=m, direction=direction,
+                            output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Bxp,guards,overlap=True)
+            if show :
+                self.genericpfem3d( f, 'B_x', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+
+    def pfby( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the By field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gathbr the Fourier coefficients
+            # Mode 0
+            br0 = self.gatherarray( self.getarray( self.fields.Bxp,guards,overlap=True) ) 
+            btheta0 = self.gatherarray( self.getarray( self.fields.Byp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                br = self.gatherarray( self.getarray_circ( \
+                                            self.fields.Bxp_circ,guards,overlap=True ) )  
+                btheta = self.gatherarray( self.getarray_circ( \
+                                            self.fields.Byp_circ,guards,overlap=True ) )
+            else :
+                br = None
+                btheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( br0, btheta0, br, btheta, name='By^^',
+                             component='y', m=m, direction=direction,
+                             output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Byp,guards,overlap=True)
+            if show :
+                self.genericpfem3d(f, 'B_y', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+
+    def pfbz( self, l_children=1, guards=0, direction=None, m=None,
+          output=False, show=True, **kw) :
+        """
+        Plot the Bz field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+        
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            bz0 = self.gatherarray( self.getarray( self.fields.Bzp,guards,overlap=True) )  
+            # Modes > 0
+            if self.circ_m > 0 :
+                bz = self.gatherarray( self.getarray_circ( \
+                                        self.fields.Bzp_circ,guards,overlap=True ) ) 
+            else :
+                bz = None
+            # Sum and plot them
+            f = self.pfscalar_circ( bz0, bz, name='Bz^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.Bzp,guards,overlap=True)
+            if show :
+                self.genericpfem3d( f, 'B_z', direction=direction,**kw)
+
+        if output and me==0 :
+            return( f )
+
+    def pfbr( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Br field (only when using azimuthal
+        decomposition (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+    
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+            
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            br0 = self.gatherarray( self.getarray( self.fields.Bxp,guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                br = self.gatherarray( self.getarray_circ( \
+                                        self.fields.Bxp_circ,guards,overlap=True ) ) 
+            else :
+                br = None
+            # Sum and plot them
+            f = self.pfscalar_circ( br0, br, name='Br^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+    def pfbt( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the B_theta field (only when using azimuthal
+        decomposition (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)        
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            btheta0 = self.gatherarray( self.getarray( self.fields.Byp,guards,overlap=True) )
+            # Modes > 0 
+            if self.circ_m > 0 :
+                btheta = self.gatherarray( self.getarray_circ( \
+                                            self.fields.Byp_circ,guards,overlap=True ) ) 
+            else :
+                btheta = None
+            # Sum and plot them
+            f = self.pfscalar_circ( btheta0, btheta, name='Bt^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+    def pfjx( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Jx field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+        
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """               
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            jr0 = self.gatherarray( self.getarray( self.fields.J[:,:,:,0],guards,overlap=True) ) 
+            jtheta0 = self.gatherarray(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                jr = self.gatherarray( self.getarray_circ( \
+                                        self.fields.J_circ[:,:,0,:],guards,overlap=True ) )  
+                jtheta = self.gatherarray( self.getarray_circ( \
+                                        self.fields.J_circ[:,:,1,:],guards,overlap=True ) )
+            else :
+                jr = None
+                jtheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( jr0, jtheta0, jr, jtheta, name='Jx^^',
+                            component='x', m=m, direction=direction,
+                            output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f =  self.getarray(self.fields.J[...,0],
+                               guards,overlap=True)
+            if show :
+                self.genericpfem3d( f, 'J_x', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+    def pfjy( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Jy field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and
+            making an angle theta_plot with the x axis
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfvec_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            jr0 = self.gatherarray( self.getarray( self.fields.J[:,:,:,0],guards,overlap=True) )
+            jtheta0 = self.gatherarray(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True))  
+            if self.circ_m > 0 :
+                jr = self.gatherarray( self.getarray_circ( \
+                                        self.fields.J_circ[:,:,0,:],guards,overlap=True ) )  
+                jtheta = self.gatherarray( self.getarray_circ( \
+                                        self.fields.J_circ[:,:,1,:],guards,overlap=True ) ) 
+            else :
+                jr = None
+                jtheta = None
+            # Sum and plot them
+            f = self.pfvec_circ( jr0, jtheta0, jr, jtheta, name='Jy^^', \
+                             component='y', m=m, direction=direction,
+                             output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.J[...,1],guards,
+                              overlap=True)
+            if show :
+                self.genericpfem3d( f, 'J_y', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+
+    def pfjz( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Jz field.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            jz0 = self.gatherarray( self.getarray( self.fields.J[:,:,:,2],guards,overlap=True) )
+            # Modes > 0
+            if self.circ_m > 0 :
+                jz = self.gatherarray(self.getarray_circ( \
+                                    self.fields.J_circ[:,:,2,:],guards,overlap=True ) )  
+            else :
+                jz = None
+            # Sum and plot them
+            f = self.pfscalar_circ( jz0, jz, name='Jz^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.J[...,2],guards,
+                              overlap=True)
+            if show :
+                self.genericpfem3d( f, 'J_z', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
+            
+
+    def pfjr( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the Jr field (only when using azimuthal
+        decomposition (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            jr0 = self.gatherarray( self.getarray( self.fields.J[:,:,:,0],guards,overlap=True) )
+            # Modes > 0  
+            if self.circ_m > 0 :
+                jr = self.gatherarray( self.getarray_circ( \
+                                    self.fields.J_circ[:,:,0,:],guards,overlap=True ) )  
+            else :
+                jr = None
+            # Sum and plot them
+            f = self.pfscalar_circ( jr0, jr, name='Jr^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+    def pfjt( self, l_children=1, guards=0, direction=None, m=None,
+                            output=False, show=True, **kw) :
+        """
+        Plot the J_theta field (only when using azimuthal
+        decomposition (l_2drz = 1))
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+                    
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            jt0 = self.gatherarray( self.getarray( self.fields.J[:,:,:,1],guards,overlap=True) )  
+            # Modes > 0
+            if self.circ_m > 0 :
+                jt = self.gatherarray( self.getarray_circ( \
+                                    self.fields.J_circ[:,:,1,:],guards,overlap=True ) ) 
+            else :
+                jt = None
+            # Sum and plot them
+            self.pfscalar_circ( jt0, jt, name='Jt^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+
+            if output and me==0 :
+                return(f[::-1])
+
+    
     def pfexg(self,l_children=1,guards=0,direction=None,**kw):
         self.genericpfem3d(self.getarray(self.fields.Ex,guards,overlap=True),'Eg_x',
         direction=direction,**kw)
@@ -2849,33 +4172,67 @@ class EM3D(SubcycledPoissonSolver):
         self.genericpfem3d(self.getarray(self.fields.Bz,guards,overlap=True),'Bg_z',
         direction=direction,**kw)
 
-    def pfjx(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,0],guards,overlap=True),'J_x',
-        direction=direction,**kw)
+    def pff( self, l_children=1, guards=0, direction=None, m=None,
+                           output=False, show=True, **kw) :
+        """
+        Plot the F pseudo field (dF/dt = div E - rho).
 
-    def pfjy(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,1],guards,overlap=True),'J_y',
-        direction=direction,**kw)
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis
+            and making an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
 
-    def pfjz(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.J[:,:,:,2],guards,overlap=True),'J_z',
-        direction=direction,**kw)
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots
+            the sum of the contribution of all modes.
 
-    def pfrho(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.Rho,guards,overlap=True),'Rho',
-        direction=direction,**kw)
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
 
-    def pff(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.F,guards,overlap=True),'F',
-        direction=direction,**kw)
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
 
-    def pfg(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.G,guards,overlap=True),'G',
-        direction=direction,**kw)
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
 
-    def pfincond(self,l_children=1,guards=0,direction=None,**kw):
-        self.genericpfem3d(self.getarray(self.fields.incond,guards,overlap=True),'incond',
-        direction=direction,**kw)
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+        
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        
+        if self.l_2drz == 1 : # Azimuthal decomposition
+            # Gather the Fourier coefficients
+            # Mode 0
+            f0 = self.gatherarray( self.getarray( self.fields.F,guards,overlap=True) )  
+            # Modes > 0
+            if self.circ_m > 0 :
+                f = self.gatherarray(self.getarray_circ(self.fields.F_circ,guards,overlap=True)) 
+            else :
+                f = None
+            # Sum and plot them
+            f = self.pfscalar_circ( f0, f, name='F^^', m=m,
+                direction=direction, output=output, show=show, **kw )
+            
+        else: # Cartesian fields
+            f = self.getarray(self.fields.F,guards,overlap=True)
+            self.genericpfem3d( f, 'F', direction=direction,**kw)
+
+        if output and me==0 :
+            return(f[::-1])
 
     def pfdive(self,l_children=1,guards=0,direction=None,**kw):
         self.genericpfem3d(self.getdive(guards,overlap=True),'div(E)',
@@ -2897,6 +4254,516 @@ class EM3D(SubcycledPoissonSolver):
         self.genericpfem3d(sqrt(e+b),'W',
         direction=direction,**kw)
 
+
+    def sum_modes_circ(self, ff0, ff, modes, direction=1, theta_plot=0,
+                       iz=w3d.nz/2 ) :
+        """
+        Calculates the real field corresponding to the Fourier coefficients
+        of the specified modes, over a 2D plane.
+
+        Note that the calculation of the sum of the contributions of
+        the mode uses the same formulas as getf2dxz_n (for the mode 0)
+        and getf2drz_circ_n (for the modes > 0), with the exception that
+        it does not do the sum of the r and theta component of a vector
+        field to obtain the x or y component (use fvec_circ for this)
+        
+        Parameters
+        ----------
+        ff0 : ndarray
+            A 2d array of real values with shape [ w3d.nx+1, w3d.nz+1 ],
+            which contains the azimuthal Fourier coefficients of the field
+            for the mode m=0.
+
+        ff : ndarray
+            A 3d array of complex values with shape [ w3d.nx+1, w3d.nz+1 ,
+            self.fields.circ_m ], which contains the azimuthal Fourier
+            coefficients of the field for the modes m>0.
+
+        modes : list
+            A list of integers indicating the modes whose contributions are
+            to be summed. The other modes are ignored.
+
+        direction : int
+            A flag that defines in which plame the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+        
+        theta_plot : float
+            Used only if direction = -1
+            The angle (in radians) between the plane of the plot and the
+            zx plane.
+    
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        Returns
+        -------
+            A tuple of two 2D array with real values
+            - the first array contains the values of fields in the plane
+            defined by direction
+            - the second array contains the corresponding values of theta
+              (needed e.g. when doing the vector sum of two components)
+            If direction is in [-1,0,1], the first axis of the returned
+            arrays corresponds to z.
+            If direction is 2, the first and second axis of the returned
+            array correspond to x and y respectively.
+        """
+        
+        # If the plane of the plot includes the z axis
+        if direction in [-1,0,1] :
+    
+            # Prepare the theta array
+            if direction == 0 : theta_plot = pi/2  # zy plane
+            if direction == 1 : theta_plot = 0.    # zx plane
+            theta = zeros([ 2*w3d.nx+1 , w3d.nz ])
+            # Upper half of the plane
+            theta[ w3d.nx: , : ] = theta_plot
+            # Lower half of the plane
+            theta[ :w3d.nx , : ] = theta_plot + pi
+                
+            # Calculate the fields in the given plane, from its Fourier
+            # coefficients
+            f = zeros([ 2*w3d.nx+1 , w3d.nz ])
+            # Carry out the sum
+            for m_mode in modes :
+                if m_mode == 0 : # Mode 0
+                    # Upper half of the plane
+                    f[ w3d.nx: , : ] += ff0[ 0:w3d.nx+1 , :w3d.nz ]
+                    # Lower half of the plane
+                    f[ w3d.nx-1::-1 , : ] += ff0[ 1:w3d.nx+1 , :w3d.nz ]                      
+                else : # Modes > 0
+                    # Upper half of the plane
+                    f[ w3d.nx: , : ] += \
+                    cos( m_mode*theta_plot ) * ff[ 0:w3d.nx+1, :w3d.nz ,
+                        m_mode-1].real + sin( m_mode*theta_plot ) * \
+                         ff[ 0:w3d.nx+1, :w3d.nz , m_mode-1].imag  
+                    # Lower half of the plane
+                    f[ w3d.nx-1::-1 , : ] += \
+                    cos( m_mode*(theta_plot+pi) ) * ff[ 1:w3d.nx+1, :w3d.nz ,
+                        m_mode-1].real + sin( m_mode*(theta_plot+pi) ) * \
+                        ff[ 1:w3d.nx+1, :w3d.nz , m_mode-1].imag
+                    
+            # Transpose the array, so that the first axis corresponds to z
+            f = f.T
+            theta = theta.T
+                        
+        # If the plot is in the xy plane
+        if direction == 2 :
+    
+            # Get the coordinates on which to calculate the field,
+            # in the xy plane
+            xx , yy = getmesh2d( -w3d.xmmax,w3d.dx,w3d.nx*2,-w3d.xmmax,
+                                 w3d.dx,w3d.nx*2 )
+            r = sqrt(xx*xx+yy*yy).flatten()
+            theta=arctan2(yy,xx).flatten()
+            
+            # Calculate the fields in the given plane,
+            # from its Fourier coefficients
+            f = zeros( (2*w3d.nx+1)**2 )
+            # Carry out the sum
+            for m_mode in modes :
+                if m_mode == 0 : # Mode 0
+                    # Interpolate the Fourier coefficients
+                    # (Arrays are flattened so as to adapt to
+                    # the interface of getgrid1d)
+                    f_real = zeros((2*w3d.nx+1)**2)
+                    getgrid1d((2*w3d.nx+1)**2,r,f_real,w3d.nx,ff0[:,iz],
+                              0.,w3d.xmmax)
+                    # Sum the mode
+                    f += f_real
+                else : # Modes > 0
+                    # Interpolate the Fourier coefficients
+                    # (Arrays are flattened so as to adapt to the
+                    # interface of getgrid1d)
+                    f_real = zeros((2*w3d.nx+1)**2)
+                    f_imag = zeros((2*w3d.nx+1)**2)
+                    getgrid1d((2*w3d.nx+1)**2,r,f_real,w3d.nx, 
+                              ff[:,iz,m_mode-1].real,0.,w3d.xmmax)
+                    getgrid1d((2*w3d.nx+1)**2,r,f_imag,w3d.nx,
+                              ff[:,iz,m_mode-1].imag,0.,w3d.xmmax)
+                    # Sum the mode
+                    f += f_real*cos(m_mode*theta) + f_imag*sin(m_mode*theta)
+                    
+            # Unflatten the arrays
+            f=f.reshape([2*w3d.nx+1,2*w3d.nx+1])
+            theta = theta.reshape([2*w3d.nx+1,2*w3d.nx+1])
+            
+        # Finally return the arrays
+        return(f, theta)
+        
+    def pfscalar_circ(self, ff0, ff, name='', m=None, direction=1,
+                      theta_plot=0, iz=w3d.nz/2, titles=1,
+                      output=False, show=True, **kw):
+        """
+        Plot a scalar field from its azimuthal Fourier coefficients
+        ff0 (mode 0) and ff (modes > 0).
+    
+        Parameters
+        ----------
+        ff0 : ndarray
+            A 2d array of real values with shape [ w3d.nx+1, w3d.nz+1 ],
+            which contains the azimuthal Fourier coefficients of the
+            field for the mode m=0.
+
+        ff : ndarray
+            A 3d array of complex values with shape [ w3d.nx+1, w3d.nz+1 ,
+            self.fields.circ_m ], which contains the azimuthal Fourier
+            coefficients of the field for the modes m>0.
+            
+        name : str
+            The name of the field considered, which is then printed on the plot.
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        theta_plot : float
+            Used only if direction = -1
+            The angle (in radians) between the plane of the plot
+            and the zx plane.
+            
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+            
+        titles : int
+            A flag that indicates whether the plots should be
+            automatically labeled
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+            
+        """
+            
+        if me == 0 :
+
+            # Sets default direction to 1
+            if ( direction in [-1,0,1,2] ) == False : direction = 1 
+            
+            # Prepare sum over the modes
+            if m != None : # Single mode
+                assert m<=self.fields.circ_m, "m > circ_m: %g > %g" \
+                    %(m,self.fields.circ_m)
+                modes = [m]
+            else : # All modes
+                modes = range( self.fields.circ_m+1 )
+
+            # Sum all the selected modes, in the plane given by direction
+            # (Dump the returned theta array, since it is not used here)
+            f, _ = self.sum_modes_circ( ff0, ff, direction=direction,
+                            modes=modes, theta_plot=theta_plot, iz=iz )
+                
+            # Set the boundaries (here X and Y represent the axes of the plot)
+            # - If the plane of the plot includes the z axis
+            if direction in [-1,0,1] :
+                Xmin = w3d.zmmin + self.zgrid
+                Xmax = w3d.zmmax + self.zgrid
+                Ymin = -w3d.xmmax
+                Ymax = w3d.xmmax
+            # - If the plot is in the xy plane
+            if direction == 2 :
+                Xmin = -w3d.xmmax
+                Xmax = w3d.xmmax
+                Ymin = -w3d.xmmax
+                Ymax = w3d.xmmax
+                
+            # Plot function : colormap of the matrix f
+            if show :
+                ppgeneric( f, xmin=Xmin, xmax=Xmax, ymin=Ymin, ymax=Ymax, **kw)
+    
+                # Labeling of the plot
+                if titles == 1 :
+                    if m!=None :
+                        name = name+' (m=%g)'%m
+                    if direction == -1 :
+                        ptitles(name,'Z','Coordinate along theta=%f' \
+                                %theta_plot)
+                    elif direction == 0 :
+                        ptitles(name,'Z','Y')
+                    elif direction == 1 :
+                        ptitles(name,'Z','X')
+                    elif direction == 2 :
+                        ptitles(name,'X','Y')
+
+            if output and me==0 :
+                return( f.T )
+
+    def pfvec_circ(self, ffr0, fftheta0, ffr, fftheta, name='',
+                   component='x', m=None, direction=1, theta_plot=0,
+                   iz=w3d.nz/2, titles=1, output=False, show=True, **kw):
+        """
+        Plot the x or y component of a field from the azimuthal Fourier
+        coefficients of its radial and azimuthal components ffr0, fft0
+        (mode 0) and ffr, fft (modes > 0).
+    
+        Parameters
+        ----------
+        ffr0, fftheta0 : ndarray
+            2d arrays of real values with shape [ w3d.nx+1, w3d.nz+1 ,
+            self.fields.circ_m ], which contain the Fourier coefficients
+            of the radial and azimuthal components of the field,
+            for the mode 0.
+                        
+        ffr, fftheta : ndarray
+            3d arrays of complex values with shape [ w3d.nx+1, w3d.nz+1 ,
+            self.fields.circ_m ], which contain the Fourier coefficients
+            of the radial and azimuthal components of the field.
+            
+        name : str
+            The name of the field considered, which is then printed on the plot.
+
+        component : str
+            The component of the field that is to be plotted : either 'x' or 'y'
+            
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum o
+            f the contribution of all modes.
+
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        theta_plot : float
+            Used only if direction = -1
+            The angle (in radians) between the plane of the plot
+            and the zx plane.
+    
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        titles : int
+            A flag that indicates whether the plots should be
+            automatically labeled
+            
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+            
+        """
+        
+        if me == 0 :
+
+            # Sets default direction to 1
+            if ( direction in [-1,0,1,2] ) == False : direction = 1 
+            
+            # Prepare sum over the modes
+            if m is not None : # Single mode
+                assert m<=self.fields.circ_m, "m > circ_m: %g > %g" \
+                  %(m,self.fields.circ_m)
+                modes = [m]
+            else : # All modes
+                modes = range( self.fields.circ_m+1 )
+
+
+            # Sum all the selected modes, in the plane given by direction
+            # - Radial component
+            # (dump the returned theta array : it is given on the next line)
+            fr, _ = self.sum_modes_circ( ffr0, ffr, direction=direction,
+                                 modes=modes, theta_plot=theta_plot, iz=iz )
+            # - Azimuthal component
+            ftheta, theta = self.sum_modes_circ( fftheta0, fftheta,
+                direction=direction, modes=modes, theta_plot=theta_plot, iz=iz)
+
+            # Sum the radial and azimuthal components
+            if component == 'x' :
+                f = fr*cos(theta) - ftheta*sin(theta)
+            elif component == 'y' :
+                f = fr*sin(theta) + ftheta*cos(theta)
+
+            # Set the boundaries (here X and Y represent the axes of the plot)
+            # - If the plane of the plot includes the z axis
+            if direction in [-1,0,1] :
+                Xmin = w3d.zmmin + self.zgrid
+                Xmax = w3d.zmmax + self.zgrid
+                Ymin = -w3d.xmmax
+                Ymax = w3d.xmmax
+            # - If the plot is in the xy plane
+            if direction == 2 :
+                Xmin = -w3d.xmmax
+                Xmax = w3d.xmmax
+                Ymin = -w3d.xmmax
+                Ymax = w3d.xmmax
+
+            if show :
+                # Plot function : colormap of the matrix f
+                ppgeneric( f , xmin=Xmin, xmax=Xmax, ymin=Ymin,
+                           ymax=Ymax, **kw )
+
+                # Labeling of the plot
+                if titles == 1 :
+                    if m!=None :
+                        name = name+' (m=%g)'%m
+                    if direction == -1 :
+                        ptitles(name,'Z','Coordinate along theta=%f' \
+                                %theta_plot)
+                    elif direction == 0 :
+                        ptitles(name,'Z','Y')
+                    elif direction == 1 :
+                        ptitles(name,'Z','X')
+                    elif direction == 2 :
+                        ptitles(name,'X','Y')
+
+            if output and me==0 :
+                return( f.T )
+
+                    
+    def pfrho( self, l_children=1, guards=0, direction=None, m=None,
+               output=False, show=True, **kw) :
+        """
+        Plot the Rho charge density.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+            (Used only with the azimuthal decomposition (l_2drz = 1))
+
+        m : int
+            Used only with the azimuthal decomposition (l_2drz = 1)
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        output, show : bool, optional
+            whether to return the field matrix, and whether to
+            plot it.
+
+        Returns
+        -------
+        A 2d array representing the fields, if output is True
+
+        The shape of the array is such that it can be directly
+        plotted with matplotlib's imshow (non need to transpose it,
+        or reverse one dimension)
+            
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        """
+        if self.l_getrho :
+            if self.l_2drz == 1 : # Azimuthal decomposition
+                # Gather the Fourier coefficients
+                # Mode 0
+                rho0 = self.gatherarray( self.getarray( self.fields.Rho,guards,overlap=True) )
+                # Modes > 0
+                if self.circ_m > 0 :
+                    rho = self.gatherarray( \
+                        self.getarray_circ( self.fields.Rho_circ,guards,overlap=True ) ) 
+                else :
+                    rho = None
+                # Sum and plot them
+                f = self.pfscalar_circ( rho0, rho, name='Rho^^', m=m,
+                    direction=direction, output=output, show=show, **kw )
+                
+            else: # Cartesian fields
+                f = self.getarray(self.fields.Rho,guards,
+                    overlap=True)
+                if show :
+                    self.genericpfem3d( f,'Rho', direction=direction,**kw)
+
+            if output and me==0 :
+                return(f[::-1])
+
+    def pfdivE( self, l_children=1, guards=0, direction=None, m=None, **kw) :
+        """
+        Plot the quantity epsilon_0*div(E)- rho (charge conservation)
+        Only implemented in the azimuthal case.
+
+        Main parameters :
+        ------------
+        direction : int
+            A flag that defines in which plane the field is plotted.
+            direction = 0 : zy plane
+            direction = 1 : zx plane
+            direction = 2 : xy plane
+            direction = -1 : plane including the z axis and making
+            an angle theta_plot with the x axis
+
+        m : int
+            The single mode whose contribution is to be plotted.
+            If m is not provided (m=None), this function plots the sum
+            of the contribution of all modes.
+
+        iz : int
+            Used only if direction = 2
+            The z index of the xy slice that is to be plotted.
+
+        See the docstring of pfscalar_circ and genericpfem3d for further options
+        
+        """
+        im = 1.j  # Imaginary number im**2 = -1
+        
+        if self.l_getrho and self.l_2drz == 1 :
+            # Gather the Fourier coefficients for the mode 0
+            rho0 = self.gatherarray( self.getarray( self.fields.Rho,guards,overlap=True) )
+            er0 = self.gatherarray( self.getarray( self.fields.Ex,guards,overlap=True ) )
+            ez0 = self.gatherarray( self.getarray( self.fields.Ez,guards,overlap=True ) )
+            # Calculate the divergence for the mode 0
+            divE0 = zeros(rho0.shape)
+            for j in range(1,len(er0)) :
+                divE0[j,1:] = ( (1+0.5/j)*er0[j,1:] - \
+                                (1-0.5/j)*er0[j-1,1:] )/w3d.dx + \
+                                (ez0[j,1:]-ez0[j,:-1])/w3d.dz
+            divE0[0,1:] = 4./w3d.dx*er0[0,1:] + (ez0[0,1:]-ez0[0,:-1])/w3d.dz
+            if self.circ_m > 0 :
+                # Gather the Fourier coefficients for the modes > 0
+                rho=self.gatherarray(self.getarray_circ(self.fields.Rho_circ,guards,overlap=True)) 
+                er=self.gatherarray(self.getarray_circ(self.fields.Ex_circ,guards,overlap=True))
+                et=self.gatherarray(self.getarray_circ(self.fields.Ey_circ,guards,overlap=True)) 
+                ez=self.gatherarray(self.getarray_circ(self.fields.Ez_circ,guards,overlap=True))
+                divE = zeros(rho.shape, dtype='complex')
+                # Calculate the divergence for the mode 0
+                for M in range(self.circ_m) :
+                    for j in range(1,len(rho)) :
+                        divE[j,1:,M] =  ( (1+0.5/j)*er[j,1:,M]  \
+                                        - (1-0.5/j)*er[j-1,1:,M] )/w3d.dx \
+                                        - im*(M+1)*et[j,1:,M]/(j*w3d.dx) \
+                                        + (ez[j,1:,M]-ez[j,:-1,M])/w3d.dz
+                # Nothing for j=0, since the divergence of E is 0 on axis
+                # for modes > 0
+            else :
+                divE = None
+            # Sum and plot them
+            self.pfscalar_circ( eps0*divE0-rho0, eps0*divE-rho,
+                                name='eps0*div(E)-rho^^', m=m,
+                                direction=direction, **kw )
+
+
     def sezax(self):
         pass
 
@@ -2914,7 +4781,12 @@ class EM3D(SubcycledPoissonSolver):
 
     def getese(self):
         pass
-#    top.ese = self.get_tot_energy()
+
+
+    ######################################################
+    #                    Getters                         #
+    ######################################################
+    
 
     def getjx(self,guards=0,overlap=0):
         return self.getarray(self.fields.J[:,:,:,0],guards,overlap)
@@ -2976,6 +4848,30 @@ class EM3D(SubcycledPoissonSolver):
 
     def getg(self,guards=0,overlap=0):
         return self.getarray(self.fields.G,guards,overlap)
+
+    def getex_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.Ex_circ,guards,overlap)
+
+    def getey_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.Ey_circ,guards,overlap)
+
+    def getez_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.Ez_circ,guards,overlap)
+
+    def getf_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.F_circ,guards,overlap)
+
+    def getjx_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.J_circ[:,:,0,:],guards,overlap)
+
+    def getjy_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.J_circ[:,:,1,:],guards,overlap)
+
+    def getjz_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.J_circ[:,:,2,:],guards,overlap)
+
+    def getrho_circ(self,guards=0,overlap=0):
+        return self.getarray_circ(self.fields.Rho_circ,guards,overlap)
 
     def getincond(self,guards=0,overlap=0):
         return self.getarray(self.fields.incond,guards,overlap)
@@ -4386,6 +6282,7 @@ def pyinit_3dem_block(nx, ny, nz,
                       deposit_energy_density,
                       l_nodalgrid,
                       refinement,l_pushf,l_pushg,
+                      l_getrho,
                       stencil,
                       npass_smooth,
                       l_smooth_particle_fields,
@@ -4398,7 +6295,8 @@ def pyinit_3dem_block(nx, ny, nz,
                       sigmab,
                       excoef,
                       bycoef,
-                      pml_method):
+                      pml_method,
+                      circ_m):
 
     if xlb == em3d.otherproc:
         procxl = top.procneighbors[0,0]
@@ -4466,12 +6364,17 @@ def pyinit_3dem_block(nx, ny, nz,
     f.nx = nx
     f.ny = ny
     f.nz = nz
+    f.circ_m = circ_m
     f.norderx = norderx
     f.nordery = nordery
     f.norderz = norderz
     f.theta_damp=theta_damp
     f.sigmae=sigmae
     f.sigmab=sigmab
+    if l_getrho:
+        f.nxr = f.nx
+        f.nyr = f.ny
+        f.nzr = f.nz
     if 0:#refinement is None and (all(npass_smooth==0) or not l_smooth_particle_fields):
         f.nxp = 0
         f.nyp = 0
@@ -4595,6 +6498,23 @@ def pyinit_3dem_block(nx, ny, nz,
         f.Bxp = f.Bx
         f.Byp = f.By
         f.Bzp = f.Bz
+
+    f.Ex[...] = 0.
+    f.Ey[...] = 0.
+    f.Ez[...] = 0.
+    f.Bx[...] = 0.
+    f.By[...] = 0.
+    f.Bz[...] = 0.
+    f.Jarray[...] = 0.
+    if l_getrho :
+        f.Rhoarray[...] = 0.
+    if f.circ_m>0:
+        f.Ex_circ[...] = 0.
+        f.Ey_circ[...] = 0.
+        f.Ez_circ[...] = 0.
+        f.Bx_circ[...] = 0.
+        f.By_circ[...] = 0.
+        f.Bz_circ[...] = 0.
 
     nnx=em3d.nn
     nny=em3d.nn
