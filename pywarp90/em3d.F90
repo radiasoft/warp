@@ -813,7 +813,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d_circ(cj,cj_circ,circ_m,np,xp,yp,zp,uxp,u
                    xl,xu,zl,zu
   complex(kind=8) :: xymid,xymid0,xy,xy0,xyold,xyold0, im
 
-  im = complex(0.,1.)
+  im = cmplx(0.,1.)
 
   ndtodx = int(clight*dt/dx)
   ndtodz = int(clight*dt/dz)
@@ -863,7 +863,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d_circ(cj,cj_circ,circ_m,np,xp,yp,zp,uxp,u
         c = 1.
         s = 0.
      end if
-     xy0 = complex(c,s)
+     xy0 = cmplx(c,s)
      x = r
      x = x*dxi
      z = zp(ip)*dzi
@@ -885,7 +885,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d_circ(cj,cj_circ,circ_m,np,xp,yp,zp,uxp,u
         cold = 1.
         sold = 0.
      end if
-     xyold0 = complex(cold, sold)
+     xyold0 = cmplx(cold, sold)
      xmid = xmid + 0.5*xold
      ymid = ymid + 0.5*yold
      rmid=sqrt(xmid*xmid+ymid*ymid)
@@ -897,7 +897,7 @@ subroutine depose_jxjyjz_esirkepov_n_2d_circ(cj,cj_circ,circ_m,np,xp,yp,zp,uxp,u
         cmid = 1.
         smid = 0.
      end if
-     xymid0 = complex(cmid,smid)
+     xymid0 = cmplx(cmid,smid)
      xold=rold*dxi
      vy = -vx*smid+vy*cmid
      vx = (x-xold)*dx*dti
@@ -3092,7 +3092,7 @@ subroutine depose_rho_n_2d_circ(rho,rho_circ,circ_m,np,xp,yp,zp,w,q,xmin,zmin,dx
           c = 1.
           s = 0.
         end if
-        xy0 = complex(c,s)
+        xy0 = cmplx(c,s)
         x = (r-xmin)*dxi
         z = (zp(ip)-zmin)*dzi
         
@@ -4513,7 +4513,7 @@ subroutine getf2drz_circ_n(np,xp,yp,zp,ex,ey,ez,xmin,zmin,dx,dz,nx,ny,nz, &
              sintheta=0.
           end if
           r = (r-xmin)*dxi
-          xy0 = complex(costheta,-sintheta)
+          xy0 = cmplx(costheta,-sintheta)
 
         z = (zp(ip)-zmin)*dzi
 
