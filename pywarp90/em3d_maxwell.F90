@@ -509,6 +509,12 @@ case(0,1,3) ! Yee stencil on the E push
    ! Lehe stencil on the B push in case 3)
  if (f%sigmae==0.) then
   if(f%nconds>0) then 
+      call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
+                       mudt,dtsdx,dtsdy,dtsdz, &
+                       f%nx,f%ny,f%nz, &
+                       f%nxguard,f%nyguard,f%nzguard, &
+                       f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
+  else
    if (f%l_macroscopic) then
       call push_em3d_evec_macroscopic(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                        mudt,dtsdx,dtsdy,dtsdz, &
@@ -519,14 +525,7 @@ case(0,1,3) ! Yee stencil on the E push
                        f%epsix,f%epsiy,f%epsiz, &
                        f%mux,f%muy,f%muz)
    else
-      call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
-                       mudt,dtsdx,dtsdy,dtsdz, &
-                       f%nx,f%ny,f%nz, &
-                       f%nxguard,f%nyguard,f%nzguard, &
-                       f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz,f%incond)
-   endif
-  else
-   if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
+    if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
      call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                           mudt,dtsdx,dtsdy,dtsdz, &
                           f%nx,f%ny,f%nz, &
@@ -550,6 +549,7 @@ case(0,1,3) ! Yee stencil on the E push
                           f%xmin,f%zmin, &
                           f%dx,f%dy,f%dz,f%clight)
     end if
+   endif
   end if
  endif
 
