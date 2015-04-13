@@ -7149,12 +7149,14 @@ subroutine em3d_exchange_bndb_x(fl,fu,ibuf)
            ! bx
            do ix=yfu%ixmin+1,yfu%ixmin+yfu%nxguard-1
               call mympi_pack(yfu%bx(ix,:,:),ibuf)
-           end do
-           do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
-              call mympi_pack(yfu%by(ix,:,:),ibuf)
               if (yfu%circ_m > 0) call mympi_pack(yfu%bx_circ(ix,:,:),ibuf)
            end do
            ! by
+           do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
+              call mympi_pack(yfu%by(ix,:,:),ibuf)
+              if (yfu%circ_m > 0) call mympi_pack(yfu%by_circ(ix,:,:),ibuf)
+           end do
+           ! bz
            do ix=yfu%ixmin, yfu%ixmin+yfu%nxguard-1
               call mympi_pack(yfu%bz(ix,:,:),ibuf)
               if (yfu%circ_m > 0) call mympi_pack(yfu%bz_circ(ix,:,:),ibuf)
