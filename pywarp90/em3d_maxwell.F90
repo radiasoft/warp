@@ -1135,10 +1135,13 @@ subroutine push_em3d_evec_macroscopic(ex,ey,ez,bx,by,bz,CJ,mu0dt0,dt0sdx,dt0sdy,
                           nxguard,nyguard,nzguard,l_2dxz,l_2drz,xmin,zmin,dx,dz, &
                           sigmax,sigmay,sigmaz,epsix,epsiy,epsiz,mux,muy,muz)
 ! Integration over one time-step of Maxwell's macroscopic equations, using second-order leapfrop on Yee grid.                        
+! d (eps0*epsr*E)/dt + sigma*E = curl (B/mu0*mur) - J                   
+
 ! The macroscopic coefficients are the relative quantities and are collocated with the electric fields on the Yee grid:
 !   -  sigmax, epsix and mux are collocated with Ex,                           
 !   -  sigmay, epsiy and muy are collocated with Ey,                           
-!   -  sigmaz, epsiz and muz are collocated with Ez.                           
+!   -  sigmaz, epsiz and muz are collocated with Ez.        
+
 
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
