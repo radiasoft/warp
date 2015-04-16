@@ -508,7 +508,7 @@ case(0,1,3) ! Yee stencil on the E push
    ! Cole-Karkkainen stencil on the B push in case 1
    ! Lehe stencil on the B push in case 3)
  if (f%sigmae==0.) then
-  if(f%nconds>0) then 
+  if(f%nconds>0 .and. .not. f%l_macroscopic) then 
       call push_em3d_evec_cond(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
                        mudt,dtsdx,dtsdy,dtsdz, &
                        f%nx,f%ny,f%nz, &
@@ -1134,6 +1134,12 @@ end subroutine push_em3d_evec_cond
 subroutine push_em3d_evec_macroscopic(ex,ey,ez,bx,by,bz,CJ,mu0dt0,dt0sdx,dt0sdy,dt0sdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,l_2dxz,l_2drz,xmin,zmin,dx,dz, &
                           sigmax,sigmay,sigmaz,epsix,epsiy,epsiz,mux,muy,muz)
+! Integration over one time-step of Maxwell's macroscopic equations, using second-order leapfrop on Yee grid.                        
+! The macroscopic coefficients are the relative quantities and are collocated with the electric fields on the Yee grid:
+!   -  sigmax, epsix and mux are collocated with Ex,                           
+!   -  sigmay, epsiy and muy are collocated with Ey,                           
+!   -  sigmaz, epsiz and muz are collocated with Ez.                           
+
 integer :: nx,ny,nz,nxguard,nyguard,nzguard
 real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
@@ -1153,7 +1159,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmax(j,k,l)
+      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1174,7 +1180,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1195,7 +1201,7 @@ if (.not. l_2dxz) then ! --- 3D XYZ
      if (sigmaz(j,k,l)<0.) then
        Ez(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1220,7 +1226,7 @@ else ! --- now 2D XZ or RZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmax(j,k,l)
+      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1237,7 +1243,7 @@ else ! --- now 2D XZ or RZ
       if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1253,7 +1259,7 @@ else ! --- now 2D XZ or RZ
   ! advance Ez 
   do l = 0, nz-1
     do j = 0, nx
-      a = 0.5*mu0dt0*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1276,7 +1282,7 @@ else ! --- now 2D XZ or RZ
      if (sigmax(j,k,l)<0.) then
        Ex(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmax(j,k,l)
+      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsix(j,k,l)*b)
@@ -1294,7 +1300,7 @@ else ! --- now 2D XZ or RZ
      if (sigmay(j,k,l)<0.) then
        Ey(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmay(j,k,l)
+      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1306,7 +1312,7 @@ else ! --- now 2D XZ or RZ
      end if
     end do
     j = 0
-    a = 0.5*mu0dt0*sigmay(j,k,l)
+    a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
     b = (1.+a)
     a = (1-a)/(1+a)
     mu0dt = mu0dt0/(epsiy(j,k,l)*b)
@@ -1327,7 +1333,7 @@ else ! --- now 2D XZ or RZ
      if (sigmaz(j,k,l)<0.) then
        Ez(j,k,l)=0.
      else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1344,7 +1350,7 @@ else ! --- now 2D XZ or RZ
       Ez(j,k,l)=0.
     else
      if (xmin==0.) then
-      a = 0.5*mu0dt0*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
@@ -1353,7 +1359,7 @@ else ! --- now 2D XZ or RZ
       Ez(j,k,l) = a*Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
                               - mu0dt  * CJ(j,k,l,3)
      else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)
+      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
       b = (1.+a)
       a = (1-a)/(1+a)
       mu0dt = mu0dt0/(epsiz(j,k,l)*b)
