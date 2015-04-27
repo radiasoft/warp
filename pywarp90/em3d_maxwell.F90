@@ -3511,7 +3511,7 @@ INTEGER :: j, k, l
 
   do l = -nzguard, nz+nzguard
    do k = -nyguard, ny+nyguard
-    do j = -nxguard, nx+nxguard-1
+    do j = -nxguard, max(0,nx+nxguard-1)
       exy(j,k,l) = sfy(k)*exy(j,k,l) 
     end do
    end do
@@ -3519,7 +3519,7 @@ INTEGER :: j, k, l
 
   do l = -nzguard, nz+nzguard
    do k = -nyguard, ny+nyguard
-    do j = -nxguard, nx+nxguard-1
+    do j = -nxguard, max(0,nx+nxguard-1)
       exz(j,k,l) = sfz(l)*exz(j,k,l) 
     end do
    end do
@@ -3541,7 +3541,7 @@ INTEGER :: j, k, l
    end do
   end do
 
-  do l = -nzguard, nz+nzguard-1
+  do l = -nzguard, max(0,nz+nzguard-1)
    do k = -nyguard, ny+nyguard
     do j = -nxguard, nx+nxguard
       ezx(j,k,l) = sfx(j)*ezx(j,k,l) 
@@ -3549,7 +3549,7 @@ INTEGER :: j, k, l
    end do
   end do
 
-  do l = -nzguard, nz+nzguard-1
+  do l = -nzguard, max(0,nz+nzguard-1)
    do k = -nyguard, ny+nyguard
     do j = -nxguard, nx+nxguard
       ezy(j,k,l) = sfy(k)*ezy(j,k,l) 
@@ -4300,8 +4300,8 @@ real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sgz
 
 INTEGER :: j, k, l
 
-  do l = -nzguard, nz+nzguard-1
-   do k = -nyguard, max(0,ny+nyguard-1)
+  do l = -nzguard, max(0,nz+nzguard-1)
+   do k = -nyguard, ny+nyguard-1
     do j = -nxguard, nx+nxguard
       bxy(j,k,l) = sgy(k)*bxy(j,k,l) 
     end do
@@ -4316,7 +4316,7 @@ INTEGER :: j, k, l
    end do
   end do
 
-  do l = -nzguard, nz+nzguard-1
+  do l = -nzguard, max(0,nz+nzguard-1)
    do k = -nyguard, ny+nyguard
     do j = -nxguard, nx+nxguard-1
       byx(j,k,l) = sgx(j)*byx(j,k,l)
@@ -4326,7 +4326,7 @@ INTEGER :: j, k, l
 
   do l = -nzguard, nz+nzguard-1
    do k = -nyguard, ny+nyguard
-    do j = -nxguard, nx+nxguard-1
+    do j = -nxguard, max(0,nx+nxguard-1)
       byz(j,k,l) = sgz(l)*byz(j,k,l) 
     end do
    end do
@@ -4341,14 +4341,94 @@ INTEGER :: j, k, l
   end do
 
   do l = -nzguard, nz+nzguard
-   do k = -nyguard, max(0,ny+nyguard-1)
-    do j = -nxguard, nx+nxguard-1
+   do k = -nyguard, ny+nyguard-1
+    do j = -nxguard, max(0,nx+nxguard-1)
       bzy(j,k,l) = sgy(k)*bzy(j,k,l) 
     end do
    end do
   end do
 
 end subroutine scale_em3d_splitbvec
+
+subroutine scale_em3d_splitbgvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               bxx,byy,bzz,&
+                               sfx,sfy,sfz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: bxx,byy,bzz
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sfx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sfy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sfz
+
+INTEGER :: j, k, l
+
+  do l = -nzguard, max(0,nz+nzguard-1)
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, nx+nxguard
+      bxx(j,k,l) = sfx(k)*bxx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, max(0,nz+nzguard-1)
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, max(0,nx+nxguard-1)
+      byy(j,k,l) = sfy(j)*byy(j,k,l)
+    end do
+   end do
+  end do
+
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, max(0,ny+nyguard-1)
+    do j = -nxguard, max(0,nx+nxguard-1)
+      bzz(j,k,l) = sfz(j)*bzz(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitbgvec
+
+subroutine scale_em3d_splitgvec(nx,ny,nz,nxguard,nyguard,nzguard, &
+                               gx,gy,gz,&
+                               sgx,sgy,sgz)
+implicit none
+
+integer(ISZ), INTENT(IN) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard), intent(inout) :: gx,gy,gz
+real(kind=8), dimension(-nxguard:nx+nxguard), intent(in) :: sgx
+real(kind=8), dimension(-nyguard:ny+nyguard), intent(in) :: sgy
+real(kind=8), dimension(-nzguard:nz+nzguard), intent(in) :: sgz
+
+INTEGER :: j, k, l
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard-1
+      gx(j,k,l) = sgx(k)*gx(j,k,l) 
+    end do
+   end do
+  end do
+
+  do l = -nzguard, nz+nzguard
+   do k = -nyguard, ny+nyguard-1
+    do j = -nxguard, nx+nxguard
+      gy(j,k,l) = sgy(j)*gy(j,k,l)
+    end do
+   end do
+  end do
+
+
+  do l = -nzguard, nz+nzguard-1
+   do k = -nyguard, ny+nyguard
+    do j = -nxguard, nx+nxguard
+      gz(j,k,l) = sgz(j)*gz(j,k,l) 
+    end do
+   end do
+  end do
+
+end subroutine scale_em3d_splitgvec
 
 subroutine push_em3d_splitkyeebvec(nx,ny,nz,nxguard,nyguard,nzguard, &
                                exx,exy,exz,eyx,eyy,eyz,ezx,ezy,ezz,bxy,byx,bzx,bxz,byz,bzy, &
@@ -4671,13 +4751,13 @@ INTEGER :: j, k, l,which
   return
 end subroutine push_em3d_splitf
 
-subroutine scale_em3d_split_fields(sf,dt,l_pushf)
+subroutine scale_em3d_split_fields(sf,dt,l_pushf,l_pushg)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_SPLITYEEFIELDtype) :: sf
 REAL(kind=8), INTENT(IN) :: dt
-logical:: l_pushf
+logical:: l_pushf, l_pushg
 
   if (sf%pml_method==2) then
     call set_bndcoeffsem3d(sf,dt,0)
@@ -4694,6 +4774,14 @@ logical:: l_pushf
       call scale_em3d_splitefvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
                              sf%exx,sf%eyy,sf%ezz, &
                              sf%sgx,sf%sgy,sf%sgz)
+    end if
+    if (l_pushg) then
+      call scale_em3d_splitgvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%gx,sf%gy,sf%gz, &
+                             sf%sgx,sf%sgy,sf%sgz)
+      call scale_em3d_splitbgvec(sf%nx,sf%ny,sf%nz,sf%nxguard,sf%nyguard,sf%nzguard, &
+                             sf%bxx,sf%byy,sf%bzz, &
+                             sf%sfx,sf%sfy,sf%sfz)
     end if
   end if
   return
@@ -5286,44 +5374,52 @@ integer(ISZ) :: which
   return
 end subroutine push_em3d_blockbndf
 
-subroutine scale_em3d_bnd_fields(b,dt,l_pushf)
+subroutine scale_em3d_bnd_fields(b,dt,l_pushf,l_pushg)
 use mod_emfield3d
 implicit none
 
 TYPE(EM3D_BLOCKtype) :: b
 REAL(kind=8), INTENT(IN) :: dt
-logical(ISZ) :: l_pushf
+logical(ISZ) :: l_pushf,l_pushg
 
 !if (b%core%yf%spectral) return
 
-  if(b%xlbnd==openbc) call scale_em3d_split_fields(b%sidexl%syf,dt,l_pushf)
-  if(b%xrbnd==openbc) call scale_em3d_split_fields(b%sidexr%syf,dt,l_pushf)
-  if(b%ylbnd==openbc) call scale_em3d_split_fields(b%sideyl%syf,dt,l_pushf)
-  if(b%yrbnd==openbc) call scale_em3d_split_fields(b%sideyr%syf,dt,l_pushf)
-  if(b%zlbnd==openbc) call scale_em3d_split_fields(b%sidezl%syf,dt,l_pushf)
-  if(b%zrbnd==openbc) call scale_em3d_split_fields(b%sidezr%syf,dt,l_pushf)
+  if(b%xlbnd==openbc) call scale_em3d_split_fields(b%sidexl%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc) call scale_em3d_split_fields(b%sidexr%syf,dt,l_pushf,l_pushg)
+  if(b%ylbnd==openbc) call scale_em3d_split_fields(b%sideyl%syf,dt,l_pushf,l_pushg)
+  if(b%yrbnd==openbc) call scale_em3d_split_fields(b%sideyr%syf,dt,l_pushf,l_pushg)
+  if(b%zlbnd==openbc) call scale_em3d_split_fields(b%sidezl%syf,dt,l_pushf,l_pushg)
+  if(b%zrbnd==openbc) call scale_em3d_split_fields(b%sidezr%syf,dt,l_pushf,l_pushg)
 
-  if(b%xlbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexlyl%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexryl%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexlyr%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexryr%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexlzl%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexrzl%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexlzr%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexrzr%syf,dt,l_pushf)
-  if(b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeylzl%syf,dt,l_pushf)
-  if(b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeyrzl%syf,dt,l_pushf)
-  if(b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeylzr%syf,dt,l_pushf)
-  if(b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeyrzr%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexlyl%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc) call scale_em3d_split_fields(b%edgexryl%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexlyr%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc) call scale_em3d_split_fields(b%edgexryr%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexlzl%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgexrzl%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexlzr%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgexrzr%syf,dt,l_pushf,l_pushg)
+  if(b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeylzl%syf,dt,l_pushf,l_pushg)
+  if(b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%edgeyrzl%syf,dt,l_pushf,l_pushg)
+  if(b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeylzr%syf,dt,l_pushf,l_pushg)
+  if(b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%edgeyrzr%syf,dt,l_pushf,l_pushg)
 
-  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxlylzl%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxrylzl%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxlyrzl%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) call scale_em3d_split_fields(b%cornerxryrzl%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxlylzr%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxrylzr%syf,dt,l_pushf)
-  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxlyrzr%syf,dt,l_pushf)
-  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) call scale_em3d_split_fields(b%cornerxryrzr%syf,dt,l_pushf)
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxlylzl%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zlbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxrylzl%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxlyrzl%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zlbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxryrzl%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxlylzr%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%ylbnd==openbc .and. b%zrbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxrylzr%syf,dt,l_pushf,l_pushg)
+  if(b%xlbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxlyrzr%syf,dt,l_pushf,l_pushg)
+  if(b%xrbnd==openbc .and. b%yrbnd==openbc .and. b%zrbnd==openbc) &
+     call scale_em3d_split_fields(b%cornerxryrzr%syf,dt,l_pushf,l_pushg)
 
 end subroutine scale_em3d_bnd_fields
 

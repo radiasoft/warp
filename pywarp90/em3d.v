@@ -74,7 +74,7 @@ push_em3d_blockbndb(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
 push_em3d_blockbndef(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
 push_em3d_blockbndf(b:EM3D_BLOCKtype,dt:real,which:integer) subroutine
 scale_em3d_split_fields(sf:EM3D_SPLITYEEFIELDtype,dt:real,l_pushf:logical) subroutine
-scale_em3d_bnd_fields(b:EM3D_BLOCKtype,dt:real,l_pushf:logical) subroutine
+scale_em3d_bnd_fields(b:EM3D_BLOCKtype,dt:real,l_pushf:logical,l_pushg:logical) subroutine
 init_splitfield(sf:EM3D_SPLITYEEFIELDtype, 
                 nx:integer,ny:integer,nz:integer, 
                 nxguard:integer,nyguard:integer,nzguard:integer, 
