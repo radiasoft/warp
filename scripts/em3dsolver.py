@@ -25,7 +25,7 @@ class EM3D(SubcycledPoissonSolver):
                       'norderx':2,'nordery':2,'norderz':2,
                       'l_particles_weight':false,'l_usecoeffs':false,
                       'l_pushf':false,'l_pushpot':false,'l_verbose':false,
-                      'l_nodalgrid':false,'l_deposit_rho':false,'l_pushg':false,
+                      'l_nodalgrid':false,'l_pushg':false,
                       'laser_func':None,
                       'laser_amplitude':1.,'laser_profile':None,'laser_phase':0.,
                       'laser_gauss_widthx':None,'laser_gauss_centerx':0.,
@@ -131,12 +131,15 @@ class EM3D(SubcycledPoissonSolver):
         self.stride_smooth  = array(self.stride_smooth)
 #    minguards = array([1+aint(top.depos_order.max(1)/2),self.npass_smooth.sum(1)]).max(0)
         minguards = 0+2+aint(top.depos_order.max(1)/2)+(self.npass_smooth*self.stride_smooth).sum(1)
-        minguards[0] = max(minguards[0],self.norderx/2+1)
-        minguards[1] = max(minguards[1],self.nordery/2+1)
-        minguards[2] = max(minguards[2],self.norderz/2+1)
-        if self.nxguard==1:self.nxguard = minguards[0]
-        if self.nyguard==1:self.nyguard = minguards[1]
-        if self.nzguard==1:self.nzguard = minguards[2]
+        if self.nxguard==1 and self.norderx is not None:
+            minguards[0] = max(minguards[0],self.norderx/2+1)
+            self.nxguard = minguards[0]
+        if self.nyguard==1 and self.nordery is not None:
+	        minguards[1] = max(minguards[1],self.nordery/2+1)
+        	self.nyguard = minguards[1]
+        if self.nzguard==1 and self.norderz is not None:
+	        minguards[2] = max(minguards[2],self.norderz/2+1)
+        	self.nzguard = minguards[2]
         if self.stencil>0:
             if self.nxguard<2:self.nxguard=2
             if self.nyguard<2:self.nyguard=2
@@ -1407,6 +1410,13 @@ class EM3D(SubcycledPoissonSolver):
         nox = top.depos_order[0,js]
         noy = top.depos_order[1,js]
         noz = top.depos_order[2,js]
+        
+        self.depose_current_density(n,js,f,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,nox,noy,noz)
+
+        if self.l_getrho :
+          self.depose_charge_density(n,js,f,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,nox,noy,noz)
+
+    def depose_current_density(self,n,js,f,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,nox,noy,noz):
         if top.wpid==0:
             wfact = ones((1,),'d')
             l_particles_weight = false
@@ -1536,8 +1546,15 @@ class EM3D(SubcycledPoissonSolver):
                                               f.nxguard,f.nyguard,f.nzguard,
                                               l_particles_weight,
                                               top.lrelativ)
-        if self.l_getrho :
-            if self.l_2dxz:
+
+    def depose_charge_density(self,n,js,f,x,y,z,ux,uy,uz,gaminv,wfact,zgrid,q,w,nox,noy,noz):
+        if top.wpid==0:
+            wfact = ones((1,),'d')
+            l_particles_weight = false
+        else:
+            l_particles_weight = true
+
+        if self.l_2dxz:
                 if self.circ_m==0:
                     depose_rho_n_2dxz(self.fields.Rho,n,
                                          x,y,z,
@@ -1565,7 +1582,7 @@ class EM3D(SubcycledPoissonSolver):
                                          top.depos_order[2,js],
                                          l_particles_weight,
                                          self.type_rz_depose)
-            else:
+        else:
                 depose_rho_n(self.fields.Rho,n,
                                        x,y,z,
                                        wfact,q*w,
@@ -6368,9 +6385,9 @@ def pyinit_3dem_block(nx, ny, nz,
     f.ny = ny
     f.nz = nz
     f.circ_m = circ_m
-    f.norderx = norderx
-    f.nordery = nordery
-    f.norderz = norderz
+    if norderx is not None:f.norderx = norderx
+    if norderx is not None:f.nordery = nordery
+    if norderx is not None:f.norderz = norderz
     f.theta_damp=theta_damp
     f.sigmae=sigmae
     f.sigmab=sigmab
