@@ -645,12 +645,6 @@ jzmaxg integer /0/ # position of last node of entire grid (interior+guard nodes)
 nxp integer /0/
 nyp integer /0/
 nzp integer /0/
-nxold integer /0/
-nyold integer /0/
-nzold integer /0/
-nxext integer /0/
-nyext integer /0/
-nzext integer /0/
 nxdamp integer /0/
 nydamp integer /0/
 nzdamp integer /0/
@@ -675,6 +669,9 @@ nzmp integer /0/
 nxdrho integer /0/
 nydrho integer /0/
 nzdrho integer /0/
+nxdrhoguard integer /0/
+nydrhoguard integer /0/
+nzdrhoguard integer /0/
 ntimes integer /1/
 nconds integer /0/
 nxcond integer /0/
@@ -732,7 +729,7 @@ G(-nxguard:nxg+nxguard,-nyguard:nyg+nyguard,-nzguard:nzg+nzguard) _real
 Rho(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard) _real
 Rhoold(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard) _real
 Rhoarray(-nxguard:nxr+nxguard,-nyguard:nyr+nyguard,-nzguard:nzr+nzguard,ntimes) _real
-DRhoodt(-nxguard:nxdrho+nxguard,-nyguard:nydrho+nyguard,-nzguard:nzdrho+nzguard) _real
+DRhoodt(-nxdrhoguard:nxdrho+nxdrhoguard,-nydrhoguard:nydrho+nydrhoguard,-nzdrhoguard:nzdrho+nzdrhoguard) _real
 J(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) _real
 Jarray(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3,ntimes) _real
 incond(-nxguard:nxcond+nxguard,-nyguard:nycond+nyguard,-nzguard:nzcond+nzguard) _logical
