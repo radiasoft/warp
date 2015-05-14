@@ -6955,7 +6955,6 @@ subroutine em3d_exchange_bnde_x(fl,fu,ibuf)
 
            call mpi_isend_pack(fl%proc,3,ibuf)
 
-            mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             call mpi_packbuffer_init(6*int(size(syfl%ezx(syfl%ixmax-syfl%nxguard+1:syfl%ixmax-1,:,:))) &
@@ -6993,7 +6992,6 @@ subroutine em3d_exchange_bnde_x(fl,fu,ibuf)
 
            call mpi_isend_pack(fu%proc,4,ibuf)
 
-           mpireqpnt=mpireqpnt+1
         else
 #endif
            if (fl%proc/=fu%proc) return
@@ -7708,7 +7706,6 @@ subroutine em3d_exchange_bndf_x(fl,fu,ibuf)
                  call mympi_pack(syfu%fz(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else if (fu%proc/=my_index) then
            ! --- send data up in z
@@ -7724,7 +7721,6 @@ subroutine em3d_exchange_bndf_x(fl,fu,ibuf)
                  call mympi_pack(syfl%fz(ix,:,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else
 #endif
@@ -8408,7 +8404,6 @@ subroutine em3d_exchange_bnde_y(fl,fu,ibuf)
 
            call mpi_isend_pack(fl%proc,3,ibuf)
 
-            mpireqpnt=mpireqpnt+1
           else if (fu%proc/=my_index) then
             ! --- send data up in z
             call mpi_packbuffer_init(6*int(size(syfl%ezx(:,syfl%iymax-syfl%nyguard+1:syfl%iymax-1,:))) &
@@ -8446,7 +8441,6 @@ subroutine em3d_exchange_bnde_y(fl,fu,ibuf)
 
            call mpi_isend_pack(fu%proc,4,ibuf)
 
-           mpireqpnt=mpireqpnt+1
         else
 #endif
            if (fl%proc/=fu%proc) return
@@ -8990,7 +8984,6 @@ subroutine em3d_exchange_bndf_y(fl,fu,ibuf)
                  call mympi_pack(syfu%fz(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else if (fu%proc/=my_index) then
            ! --- send data up in z
@@ -9006,7 +8999,6 @@ subroutine em3d_exchange_bndf_y(fl,fu,ibuf)
                  call mympi_pack(syfl%fz(:,iy,:),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else
 #endif
@@ -9561,7 +9553,6 @@ subroutine em3d_exchange_bnde_z(fl,fu,ibuf)
 
            call mpi_isend_pack(fl%proc,3,ibuf)
 
-           mpireqpnt=mpireqpnt+1
         else if (fu%proc/=my_index) then
            ! --- send data up in z
            call mpi_packbuffer_init(6*int(size(syfl%ezx(:,:,syfl%izmax-syfl%nzguard+1:syfl%izmax-1))) &
@@ -9599,7 +9590,6 @@ subroutine em3d_exchange_bnde_z(fl,fu,ibuf)
 
            call mpi_isend_pack(fu%proc,4,ibuf)
 
-           mpireqpnt=mpireqpnt+1
         else
 #endif
            if (fl%proc/=fu%proc) return
@@ -10330,7 +10320,6 @@ subroutine em3d_exchange_bndf_z(fl,fu,ibuf)
                  call mympi_pack(syfu%fz(:,:,iz),ibuf)
               end do
               call mpi_isend_pack(fl%proc,3,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else if (fu%proc/=my_index) then
            ! --- send data up in z
@@ -10346,7 +10335,6 @@ subroutine em3d_exchange_bndf_z(fl,fu,ibuf)
                  call mympi_pack(syfl%fz(:,:,iz),ibuf)
               end do
               call mpi_isend_pack(fu%proc,4,ibuf)
-              mpireqpnt=mpireqpnt+1
            end if
         else
 #endif
