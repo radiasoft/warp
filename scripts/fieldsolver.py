@@ -2356,37 +2356,49 @@ def getj(comp=None,ix=None,iy=None,iz=None,bcast=1,local=0,fullplane=0,
     if isinstance(comp,types.IntType): ic = comp
     else:                              ic = ['x','y','z','J'].index(comp)
     if solver is None: solver = (getregisteredsolver() or w3d)
-    if solver == w3d:
-        bfield = f3d.bfield
-        nxguardj = bfield.nxguardj
-        nyguardj = bfield.nyguardj
-        nzguardj = bfield.nzguardj
-    else:
-        bfield = solver
-        nxguardj = bfield.nxguardrho
-        nyguardj = bfield.nyguardrho
-        nzguardj = bfield.nzguardrho
 
-    j = bfield.j[:,nxguardj:-nxguardj or None,
-                   nyguardj:-nyguardj or None,
-                   nzguardj:-nzguardj or None]
+    import em3dsolver
+    if isinstance(solver,em3dsolver.EM3D):
+        Jx = solver.getjx()
+        Jy = solver.getjy()
+        Jz = solver.getjz()
+    else:
+        if solver == w3d:
+            bfield = f3d.bfield
+            nxguardj = bfield.nxguardj
+            nyguardj = bfield.nyguardj
+            nzguardj = bfield.nzguardj
+        else:
+            bfield = solver
+            nxguardj = bfield.nxguardrho
+            nyguardj = bfield.nyguardrho
+            nzguardj = bfield.nzguardrho
+        j = bfield.j[:,nxguardj:-nxguardj or None,
+                       nyguardj:-nyguardj or None,
+                       nzguardj:-nzguardj or None]
+        Jx = j[0,...]
+        JY = j[1,...]
+        JZ = j[2,...]
 
     if comp == 'J':
-        Jx = getdecomposedarray(j[0,...],ix=ix,iy=iy,iz=iz,
+        Jx = getdecomposedarray(Jx,ix=ix,iy=iy,iz=iz,
                                 bcast=bcast,local=local,fullplane=fullplane,
                                 xyantisymmetric=(ic in [0,1]),
                                 solver=solver)
-        Jy = getdecomposedarray(j[1,...],ix=ix,iy=iy,iz=iz,
+        Jy = getdecomposedarray(Jy,ix=ix,iy=iy,iz=iz,
                                 bcast=bcast,local=local,fullplane=fullplane,
                                 xyantisymmetric=(ic in [0,1]),
                                 solver=solver)
-        Jz = getdecomposedarray(j[2,...],ix=ix,iy=iy,iz=iz,
+        Jz = getdecomposedarray(Jz,ix=ix,iy=iy,iz=iz,
                                 bcast=bcast,local=local,fullplane=fullplane,
                                 xyantisymmetric=(ic in [0,1]),
                                 solver=solver)
         return sqrt(Jx**2 + Jy**2 + Jz**2)
     else:
-        return getdecomposedarray(j[ic,...],ix=ix,iy=iy,iz=iz,
+        if   ic == 0: J = Jx
+        elif ic == 1: J = Jy
+        elif ic == 2: J = Jz
+        return getdecomposedarray(J,ix=ix,iy=iy,iz=iz,
                                   bcast=bcast,local=local,fullplane=fullplane,
                                   xyantisymmetric=(ic in [0,1]),
                                   solver=solver)

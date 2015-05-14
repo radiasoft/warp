@@ -3346,6 +3346,7 @@ seteb_in_boosted_frame(n,ex(n):real,ey(n):real,ez(n):real,
                          bx(n):real,by(n):real,bz(n):real,
                          uxf:real,uyf:real,uzf:real,gammaf:real) subroutine
        # computes E and B fields in Lorentz boosted frame
+nonzerorealarray(array:real, narray:integer) subroutine
 
 %%%%%%% Decomposition:
 my_index integer # Processor number

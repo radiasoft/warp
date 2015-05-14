@@ -4417,7 +4417,7 @@ class EM3D(SubcycledPoissonSolver):
         
     def pfscalar_circ(self, ff0, ff, name='', m=None, direction=1,
                       theta_plot=0, iz=w3d.nz/2, titles=1,
-                      output=False, show=True, **kw):
+                      output=False, show=True, l_transpose=None, **kw):
         """
         Plot a scalar field from its azimuthal Fourier coefficients
         ff0 (mode 0) and ff (modes > 0).
@@ -4528,7 +4528,7 @@ class EM3D(SubcycledPoissonSolver):
 
     def pfvec_circ(self, ffr0, fftheta0, ffr, fftheta, name='',
                    component='x', m=None, direction=1, theta_plot=0,
-                   iz=w3d.nz/2, titles=1, output=False, show=True, **kw):
+                   iz=w3d.nz/2, titles=1, output=False, show=True, l_transpose=None, **kw):
         """
         Plot the x or y component of a field from the azimuthal Fourier
         coefficients of its radial and azimuthal components ffr0, fft0

@@ -4729,3 +4729,16 @@ c     --- since cout is incremented for both ip and jp.
       return
       end
 c=============================================================================
+      subroutine nonzerorealarray(array, narray)
+      integer(ISZ):: narray
+      real(kind=8):: array(narray)
+
+#ifdef MPIPARALLEL
+c     --- This finds the nonzero elements of the array and broadcasts
+c     --- then to all other processors.
+      call parallelnonzerorealarray(array,narray)
+#endif
+
+      return
+      end
+c=============================================================================
