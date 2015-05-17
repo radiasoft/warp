@@ -27,32 +27,16 @@ def setdefaultcomm_world(comm):
     me = comm_world.rank
     npes = comm_world.procs
 
-"""
-# --- This check is old enough that it is no longer needed.
+# ---------------------------------------------------------------------------
+# --- send and recv using the correct comm_world
+def mpisend(obj,pe=0,tag=0,comm=None):
+    if comm is None: comm = comm_world
+    comm.send(obj, pe, tag)
 
-# --- The interface has changed some in the newest version of pyMPI.
-# --- Check the interface to the mpi.recv command. The newer versions
-# --- return a tuple instead of just the data itself.
-# --- Is there a better way of doing this?
-if lparallel:
-  mpi.send(me,me)
-  _i = mpi.recv(me)
-  if isinstance(_i,tuple): _newpympi = 1
-  else:                    _newpympi = 0
-else:
-  _newpympi = 1
-"""
-_newpympi = 1
-
-if _newpympi:
-    def mpirecv(pe=0,ms=0,comm=None):
-        if comm is None: comm = comm_world
-        result,stat = comm.recv(pe,ms)
-        return result
-else:
-    def mpirecv(pe=0,ms=0,comm=None):
-        if comm is None: comm = comm_world
-        return comm.recv(pe,ms)
+def mpirecv(pe=0,tag=0,comm=None):
+    if comm is None: comm = comm_world
+    result,stat = comm.recv(pe,tag)
+    return result
 
 # ---------------------------------------------------------------------------
 # --- By default, set so that only PE0 sends output to the terminal.
@@ -216,7 +200,7 @@ def broadcast(obj,root=0,comm=None):
 # ---------------------------------------------------------------------------
 # Gather an object from all processors into a list and scatter back to all
 def gatherall(obj,comm=None):
-    if not lparallel: return obj
+    if not lparallel: return [obj]
     if comm is None: comm = comm_world
     obj = gather(obj,comm=comm)
     return comm.bcast(obj)
