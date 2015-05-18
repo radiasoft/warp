@@ -2391,11 +2391,13 @@ class EM3D(SubcycledPoissonSolver):
             self.__class__.__bases__[1].push_b_part_2(self.field_coarse)
 
     def yee2node3d(self):
+        if self.l_nodalgrid:return
         yee2node3d(self.block.core.yf)
         if self.refinement is not None:
             self.__class__.__bases__[1].yee2node3d(self.field_coarse)
 
     def node2yee3d(self):
+        if self.l_nodalgrid:return
         node2yee3d(self.block.core.yf)
         if self.refinement is not None:
             self.__class__.__bases__[1].node2yee3d(self.field_coarse)
@@ -2446,113 +2448,6 @@ class EM3D(SubcycledPoissonSolver):
         if self.l_verbose:print 'push_e full',self,dt,top.it,self.icycle
         if self.laser_mode==1:self.add_laser(self.fields)
         push_em3d_eef(self.block,dt,0,self.l_pushf,self.l_pushpot)
-
-    def dosolvemode2(self,iwhich=0,*args):
-        if self.solveroff:return
-        if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
-        if self.l_verbose:print 'solve 1st half'
-        if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
-        dt=top.dt*2
-        if self.odd:
-            push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
-            if self.l_pushf:self.exchange_f()
-            self.exchange_b()
-            if self.laser_mode==1:self.add_laser(self.fields)
-            push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            self.exchange_e()
-        else:
-            if self.laser_mode==1:self.add_laser(self.fields)
-            push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
-            self.exchange_e()
-            push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            if self.l_pushf:self.exchange_f()
-            self.exchange_b()
-        self.odd = 1-self.odd
-        if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
-        self.setebp()
-        if top.efetch[0] != 4:self.yee2node3d()
-        if self.l_smooth_particle_fields and any(self.npass_smooth>0):
-            self.smoothfields()
-
-    def solve2ndhalfmode2(self):
-        if self.solveroff:return
-        if self.l_verbose:print 'solve 2nd half',self
-        if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
-#    if top.efetch[0] != 4:node2yee3d(self.block.core.yf)
-        self.move_window_fields()
-        if self.ncyclesperstep<1.:
-            self.novercycle = nint(1./self.ncyclesperstep)
-            self.icycle = (top.it-1)%self.novercycle
-        else:
-            self.novercycle = 1
-            self.icycle = 0
-        return
-        dt = top.dt
-        if not self.odd:
-            push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
-        else:
-            push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            if self.laser_mode==1:self.add_laser(self.fields)
-            push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
-        self.odd = 1-self.odd
-        if self.l_verbose:print 'solve 2nd half done'
-
-    def dosolvemode2old(self,iwhich=0,*args):
-        if self.solveroff:return
-        if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
-        if self.l_verbose:print 'solve 1st half'
-        if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
-        dt = top.dt*2
-        if self.odd:
-            push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
-            push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
-        else:
-            if self.laser_mode==1:self.add_laser(self.fields)
-            push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
-            push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-        self.odd = 1-self.odd
-        if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
-        if top.efetch[0] != 4:yee2node3d(self.block.core.yf)
-        if self.l_smooth_particle_fields:
-            if self.refinement is None and any(self.npass_smooth>0):
-                self.fields.Exp[...] = self.fields.Ex[...]
-                self.fields.Eyp[...] = self.fields.Ey[...]
-                self.fields.Ezp[...] = self.fields.Ez[...]
-                self.fields.Bxp[...] = self.fields.Bx[...]
-                self.fields.Byp[...] = self.fields.By[...]
-                self.fields.Bzp[...] = self.fields.Bz[...]
-            if any(self.npass_smooth>0):self.smoothfields()
-
-    def dosolvemode2vold(self,iwhich=0,*args):
-        if self.solveroff:return
-        if any(top.fselfb != 0.):raise Exception('Error:EM solver does not work if fselfb != 0.')
-        if self.l_verbose:print 'solve 1st half'
-        if top.dt != self.dtinit:raise Exception('Time step has been changed since initialization of EM3D.')
-        dt = top.dt*2
-        if self.odd:
-            push_em3d_eef(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            push_em3d_bf(self.block,dt,1,self.l_pushf,self.l_pushpot)
-        else:
-            push_em3d_bf(self.block,dt,2,self.l_pushf,self.l_pushpot)
-            if self.laser_mode==1:self.add_laser(self.fields)
-            push_em3d_eef(self.block,dt,1,self.l_pushf,self.l_pushpot)
-        self.odd = 1-self.odd
-        if not all(top.efetch==top.efetch[0]):raise Exception('Error:top.efetch must have same value for every species when using EM solver.')
-        if top.efetch[0] != 4:yee2node3d(self.block.core.yf)
-        if self.l_smooth_particle_fields:
-            if self.refinement is None and any(self.npass_smooth>0):
-                self.fields.Exp[...] = self.fields.Ex[...]
-                self.fields.Eyp[...] = self.fields.Ey[...]
-                self.fields.Ezp[...] = self.fields.Ez[...]
-                self.fields.Bxp[...] = self.fields.Bx[...]
-                self.fields.Byp[...] = self.fields.By[...]
-                self.fields.Bzp[...] = self.fields.Bz[...]
-            if any(self.npass_smooth>0):self.smoothfields()
-
-        if self.l_verbose:print 'solve 1st half done'
-        if self.refinement is not None:
-            self.__class__.__bases__[1].dosolve(self.field_coarse)
 
     ##########################################################################
     # Define the basic plot commands
