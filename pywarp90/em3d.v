@@ -603,6 +603,7 @@ circ_m integer /0/ # max number of azimuthal modes
 l_nodalgrid logical /.false./    # specifies whether FDTD calculation is on nodal (true) or staggerd (false) grid
 l_nodecentered logical /.false./ # specifies whether field data have been gathered at nodes (when computing with staggered "Yee" grid)
 l_macroscopic logical /.false./
+sigma_method integer /1/ # Method of integration: 0-Lax Wendroff, 1-Backward Eularian, 2-Semi-analytic
 nx integer /0/ # nb of mesh cells of grid interior in the x direction
 ny integer /0/ # nb of mesh cells of grid interior in the y direction
 nz integer /0/ # nb of mesh cells of grid interior in the z direction

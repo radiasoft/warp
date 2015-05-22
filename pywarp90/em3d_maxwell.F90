@@ -523,7 +523,7 @@ case(0,1,3) ! Yee stencil on the E push
                        f%l_2dxz,f%l_2drz,f%xmin,f%zmin,f%dx,f%dz, &
                        f%sigmax,f%sigmay,f%sigmaz, &
                        f%epsix,f%epsiy,f%epsiz, &
-                       f%mux,f%muy,f%muz)
+                       f%mux,f%muy,f%muz,f%sigma_method)
    else
     if ((f%norderx==2) .and. (f%nordery==2) .and. (f%norderz==2) .and. .not. f%l_nodalgrid) then
      call push_em3d_evec(f%ex,f%ey,f%ez,f%bx,f%by,f%bz,f%J, &
@@ -1131,9 +1131,248 @@ end if
 return
 end subroutine push_em3d_evec_cond
 
+subroutine push_em3d_evec_macroscopic_work(E,B1,B2,JC,mu0dt0,dt0sd1,dt0sd2,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                           sigma,epsi,mu,nxs,nys,nzs,nxe,nye,nze,idx1,idy1,idz1,idx2,idy2,idz2, &
+                                           sigma_method)
+integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: E
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: B1,B2
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: JC
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: sigma,epsi,mu
+real(kind=8), intent(IN) :: mu0dt0,dt0sd1,dt0sd2
+integer(ISZ) :: nxs,nys,nzs,nxe,nye,nze,idx1,idy1,idz1,idx2,idy2,idz2
+integer(ISZ) :: sigma_method
+
+integer(ISZ) :: j,k,l
+real(kind=8) :: a,b,mu0dt,dtsd1,dtsd2
+
+if (sigma_method == 0) then
+  ! --- Lax Wendroff
+  ! --- This method should not be used since for large sigma, the solver does
+  ! --- not have the correct behavior and can diverge.
+  do l = nzs, nze
+   do k = nys, nye
+    do j = nxs, nxe
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = 0.5*mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = (1. - a)/(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       dtsd2 = dt0sd2/(epsi(j,k,l)*mu(j,k,l)*b)
+       E(j,k,l) = a*E(j,k,l) + dtsd1*(B2(j,k,l) - B2(j-idx1,k-idy1,l-idz1)) &
+                             - dtsd2*(B1(j,k,l) - B1(j-idx2,k-idy2,l-idz2)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+   end do
+  end do
+
+else if (sigma_method == 1) then
+  ! --- Backward Eularian
+  ! --- This is the recommended method, stable and efficient.
+  do l = nzs, nze
+   do k = nys, nye
+    do j = nxs, nxe
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = 1./(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       dtsd2 = dt0sd2/(epsi(j,k,l)*mu(j,k,l)*b)
+       E(j,k,l) = a*E(j,k,l) + dtsd1*(B2(j,k,l) - B2(j-idx1,k-idy1,l-idz1)) &
+                             - dtsd2*(B1(j,k,l) - B1(j-idx2,k-idy2,l-idz2)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+   end do
+  end do
+
+else if (sigma_method == 2) then
+  ! --- Semi-analytic
+  ! --- This may provide higher accuracy but at the cost of calculating exponentials.
+  do l = nzs, nze
+   do k = nys, nye
+    do j = nxs, nxe
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       b = exp(-sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       if (sigma(j,k,l)*mu0dt0/epsi(j,k,l) > 1.e-3) then
+          a = (1. - b)/(sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       else
+          a = 1. + 0.5*sigma(j,k,l)*mu0dt0/epsi(j,k,l)
+       endif
+       mu0dt = a*mu0dt0/(epsi(j,k,l))
+       dtsd1 = a*dt0sd1/(epsi(j,k,l)*mu(j,k,l))
+       dtsd2 = a*dt0sd2/(epsi(j,k,l)*mu(j,k,l))
+       E(j,k,l) = E(j,k,l)*b + dtsd1*(B2(j,k,l) - B2(j-idx1,k-idy1,l-idz1)) &
+                             - dtsd2*(B1(j,k,l) - B1(j-idx2,k-idy2,l-idz2)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+   end do
+  end do
+else
+  print*,"ERROR: push_em3d_e: sigma_method has an invalid value,",sigma_method
+  call kaboom("push_em3d_e: sigma_method has an invalid value")
+endif
+
+return
+end subroutine push_em3d_evec_macroscopic_work
+
+subroutine push_em3d_evec_macroscopic_work_r(E,B2,JC,mu0dt0,dt0sd1,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                             xmin,dx, &
+                                             sigma,epsi,mu, &
+                                             sigma_method)
+integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: E
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: B2
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: JC
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: sigma,epsi,mu
+real(kind=8), intent(IN) :: mu0dt0,dt0sd1
+real(kind=8), intent(IN) :: xmin,dx
+integer(ISZ) :: sigma_method
+
+integer(ISZ) :: j,k,l,js
+real(kind=8) :: a,b,mu0dt,dtsd1,ru,rd
+
+! --- This routine is specialized to handle only the z direction with axisymmetry.
+
+if (xmin == 0.) then
+  js = 1
+else
+  js = 0
+endif
+k = 0
+
+if (sigma_method == 0) then
+  ! --- Lax Wendroff
+  ! --- This method should not be used since for large sigma, the solver does
+  ! --- not have the correct behavior and can diverge.
+  do l = 0, nz-1
+    if (xmin == 0.) then
+     j = 0
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = 0.5*mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = (1. - a)/(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       E(j,k,l) = a*E(j,k,l) + 4.*dtsd1*B2(j,k,l) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    endif
+    do j = js, nx
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = 0.5*mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = (1. - a)/(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       ru = 1.+0.5/(xmin/dx+j)
+       rd = 1.-0.5/(xmin/dx+j)
+       E(j,k,l) = a*E(j,k,l) + dtsd1*(ru*B2(j,k,l) - rd*B2(j-1,k,l)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+  end do
+
+else if (sigma_method == 1) then
+  ! --- Backward Eularian
+  ! --- This is the recommended method, stable and efficient.
+  do l = 0, nz-1
+    if (xmin == 0.) then
+     j = 0
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = 1./(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       E(j,k,l) = a*E(j,k,l) + 4.*dtsd1*B2(j,k,l) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    endif
+    do j = js, nx
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       a = mu0dt0*sigma(j,k,l)/epsi(j,k,l)
+       b = (1. + a)
+       a = 1./(1. + a)
+       mu0dt = mu0dt0/(epsi(j,k,l)*b)
+       dtsd1 = dt0sd1/(epsi(j,k,l)*mu(j,k,l)*b)
+       ru = 1.+0.5/(xmin/dx+j)
+       rd = 1.-0.5/(xmin/dx+j)
+       E(j,k,l) = a*E(j,k,l) + dtsd1*(ru*B2(j,k,l) - rd*B2(j-1,k,l)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+  end do
+
+else if (sigma_method == 2) then
+  ! --- Semi-analytic
+  ! --- This may provide higher accuracy but at the cost of calculating exponentials.
+  do l = 0, nz-1
+    if (xmin == 0.) then
+     j = 0
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       b = exp(-sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       if (sigma(j,k,l)*mu0dt0/epsi(j,k,l) > 1.e-3) then
+          a = (1. - b)/(sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       else
+          a = 1. + 0.5*sigma(j,k,l)*mu0dt0/epsi(j,k,l)
+       endif
+       mu0dt = a*mu0dt0/(epsi(j,k,l))
+       dtsd1 = a*dt0sd1/(epsi(j,k,l)*mu(j,k,l))
+       E(j,k,l) = E(j,k,l)*b + 4.*dtsd1*B2(j,k,l) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    endif
+    do j = js, nx
+     if (sigma(j,k,l) < 0.) then
+       E(j,k,l) = 0.
+     else
+       b = exp(-sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       if (sigma(j,k,l)*mu0dt0/epsi(j,k,l) > 1.e-3) then
+          a = (1. - b)/(sigma(j,k,l)*mu0dt0/epsi(j,k,l))
+       else
+          a = 1. + 0.5*sigma(j,k,l)*mu0dt0/epsi(j,k,l)
+       endif
+       mu0dt = a*mu0dt0/(epsi(j,k,l))
+       dtsd1 = a*dt0sd1/(epsi(j,k,l)*mu(j,k,l))
+       ru = 1.+0.5/(xmin/dx+j)
+       rd = 1.-0.5/(xmin/dx+j)
+       E(j,k,l) = E(j,k,l)*b + dtsd1*(ru*B2(j,k,l) - rd*B2(j-1,k,l)) &
+                             - mu0dt*JC(j,k,l)
+     end if
+    end do
+  end do
+else
+  print*,"ERROR: push_em3d_e: sigma_method has an invalid value,",sigma_method
+  call kaboom("push_em3d_e: sigma_method has an invalid value")
+endif
+
+return
+end subroutine push_em3d_evec_macroscopic_work_r
+
 subroutine push_em3d_evec_macroscopic(ex,ey,ez,bx,by,bz,CJ,mu0dt0,dt0sdx,dt0sdy,dt0sdz,nx,ny,nz, &
                           nxguard,nyguard,nzguard,l_2dxz,l_2drz,xmin,zmin,dx,dz, &
-                          sigmax,sigmay,sigmaz,epsix,epsiy,epsiz,mux,muy,muz)
+                          sigmax,sigmay,sigmaz,epsix,epsiy,epsiz,mux,muy,muz,sigma_method)
 ! Integration over one time-step of Maxwell's macroscopic equations, using second-order leapfrop on Yee grid.                        
 ! d (eps0*epsr*E)/dt + sigma*E = curl (B/mu0*mur) - J                   
 
@@ -1142,239 +1381,68 @@ subroutine push_em3d_evec_macroscopic(ex,ey,ez,bx,by,bz,CJ,mu0dt0,dt0sdx,dt0sdy,
 !   -  sigmay, epsiy and muy are collocated with Ey,                           
 !   -  sigmaz, epsiz and muz are collocated with Ez.        
 
-
-integer :: nx,ny,nz,nxguard,nyguard,nzguard
-real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez,bx,by,bz
+integer(ISZ) :: nx,ny,nz,nxguard,nyguard,nzguard
+real(kind=8), intent(IN OUT), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: ex,ey,ez
+real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: bx,by,bz
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard,3) :: CJ
 real(kind=8), intent(IN), dimension(-nxguard:nx+nxguard,-nyguard:ny+nyguard,-nzguard:nz+nzguard) :: sigmax,sigmay,sigmaz, &
                                                                                                     epsix,epsiy,epsiz,mux,muy,muz
 real(kind=8), intent(IN) :: mu0dt0,dt0sdx,dt0sdy,dt0sdz,xmin,zmin,dx,dz
+integer(ISZ) :: sigma_method
+
 integer(ISZ) :: j,k,l
 logical(ISZ) :: l_2dxz,l_2drz
-real(kind=8) :: w,zlaser,rd,ru,a,b,mu0dt,dtsdx,dtsdy,dtsdz
+real(kind=8) :: rd,ru,a,b,mu0dt,dtsdx,dtsdy,dtsdz
 
 ! --- NOTE: if l_2drz is TRUE, then l_2dxz is TRUE
 if (.not. l_2dxz) then ! --- 3D XYZ
   ! advance Ex
-  do l = 0, nz
-   do k = 0, ny
-    do j = 0, nx-1
-     if (sigmax(j,k,l)<0.) then
-       Ex(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsix(j,k,l)*b)
-      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l)*b)
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
-      Ex(j,k,l) = a*Ex(j,k,l) + dtsdy * (Bz(j,k,l)   - Bz(j,k-1,l  )) &
-                              - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                              - mu0dt  * CJ(j,k,l,1)
-     end if
-    end do
-   end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ex,By,Bz,CJ(:,:,:,1),mu0dt0,dt0sdy,dt0sdz,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmax,epsix,mux,0,0,0,nx-1,ny,nz,0,1,0,0,0,1,sigma_method)
 
   ! advance Ey
-  do l = 0, nz
-   do k = 0, ny-1
-    do j = 0, nx
-     if (sigmay(j,k,l)<0.) then
-       Ey(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
-      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
-                              + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
-                              - mu0dt  * CJ(j,k,l,2)
-     end if
-    end do
-   end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ey,Bz,Bx,CJ(:,:,:,2),mu0dt0,dt0sdz,dt0sdx,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmay,epsiy,muy,0,0,0,nx,ny-1,nz,0,0,1,1,0,0,sigma_method)
 
   ! advance Ez 
-  do l = 0, nz-1
-   do k = 0, ny
-    do j = 0, nx
-     if (sigmaz(j,k,l)<0.) then
-       Ez(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
-      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
-                              - dtsdy * (Bx(j,k,l) - Bx(j  ,k-1,l)) &
-                              - mu0dt  * CJ(j,k,l,3)
-     end if
-    end do
-   end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ez,Bx,By,CJ(:,:,:,3),mu0dt0,dt0sdx,dt0sdy,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmaz,epsiz,muz,0,0,0,nx,ny,nz-1,1,0,0,0,1,0,sigma_method)
 
 else ! --- now 2D XZ or RZ
 
  if (.not. l_2drz) then ! 2D XZ
 
-  k = 0
   ! advance Ex
-  do l = 0, nz
-    do j = 0, nx-1
-     if (sigmax(j,k,l)<0.) then
-       Ex(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsix(j,k,l)*b)
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
-      Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                              - mu0dt  * CJ(j,k,l,1)
-     end if
-    end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ex,By,Bz,CJ(:,:,:,1),mu0dt0,0.,dt0sdz,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmax,epsix,mux,0,0,0,nx-1,0,nz,0,0,0,0,0,1,sigma_method)
 
   ! advance Ey
-  do l = 0, nz
-    do j = 0, nx
-      if (sigmay(j,k,l)<0.) then
-       Ey(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
-      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l)   - Bz(j-1,k,l)) &
-                              + dtsdz * (Bx(j,k,l)   - Bx(j,k,l-1)) &
-                              - mu0dt  * CJ(j,k,l,2)
-     end if
-    end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ey,Bz,Bx,CJ(:,:,:,2),mu0dt0,dt0sdz,dt0sdx,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmay,epsiy,muy,0,0,0,nx,0,nz,0,0,1,1,0,0,sigma_method)
 
   ! advance Ez 
-  do l = 0, nz-1
-    do j = 0, nx
-      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
-     if (sigmaz(j,k,l)<0.) then
-       Ez(j,k,l)=0.
-     else
-      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (By(j,k,l) - By(j-1,k  ,l)) &
-                              - mu0dt  * CJ(j,k,l,3)
-     end if
-    end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ez,Bx,By,CJ(:,:,:,3),mu0dt0,dt0sdx,0.,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmaz,epsiz,muz,0,0,0,nx,0,nz-1,1,0,0,0,0,0,sigma_method)
 
  else ! l_2drz=True
 
   k = 0
   ! advance Er
-  do l = 0, nz
-    do j = 0, nx-1
-     if (sigmax(j,k,l)<0.) then
-       Ex(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmax(j,k,l)/epsix(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsix(j,k,l)*b)
-      dtsdy = dt0sdy/(epsix(j,k,l)*mux(j,k,l)*b)
-      dtsdz = dt0sdz/(epsix(j,k,l)*mux(j,k,l)*b)
-      Ex(j,k,l) = a*Ex(j,k,l) - dtsdz * (By(j,k,l)   - By(j,k  ,l-1)) &
-                              - mu0dt  * CJ(j,k,l,1)
-     end if
-    end do
-  end do
+  call push_em3d_evec_macroscopic_work(Ex,By,Bz,CJ(:,:,:,1),mu0dt0,0.,dt0sdz,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmax,epsix,mux,0,0,0,nx-1,0,nz,0,0,0,0,0,1,sigma_method)
 
   ! advance Etheta
-  do l = 0, nz
-    do j = 1, nx
-     if (sigmay(j,k,l)<0.) then
-       Ey(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiy(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
-      dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
-      Ey(j,k,l) = a*Ey(j,k,l) - dtsdx * (Bz(j,k,l) - Bz(j-1,k,l)) &
-                              + dtsdz * (Bx(j,k,l) - Bx(j,k,l-1)) &
-                              - mu0dt  * CJ(j,k,l,2)
-     end if
-    end do
-    j = 0
-    a = 0.5*mu0dt0*sigmay(j,k,l)/epsiy(j,k,l)
-    b = (1.+a)
-    a = (1-a)/(1+a)
-    mu0dt = mu0dt0/(epsiy(j,k,l)*b)
-    dtsdx = dt0sdx/(epsiy(j,k,l)*muy(j,k,l)*b)
-    dtsdz = dt0sdz/(epsiy(j,k,l)*muy(j,k,l)*b)
-    if (sigmay(j,k,l)<0.) then
-       Ey(j,k,l)=0.
-    else
-      Ey(j,k,l) = a*Ey(j,k,l) - 2.*dtsdx * Bz(j,k,l) &
-                              + dtsdz * (Bx(j,k,l)    - Bx(j,k,l-1)) &
-                              - mu0dt  * CJ(j,k,l,2)
-    end if
-  end do
+  call push_em3d_evec_macroscopic_work(Ey,Bz,Bx,CJ(:,:,:,2),mu0dt0,dt0sdz,dt0sdx,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                       sigmay,epsiy,muy,1,0,0,nx,0,nz,0,0,1,1,0,0,sigma_method)
+  if (xmin /= 0.) then
+    call push_em3d_evec_macroscopic_work(Ey,Bz,Bx,CJ(:,:,:,2),mu0dt0,dt0sdz,dt0sdx,nx,ny,nz,nxguard,nyguard,nzguard, &
+                                         sigmay,epsiy,muy,0,0,0,0,0,nz,0,0,1,1,0,0,sigma_method)
+  endif
 
   ! advance Ez 
-  do l = 0, nz-1
-    do j = 1, nx
-     if (sigmaz(j,k,l)<0.) then
-       Ez(j,k,l)=0.
-     else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
-      ru = 1.+0.5/(xmin/dx+j)
-      rd = 1.-0.5/(xmin/dx+j)
-      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
-                              - mu0dt  * CJ(j,k,l,3)
-     end if
-    end do
-    j = 0
-    if (sigmaz(j,k,l)<0.) then
-      Ez(j,k,l)=0.
-    else
-     if (xmin==0.) then
-      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
-      Ez(j,k,l) = a*Ez(j,k,l) + 4.*dtsdx * By(j,k,l)  &
-                              - mu0dt  * CJ(j,k,l,3)
-     else
-      a = 0.5*mu0dt0*sigmaz(j,k,l)/epsiz(j,k,l)
-      b = (1.+a)
-      a = (1-a)/(1+a)
-      mu0dt = mu0dt0/(epsiz(j,k,l)*b)
-      dtsdx = dt0sdx/(epsiz(j,k,l)*muz(j,k,l)*b)
-      dtsdy = dt0sdy/(epsiz(j,k,l)*muz(j,k,l)*b)
-      ru = 1.+0.5/(xmin/dx+j)
-      rd = 1.-0.5/(xmin/dx+j)
-      Ez(j,k,l) = a*Ez(j,k,l) + dtsdx * (ru*By(j,k,l) - rd*By(j-1,k  ,l)) &
-                              - mu0dt  * CJ(j,k,l,3)
-     end if
-    end if
-  end do
+  ! A special method is used to properly handle the 1/r drBz/dr term
+  call push_em3d_evec_macroscopic_work_r(Ez,By,CJ(:,:,:,3),mu0dt0,dt0sdx,nx,ny,nz,nxguard,nyguard,nzguard,xmin,dx, &
+                                         sigmaz,epsiz,muz,sigma_method)
  end if
 end if
 
