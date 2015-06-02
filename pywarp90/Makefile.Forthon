@@ -1,4 +1,5 @@
 DEBUG = #-g --farg "-O0"
+SETUP_PY_DEBUG = #-g
 FARGS =
 FCOMP =
 SO = so
@@ -12,10 +13,10 @@ BUILDBASE = --build-base $(BUILDBASEDIR)
 BUILDARGS = $(BUILDBASE) --build-platlib $(BUILDBASEDIR)/tempsofiles
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE)
+	$(PYTHON) setup.py $(FCOMP) $(SETUP_PY_DEBUG) build $(BUILDBASE)
 
 installso: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) em3dpy.$(SO) ranffortran.c
-	$(PYTHON) setup.py $(FCOMP) build $(BUILDBASE) install $(INSTALLOPTIONS)
+	$(PYTHON) setup.py $(FCOMP) $(SETUP_PY_DEBUG) build $(BUILDBASE) install $(INSTALLOPTIONS)
 
 install: installso
 	(cd ../scripts;$(PYTHON) setup.py install $(INSTALLOPTIONS))
@@ -63,5 +64,4 @@ ranffortran.c: ranffortran.m
 	$(PYTHON) -c "from Forthon.preprocess import main;main()" ranffortran.m ranffortran.c
 
 clean:
-	rm -rf $(BUILDBASEDIR) *.o
-
+	rm -rf $(BUILDBASEDIR) *.o ../scripts/build
