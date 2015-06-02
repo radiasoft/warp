@@ -20,19 +20,22 @@ optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',
 machine = sys.platform
 debug   = 0
 fcomp   = None
+fcompexec = None
 parallel = 0
 with_numpy = 1
 for o in optlist:
     if   o[0] == '-g': debug = 1
     elif o[0] == '-t': machine = o[1]
     elif o[0] == '-F': fcomp = o[1]
+    elif o[0] == '--fcompexec': fcompexec = o[1]
     elif o[0] == '--parallel': parallel = 1
     elif o[0] == '--with-numpy': with_numpy = 1
 
 sys.argv = ['setup.py']+args
 fcompiler = FCompiler(machine=machine,
                       debug=debug,
-                      fcompname=fcomp)
+                      fcompname=fcomp,
+                      fcompexec=fcompexec)
 
 dummydist = Distribution()
 dummydist.parse_command_line()
@@ -198,4 +201,3 @@ if dummydist.commands[-1] == 'build':
         os.system('cp %s/*.so ../scripts'%dummybuild.build_platlib)
     else:
         os.system('mv %s/%s.so ../scripts'%(dummybuild.build_platlib,name))
-
